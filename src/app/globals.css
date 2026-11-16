@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — "ledger" look: warm paper, dark ink, hairline rules, one
+ * deep green accent. Figures are set large in tabular numerals.
+ */
+@theme {
+  --color-paper: #f6f5f1;
+  --color-surface: #ffffff;
+  --color-sunken: #efede7;
+  --color-ink: #16191d;
+  --color-ink-soft: #3d444d;
+  --color-muted: #66707c;
+  --color-line: #e2dfd7;
+  --color-line-strong: #cfcbc0;
+
+  --color-accent: #0e5a4e;
+  --color-accent-strong: #0a463d;
+  --color-accent-soft: #e4efeb;
+  --color-accent-bar: #2f7f71;
+
+  --color-good: #1c6e45;
+  --color-good-soft: #e6f3ec;
+  --color-warn: #8a5a00;
+  --color-warn-soft: #fdf3d7;
+  --color-bad: #a8261d;
+  --color-bad-soft: #fcebe8;
+  --color-info: #2a5797;
+  --color-info-soft: #e8eff9;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-card: 10px;
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every number that represents a quantity lines up in columns. */
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum", "lnum";
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+dialog::backdrop {
+  background: rgb(22 25 29 / 0.45);
+}
+
+/* Ledger tables */
+.ledger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.ledger th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--color-line-strong);
+  white-space: nowrap;
+}
+.ledger td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--color-line);
+  vertical-align: top;
+}
+.ledger tr:last-child td {
+  border-bottom: 0;
+}
+.ledger th.r,
+.ledger td.r {
+  text-align: right;
+}
+.ledger tfoot td {
+  border-top: 1px solid var(--color-line-strong);
+  border-bottom: 0;
+  font-weight: 600;
+}
+.ledger tbody tr:hover td {
+  background: rgb(239 237 231 / 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff;
+  }
+}
