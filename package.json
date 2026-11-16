@@ -1,0 +1,63 @@
+{
+  "name": "dpd-franchise-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run --project unit",
+    "test:db": "vitest run --project db",
+    "test:integration": "vitest run --project integration",
+    "test:all": "vitest run",
+    "test:e2e": "playwright test",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --schema public > src/lib/supabase/database.types.ts",
+    "worker": "tsx worker/index.ts",
+    "dpd:discover": "tsx scripts/dpd-discover.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "create-owner": "tsx scripts/create-owner.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0",
+    "csv-parse": "^7.0.3",
+    "exceljs": "^4.4.0",
+    "geist": "^1.9.2",
+    "lucide-react": "^1.73.0",
+    "next": "^16.4.6",
+    "pdfkit": "^0.20.2",
+    "pino": "^10.4.0",
+    "playwright": "^1.63.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
+    "unpdf": "^2.2.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "^22.20.5",
+    "@types/pdfkit": "^0.17.7",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.6",
+    "pg": "^8.23.1",
+    "supabase": "^3.1.0",
+    "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

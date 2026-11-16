@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+playwright-report/
+test-results/
+coverage/
+.vercel/
+supabase/.temp/
+supabase/.branches/
+/tmp/
+*.log
+.DS_Store
+# Downloaded portal documents and diagnostics must never be committed
+/var/
