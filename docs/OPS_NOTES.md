@@ -23,3 +23,13 @@ _Progress notes from the `ops-qa` branch. Updated after each part._
   * Screens that do not exist on this branch (everything except the dashboard and More) make their tests skip with a message instead of failing; once the other branch is merged they run for real.
   * The reset-password test reads the email from the local Mailpit (`http://127.0.0.1:54324`, override with `MAILPIT_URL`). If `supabase/config.toml` changes the mail catcher port, update it.
   * `axe` needs pages created from a browser context (`browser.newContext()`), which the Playwright `page` fixture already is.
+* [x] Docs: `README.md`, `docs/DATABASE.md`, `docs/FINANCE.md`, `docs/DEPLOYMENT.md`, `docs/RUNBOOK.md`; `.env.example` Ops block.
+  * Docs describe the intended Data & Integrations screen buttons ("Sync now", "Explore the DPD portal", "Reconnect", "Upload files", Review) from ARCHITECTURE.md and the existing layout; please check the exact button labels against the screens once built and tell me / adjust the runbook.
+
+## Things for the other session (changes I may not make)
+
+* `supabase/config.toml` has `enable_signup = true` (local). ARCHITECTURE says public sign-up is off by default. The production setting is a Supabase dashboard switch (documented in DEPLOYMENT.md step 1.2); for local parity consider `enable_signup = false` and creating users with `create-owner`. Note the e2e tests create users through the admin API, so they work either way.
+* `worker/index.ts` must expose `GET /health` (200, no auth) on `$PORT` and be runnable with `node --import tsx worker/index.ts`.
+* `/api/cron/tick` must return 401/403 without the correct bearer secret (the smoke test checks this). `/api/reports/*` must not return 200 to signed-out callers (it is covered by the session proxy already).
+* `npm run lint` is broken at the base commit (TypeScript 7 vs typescript-eslint). CI's lint step will stay red until `typescript` is pinned to a supported version.
+* `package.json` `engines.node >=22` matches the Dockerfile base image (Node 22).
