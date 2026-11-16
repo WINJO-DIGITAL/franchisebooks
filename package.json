@@ -24,7 +24,8 @@
     "worker": "tsx worker/index.ts",
     "dpd:discover": "tsx scripts/dpd-discover.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
-    "create-owner": "tsx scripts/create-owner.ts"
+    "create-owner": "tsx scripts/create-owner.ts",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
