@@ -1,0 +1,12 @@
+# Ops and QA notes
+
+_Progress notes from the `ops-qa` branch. Updated after each part._
+
+## Known gaps on the base commit (01d7f33)
+
+* **Build/typecheck**: `src/app/(app)/page.tsx` imports `@/components/sync-buttons`, which only exists in the other session's unpushed work. `npm run typecheck` therefore reports exactly one error (TS2307) until that branch is merged. Not created here, by instruction.
+* **Lint is broken at the base commit**: `npm run lint` crashes with "typescript-eslint does not support TS 7.0" because `package.json` pins `typescript ^7.0.2` while `eslint-config-next` bundles typescript-eslint, which needs TypeScript 6.x. Fixing it means changing `dependencies`/`devDependencies` versions or `eslint.config.mjs`, which are outside the ops scope. Suggested fix for the other session: pin `typescript` to `~6.0` (or wait for typescript-eslint support) . The CI workflow runs lint as written; it will stay red until this is fixed.
+
+## Progress
+
+* [x] Unit tests: schedule, schemas, logger, crypto, env (204 unit tests pass in total).
