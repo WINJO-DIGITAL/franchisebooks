@@ -1,0 +1,17 @@
+.git
+.github
+.next
+node_modules
+playwright-report
+test-results
+coverage
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+docs
+tests
+supabase
+deploy
+var
