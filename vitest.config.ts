@@ -19,6 +19,7 @@ export default defineConfig({
           environment: "node",
           fileParallelism: false,
           testTimeout: 30_000,
+          setupFiles: ["tests/helpers/setup-env.ts"],
         },
       },
       {
@@ -29,6 +30,7 @@ export default defineConfig({
           environment: "node",
           fileParallelism: false,
           testTimeout: 120_000,
+          setupFiles: ["tests/helpers/setup-env.ts"],
           hookTimeout: 120_000,
         },
       },

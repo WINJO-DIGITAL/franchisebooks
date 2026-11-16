@@ -17,3 +17,4 @@ supabase/.branches/
 .DS_Store
 # Downloaded portal documents and diagnostics must never be committed
 /var/
+tsconfig.tsbuildinfo

@@ -224,7 +224,7 @@ async function extractPdf(bytes: Uint8Array): Promise<ExtractedDocument> {
       allLines.push(...lines);
     }
   } finally {
-    await pdf.destroy?.();
+    await (pdf as unknown as { destroy?: () => Promise<void> }).destroy?.();
   }
   // Pages are read as one continuous table so a table that runs over several
   // pages keeps the column positions of its header.
