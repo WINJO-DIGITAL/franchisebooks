@@ -10,3 +10,4 @@ _Progress notes from the `ops-qa` branch. Updated after each part._
 ## Progress
 
 * [x] Unit tests: schedule, schemas, logger, crypto, env (204 unit tests pass in total).
+* [x] Error pages (`error.tsx`, `global-error.tsx`, `not-found.tsx`, `(app)/error.tsx`, `(app)/loading.tsx`), `src/components/errors/**`, `/api/health` (+ unit test), `src/instrumentation.ts`.
