@@ -4,7 +4,7 @@ _Progress notes from the `ops-qa` branch. Updated after each part._
 
 ## Errors that come from the other session's code (for them to fix)
 
-Checked on `ops-qa` (base 01d7f33) with the final commit. Everything in the ops-owned files is clean; the items below are the only failures left, and none of them is in a file this branch owns.
+Checked on `ops-qa` (base 01d7f33) with the final commit. Everything in the ops-owned files is clean; the item below is the only failure left, and it is not in a file this branch owns.
 
 ### Typecheck (`npm run typecheck`): 1 error
 
@@ -16,13 +16,9 @@ Checked on `ops-qa` (base 01d7f33) with the final commit. Everything in the ops-
 
 The build stops at the type-check step on the error above. With a throw-away stand-in component accepting those props, `next build` succeeds (all routes compile, including the new error, not-found and health pages). Missing component only; no other build errors.
 
-### Lint (`npm run lint`): crashes on the pinned TypeScript, clean otherwise
+### Lint (`npm run lint`): fixed
 
-* **Cause:** `package.json` pins `"typescript": "^7.0.2"`. The typescript-eslint inside `eslint-config-next` refuses TS 7: `typescript-eslint does not support TS 7.0`. ESLint exits before checking any file.
-* **Fix:** pin `typescript` to `~6.0` in `package.json` (and refresh `package-lock.json`), or wait for typescript-eslint to support TS 7. This is in `package.json` `devDependencies`, which this branch may not change.
-* **With TypeScript 6 installed (`npm i --no-save typescript@~6.0`) the whole repository lints with 0 errors and 1 warning:** `postcss.config.mjs` line 1, `import/no-anonymous-default-export` ("Assign object to a variable before exporting as module default"). That file is not owned by this branch.
-* **Typecheck is the same under TS 6 and TS 7** (only the sync-buttons error).
-* **CI:** `.github/workflows/ci.yml` installs TS 6 with `--no-save` just for the lint step so CI can lint today. Remove that install line once `typescript` is pinned.
+`typescript` is now pinned to `~6.0` in `package.json` (typescript-eslint, bundled in `eslint-config-next`, rejects TypeScript 7), and the `postcss.config.mjs` default-export warning is fixed. `npm run lint` reports 0 errors and 0 warnings across the repository. The temporary TypeScript 6 step was removed from `.github/workflows/ci.yml`.
 
 ### Not yet run anywhere (needs a local Supabase)
 
@@ -52,5 +48,5 @@ Database tests (`npm run test:db`), integration tests (`npm run test:integration
 * `supabase/config.toml` has `enable_signup = true` (local). ARCHITECTURE says public sign-up is off by default. The production setting is a Supabase dashboard switch (documented in DEPLOYMENT.md step 1.2); for local parity consider `enable_signup = false` and creating users with `create-owner`. Note the e2e tests create users through the admin API, so they work either way.
 * `worker/index.ts` must expose `GET /health` (200, no auth) on `$PORT` and be runnable with `node --import tsx worker/index.ts`.
 * `/api/cron/tick` must return 401/403 without the correct bearer secret (the smoke test checks this). `/api/reports/*` must not return 200 to signed-out callers (it is covered by the session proxy already).
-* `npm run lint` is broken at the base commit (TypeScript 7 vs typescript-eslint). CI's lint step will stay red until `typescript` is pinned to a supported version.
+* (Resolved) `npm run lint` was broken by the `typescript ^7` pin; it is now `~6.0` on this branch.
 * `package.json` `engines.node >=22` matches the Dockerfile base image (Node 22).
