@@ -29,8 +29,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - name: Lint
-        run: npm run lint
+      # typescript-eslint (bundled in eslint-config-next) does not support TypeScript 7 yet, so ESLint
+      # crashes on the pinned version. Lint with TypeScript 6 without changing package.json.
+      # Remove this step's install line once `typescript` is pinned to a supported version.
+      - name: Lint (with TypeScript 6 for ESLint)
+        run: |
+          npm install --no-save typescript@~6.0
+          npm run lint
       - name: Type check
         run: npm run typecheck
       - name: Unit tests

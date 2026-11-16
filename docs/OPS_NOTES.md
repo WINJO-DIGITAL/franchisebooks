@@ -2,10 +2,31 @@
 
 _Progress notes from the `ops-qa` branch. Updated after each part._
 
-## Known gaps on the base commit (01d7f33)
+## Errors that come from the other session's code (for them to fix)
 
-* **Build/typecheck**: `src/app/(app)/page.tsx` imports `@/components/sync-buttons`, which only exists in the other session's unpushed work. `npm run typecheck` therefore reports exactly one error (TS2307) until that branch is merged. Not created here, by instruction.
-* **Lint is broken at the base commit**: `npm run lint` crashes with "typescript-eslint does not support TS 7.0" because `package.json` pins `typescript ^7.0.2` while `eslint-config-next` bundles typescript-eslint, which needs TypeScript 6.x. Fixing it means changing `dependencies`/`devDependencies` versions or `eslint.config.mjs`, which are outside the ops scope. Suggested fix for the other session: pin `typescript` to `~6.0` (or wait for typescript-eslint support) . The CI workflow runs lint as written; it will stay red until this is fixed.
+Checked on `ops-qa` (base 01d7f33) with the final commit. Everything in the ops-owned files is clean; the items below are the only failures left, and none of them is in a file this branch owns.
+
+### Typecheck (`npm run typecheck`): 1 error
+
+| File | Error | Fix |
+| --- | --- | --- |
+| `src/app/(app)/page.tsx` line 5 | `TS2307: Cannot find module '@/components/sync-buttons'` | Add `src/components/sync-buttons.tsx` (their unpushed work). It is used at line 274 as `<SyncButtons dpdRunning={boolean} dropboxRunning={boolean} dropboxConnected={boolean} />`, so it must accept exactly those three boolean props and be exported by name as `SyncButtons`. |
+
+### Build (`npm run build`): fails for the same reason
+
+The build stops at the type-check step on the error above. With a throw-away stand-in component accepting those props, `next build` succeeds (all routes compile, including the new error, not-found and health pages). Missing component only; no other build errors.
+
+### Lint (`npm run lint`): crashes on the pinned TypeScript, clean otherwise
+
+* **Cause:** `package.json` pins `"typescript": "^7.0.2"`. The typescript-eslint inside `eslint-config-next` refuses TS 7: `typescript-eslint does not support TS 7.0`. ESLint exits before checking any file.
+* **Fix:** pin `typescript` to `~6.0` in `package.json` (and refresh `package-lock.json`), or wait for typescript-eslint to support TS 7. This is in `package.json` `devDependencies`, which this branch may not change.
+* **With TypeScript 6 installed (`npm i --no-save typescript@~6.0`) the whole repository lints with 0 errors and 1 warning:** `postcss.config.mjs` line 1, `import/no-anonymous-default-export` ("Assign object to a variable before exporting as module default"). That file is not owned by this branch.
+* **Typecheck is the same under TS 6 and TS 7** (only the sync-buttons error).
+* **CI:** `.github/workflows/ci.yml` installs TS 6 with `--no-save` just for the lint step so CI can lint today. Remove that install line once `typescript` is pinned.
+
+### Not yet run anywhere (needs a local Supabase)
+
+Database tests (`npm run test:db`), integration tests (`npm run test:integration`), the e2e suite (`npm run test:e2e`), and the `create-owner` / `seed-demo` inserts. This environment has no Docker daemon. Run these first on a machine with Docker once the two code fixes above are in.
 
 ## Progress
 
