@@ -36,7 +36,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
         description="Manual changes to driver pay. The original DPD figures are never altered: every adjustment is a separate, permanent entry."
         actions={ctx.canWrite ? (<><LinkButton href="/adjustments/new">Add Pay Adjustment</LinkButton><LinkButton href="/adjustments/cover" variant="secondary">Record Driver Cover</LinkButton></>) : null}
       />
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
         <Link href={`/adjustments?month=${addMonths(month, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous month"><ChevronLeft className="size-4" aria-hidden /></Link>
         <span className="min-w-36 text-center font-medium">{formatMonth(month)}</span>
         {addMonths(month, 1) <= monthOf(ctx.today) ? <Link href={`/adjustments?month=${addMonths(month, 1)}`} className={buttonClass("secondary", "sm")} aria-label="Next month"><ChevronRight className="size-4" aria-hidden /></Link> : null}

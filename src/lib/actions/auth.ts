@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -39,8 +39,14 @@ export async function signOut(): Promise<void> {
 export async function requestPasswordReset(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = parseForm(z.object({ email: z.email("Enter your email address.") }), formData);
   if ("error" in parsed) return parsed.error;
+  // Send the link back to the address the person is using right now. The sign-in
+  // "code verifier" cookie belongs to this host, so a link that lands on a different
+  // host (www. versus bare domain, localhost versus 127.0.0.1) could not be completed.
+  // Supabase still only redirects to addresses on its own allow-list.
+  const origin = (await headers()).get("origin");
+  const base = origin && /^https?:\/\//.test(origin) ? origin : env.appUrl();
   const supabase = await createClient();
-  await supabase.auth.resetPasswordForEmail(parsed.data.email, { redirectTo: `${env.appUrl()}/auth/confirm?next=/reset-password` });
+  await supabase.auth.resetPasswordForEmail(parsed.data.email, { redirectTo: `${base.replace(/\/$/, "")}/auth/reset` });
   // Same answer whether or not the address exists, so the form cannot be used to probe for accounts.
   return ok("If that address has an account, a reset link is on its way. Check your inbox.");
 }

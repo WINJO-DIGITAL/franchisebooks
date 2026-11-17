@@ -33,7 +33,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
           description={`${formatMonth(month)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
           actions={<><LinkButton href="/earnings" variant="secondary">Daily view</LinkButton><a className={buttonClass("secondary")} href={`/api/export/drivers?month=${month}`}>Download spreadsheet</a></>}
         />
-        <div className="mb-6 flex items-center gap-2">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           <Link href={`/earnings?month=${addMonths(month, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous month"><ChevronLeft className="size-4" aria-hidden /></Link>
           <span className="min-w-36 text-center font-medium">{formatMonth(month)}</span>
           {addMonths(month, 1) <= monthOf(ctx.today) ? <Link href={`/earnings?month=${addMonths(month, 1)}`} className={buttonClass("secondary", "sm")} aria-label="Next month"><ChevronRight className="size-4" aria-hidden /></Link> : null}

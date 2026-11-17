@@ -188,7 +188,7 @@ export function AdjustmentWizard({ franchises, drivers, today, defaults }: {
             <div className="rounded-lg border border-line-strong bg-paper p-4">
               <p className="num text-3xl font-semibold tracking-tight">{signed == null ? "—" : formatGBP(signed, { signed: true })}</p>
               <p className="mt-1 text-[0.9375rem]">
-                {signed != null && signed < 0 ? "taken off" : signed === 0 ? "recorded for" : "added to"} <strong>{driver?.name}</strong>'s pay for <strong>{formatUkDateLong(date)}</strong>
+                {signed != null && signed < 0 ? "taken off" : signed === 0 ? "recorded for" : "added to"} <strong>{driver?.name}</strong>&rsquo;s pay for <strong>{formatUkDateLong(date)}</strong>
               </p>
               <dl className="mt-4 space-y-1.5 border-t border-line pt-3 text-sm">
                 <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Type</dt><dd>{typeInfo.label}</dd></div>
@@ -347,7 +347,7 @@ export function CoverWizard({ franchises, drivers, today, defaults }: {
               <p className="mt-0.5 text-muted">{formatUkDateLong(date)}{franchise ? ` · ${franchise.label}` : ""}{route ? ` · ${route}` : ""}</p>
               <dl className="mt-4 space-y-2 border-t border-line pt-3 text-sm">
                 <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Pay</dt><dd>{paySummary}</dd></div>
-                <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Costs</dt><dd>That day's fuel and expenses {expenseSummary}.</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Costs</dt><dd>That day&rsquo;s fuel and expenses {expenseSummary}.</dd></div>
                 {notes ? <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Notes</dt><dd>{notes}</dd></div> : null}
               </dl>
             </div>

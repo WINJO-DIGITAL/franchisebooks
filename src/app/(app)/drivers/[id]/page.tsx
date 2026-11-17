@@ -155,7 +155,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       </Section>
 
       <Section title="Fuel and expenses attributed to this driver" description="Last 3 months">
-        {myCosts.length === 0 ? <EmptyState title="Nothing attributed">Costs appear here when they are matched to this driver's vehicle, or when you assign them.</EmptyState> : (
+        {myCosts.length === 0 ? <EmptyState title="Nothing attributed">Costs appear here when they are matched to this driver&rsquo;s vehicle, or when you assign them.</EmptyState> : (
           <TableWrap>
             <table className="ledger">
               <thead><tr><th>Date</th><th>What</th><th>Supplier</th><th>Why it is here</th><th className="r">Amount</th></tr></thead>

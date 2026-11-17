@@ -11,10 +11,15 @@ import { createClient } from "@supabase/supabase-js";
 import { addDays, londonToday, weekdayOf } from "@/lib/dates";
 import { importDocument } from "@/lib/ingest/pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { arg, loadLocalEnv, requireLocalDatabase } from "./lib/env";
+import { arg, loadLocalEnv } from "./lib/env";
+import { checkDemoSeedAllowed } from "./lib/guard";
 
 loadLocalEnv();
-requireLocalDatabase();
+const allowed = checkDemoSeedAllowed({ supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "", env: process.env });
+if (!allowed.allowed) {
+  console.error(`\n✗ ${allowed.reason}\n`);
+  process.exit(1);
+}
 
 const EMAIL = "demo@example.test";
 const PASSWORD = "demo-password-123";

@@ -101,11 +101,13 @@ test.describe("owner journeys (synthetic demo data)", () => {
     const date = `2024-${month}-${day}`;
     const buffer = await earningsPdf({ fdNumber: "FD-DEMO-1", date });
     await page.goto("/data");
+    await page.waitForLoadState("networkidle");
     await page.locator("#upload-files").setInputFiles({ name: `e2e-earnings-${date}.pdf`, mimeType: "application/pdf", buffer });
     await page.getByRole("button", { name: "Import files" }).click();
     await expect(page.getByRole("status").getByText(/4 driver records imported/)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole("status").getByText(/not matched to a registered driver/)).toBeVisible();
     await page.goto("/data");
+    await page.waitForLoadState("networkidle");
     await page.locator("#upload-files").setInputFiles({ name: "same-file-renamed.pdf", mimeType: "application/pdf", buffer });
     await page.getByRole("button", { name: "Import files" }).click();
     await expect(page.getByRole("alert").or(page.getByRole("status")).getByText(/already been imported/).first()).toBeVisible({ timeout: 30_000 });
@@ -118,6 +120,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     const date = `2023-0${1 + Math.floor(Math.random() * 8)}-1${Math.floor(Math.random() * 9)}`;
     const buffer = await earningsPdf({ fdNumber: "FD-DEMO-1", date, corruptTotalBy: 17 });
     await page.goto("/data");
+    await page.waitForLoadState("networkidle");
     await page.locator("#upload-files").setInputFiles({ name: `e2e-corrupt-${date}.pdf`, mimeType: "application/pdf", buffer });
     await page.getByRole("button", { name: "Import files" }).click();
     await expect(page.getByRole("alert").getByText(/needs checking before it is imported/)).toBeVisible({ timeout: 30_000 });

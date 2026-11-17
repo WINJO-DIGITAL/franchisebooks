@@ -169,7 +169,7 @@ export function ConflictActions({ id }: { id: string }) {
       <input type="hidden" name="id" value={id} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" name="choice" value="keep_existing" size="sm" disabled={pending}>Keep the figures already stored</Button>
-        <Button type="submit" name="choice" value="use_incoming" size="sm" variant="secondary" disabled={pending}>Use the newer document's figures</Button>
+        <Button type="submit" name="choice" value="use_incoming" size="sm" variant="secondary" disabled={pending}>Use the newer document&rsquo;s figures</Button>
       </div>
       <p className="mt-2 text-sm text-muted">Either way, nothing is deleted: replaced figures stay on record.</p>
       {state.message ? <div className="mt-3"><ActionMessage state={state} /></div> : null}

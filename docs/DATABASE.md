@@ -36,3 +36,30 @@ PostgreSQL on Supabase. Migrations in `supabase/migrations/` (apply with `npx su
 ## Audit
 
 Row-level triggers write to `audit_logs` (who, what, before/after) for adjustments, cover, drivers, assignments, franchises, allocations, categories, revenue, integrations, settings, profiles, manual imports/entries and decisions on alerts and review items.
+
+## Who can see what (Row Level Security)
+
+* Row Level Security is on, and forced, for every table.
+* A user sees only their own account's rows.
+* Managers and viewers can be limited to named franchises
+  (`user_profiles.all_franchises = false` plus `user_franchise_access`).
+* Viewers are read-only. The anonymous (signed-out) role can do nothing.
+* Storage buckets (`source-documents`, `reports`, `diagnostics`) are private
+  and have no end-user policies. The server checks access, then hands out
+  short-lived signed links.
+
+## Backups and recovery
+
+* Production: enable daily backups in Supabase (Pro plan includes them, and
+  Point-in-Time Recovery is an add-on). Check **Database → Backups** in the
+  dashboard after setting the project up.
+* Source documents are the ultimate record: every figure can be re-imported
+  from them. Do not empty the `source-documents` bucket.
+* Because money rows cannot be deleted, a bad import is fixed by voiding or
+  reviewing, not by deleting. Locally, `npm run db:reset` starts clean.
+
+## Row limits
+
+The Supabase Data API returns at most 1,000 rows per request. Anything that
+feeds a total is read page by page (`src/lib/data/fetch-all.ts`); never add a
+financial query that skips this.

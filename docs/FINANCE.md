@@ -38,3 +38,21 @@ Revenue entries are per franchise, per month or per day, with status *confirmed*
 ## Open question
 
 Whether DPD's "daily earnings" statement is what a driver is paid (a cost to you) or what DPD pays the franchise for the driver's work is not known — no real document has been seen. The app follows the brief (driver earnings = cost; revenue entered separately). If that is wrong for your arrangement it changes which table the statement feeds, not the rest of the logic.
+
+## Dates and money
+
+* Business dates are UK calendar days, carried as `YYYY-MM-DD`, never as
+  timestamps, so a day can never shift with the server's timezone or
+  daylight-saving changes.
+* The evening sync time is a UK clock time (default 20:30). It follows
+  GMT/BST by itself.
+* Amounts you type can be written `50`, `£50.00` or `1,250.50`.
+  Anything over £100,000 in one entry is refused as probably a typing slip.
+
+## Checking a figure
+
+1. Open the screen, find the day or driver, and open the source document
+   from **Data & Integrations → Imported files** (the original is kept).
+2. Compare the row with the document.
+3. If they differ, it will be in the review queue or the sync log with a
+   plain-English reason. Do not fix it by adjusting pay; resolve the import.

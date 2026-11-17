@@ -67,7 +67,7 @@ export function ScheduleForm({ syncTime, syncEnabled, autoReports, basis }: { sy
           <Field label="Automatic DPD sync"><Select name="syncEnabled" defaultValue={String(syncEnabled)}><option value="true">On</option><option value="false">Off</option></Select></Field>
           <Field label="Monthly reports"><Select name="autoReports" defaultValue={String(autoReports)}><option value="true">Create automatically after month end</option><option value="false">Only when I ask</option></Select></Field>
           <Field label="Share revenue between drivers by" hint="Only used to estimate each driver's contribution. Estimated figures are always labelled."><Select name="revenueBasis" defaultValue={basis}>
-            <option value="none">Don't share it out</option><option value="stops">Stops completed</option><option value="parcels">Parcels delivered</option><option value="earnings">DPD earnings</option>
+            <option value="none">Don&rsquo;t share it out</option><option value="stops">Stops completed</option><option value="parcels">Parcels delivered</option><option value="earnings">DPD earnings</option>
           </Select></Field>
         </div>
         <SubmitButton>Save</SubmitButton>

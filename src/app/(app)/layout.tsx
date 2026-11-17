@@ -51,7 +51,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           />
           <Link
             href="/alerts"
-            className="relative ml-auto flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-medium text-ink-soft hover:bg-sunken"
+            className="relative ml-auto flex h-10 shrink-0 items-center gap-2 rounded-lg px-2 text-sm sm:px-3 font-medium text-ink-soft hover:bg-sunken"
             aria-label={alertCount > 0 ? `${alertCount} alerts need attention` : "Alerts"}
           >
             <Bell className="size-[18px]" aria-hidden />

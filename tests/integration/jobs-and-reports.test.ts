@@ -92,7 +92,9 @@ describe("cron endpoint", () => {
     expect((await call(`Bearer ${process.env.CRON_SECRET}x`)).status).toBe(401);
   });
   it("runs the tick for Vercel Cron and processes the lighter jobs itself", async () => {
-    // Each run processes at most 10 jobs; the shared test database holds many accounts' jobs, so call it until ours is done.
+    // Each run processes at most 10 jobs, and the shared local database also holds other accounts'
+    // queued jobs (for example from the browser tests). Park those so this test only waits on its own.
+    await sql("update public.import_jobs set status = 'cancelled' where status = 'queued' and account_id <> $1", [t.accountId]);
     let body: { ok: boolean; workerPoked: boolean } | null = null;
     for (let i = 0; i < 20; i++) {
       const response = await call(`Bearer ${process.env.CRON_SECRET}`);

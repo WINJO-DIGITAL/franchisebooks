@@ -1,9 +1,0 @@
-# Example worker deployment settings for Railway (any Docker host works).
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "worker/Dockerfile"
-
-[deploy]
-healthcheckPath = "/health"
-restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 10

@@ -1,59 +1,87 @@
 /**
- * Creates the owner's sign-in and business.
+ * Creates the owner's sign-in. Public sign-up is switched off, so this is the
+ * only way the first account comes into being.
  *
- *   npm run create-owner -- --email owner@example.com --name "Owner Name" --business "My Couriers" [--fd FD-123]
+ *   npm run create-owner -- --email you@example.com
+ *   npm run create-owner -- --email you@example.com --business "Your Business Ltd" --name "Your Name"
  *
- * The password is read from the OWNER_PASSWORD environment variable (never from
- * the command line, where it would end up in shell history). Public sign-up is
- * switched off, so this is how the first account is made. Works against local
- * or production Supabase, using the service role key from the environment.
+ * The password is asked for privately (or read from OWNER_PASSWORD for
+ * automation). It is never printed or stored anywhere but Supabase Auth.
+ * Without --business, the owner sets up the business on first sign-in.
  */
-import { createClient } from "@supabase/supabase-js";
-import { arg, loadLocalEnv } from "./lib/env";
 
-loadLocalEnv();
+import { createInterface } from "node:readline";
+import { Writable } from "node:stream";
+import { anonClient, serviceClient } from "./lib/client";
+import { loadEnvFiles } from "./lib/env";
 
-async function main() {
-  const email = arg("email");
-  const name = arg("name") ?? "Owner";
-  const business = arg("business");
-  const fd = arg("fd");
-  const password = process.env.OWNER_PASSWORD;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!email || !business || !password || !url || !anon || !service) {
-    console.error("Usage: OWNER_PASSWORD=… npm run create-owner -- --email <email> --business <name> [--name <your name>] [--fd <FD number>]\nAlso needs NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY in the environment.");
-    process.exit(1);
-  }
-  if (password.length < 10) {
-    console.error("OWNER_PASSWORD must be at least 10 characters.");
-    process.exit(1);
-  }
-
-  const admin = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
-  const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
-  if (created.error && !/already/i.test(created.error.message)) throw new Error(created.error.message);
-
-  // Sign in as the new user so the account is created through the same RPC (and rules) the app uses.
-  const user = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
-  const session = await user.auth.signInWithPassword({ email, password });
-  if (session.error) throw new Error(`Could not sign in as the new user: ${session.error.message}`);
-  const { data: existing } = await user.from("user_profiles").select("account_id").maybeSingle();
-  if (existing) {
-    console.log("This user already has a business. Nothing changed.");
-    return;
-  }
-  const { data: accountId, error } = await user.rpc("bootstrap_account", { p_business_name: business, p_full_name: name });
-  if (error) throw new Error(error.message);
-  if (fd) {
-    const { error: franchiseError } = await user.from("franchises").insert({ account_id: accountId as string, fd_number: fd.toUpperCase() });
-    if (franchiseError) throw new Error(franchiseError.message);
-  }
-  console.log(`Created ${business} for ${email}${fd ? ` with franchise ${fd.toUpperCase()}` : ""}. Sign in at the app's login page.`);
+function fail(message: string): never {
+  console.error(`\n✗ ${message}\n`);
+  process.exit(1);
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+function arg(name: string): string | undefined {
+  const index = process.argv.indexOf(`--${name}`);
+  return index > -1 ? process.argv[index + 1] : undefined;
+}
+
+function askHidden(question: string): Promise<string> {
+  return new Promise((resolve) => {
+    let muted = false;
+    const output = new Writable({
+      write(chunk, _encoding, callback) {
+        if (!muted) process.stdout.write(chunk);
+        callback();
+      },
+    });
+    const rl = createInterface({ input: process.stdin, output, terminal: true });
+    rl.question(question, (answer) => {
+      rl.close();
+      process.stdout.write("\n");
+      resolve(answer);
+    });
+    muted = true;
+    process.stdout.write(question);
+  });
+}
+
+async function main() {
+  loadEnvFiles();
+  const email = (arg("email") ?? process.env.OWNER_EMAIL ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) fail("Give the owner's email address, for example:  npm run create-owner -- --email you@example.com");
+
+  let password = process.env.OWNER_PASSWORD ?? "";
+  if (!password) {
+    if (!process.stdin.isTTY) fail("No password supplied. Set OWNER_PASSWORD, or run this in a terminal to be asked for one.");
+    password = await askHidden("Choose a password (at least 10 characters): ");
+    const again = await askHidden("Type it again: ");
+    if (password !== again) fail("The two passwords did not match. Nothing was created.");
+  }
+  if (password.length < 10) fail("The password must be at least 10 characters. Nothing was created.");
+
+  const { client: db } = serviceClient();
+  const { data: users, error: listError } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  if (listError) fail(`Could not check for an existing account: ${listError.message}`);
+  if (users.users.some((u) => u.email?.toLowerCase() === email)) {
+    fail(`There is already an account for ${email}. If the password is forgotten, use "Forgot your password?" on the sign-in page.`);
+  }
+
+  const { data: created, error } = await db.auth.admin.createUser({ email, password, email_confirm: true });
+  if (error || !created.user) fail(`The account could not be created: ${error?.message ?? "unknown error"}`);
+  console.log(`\n✓ Account created for ${email}.`);
+
+  const business = arg("business")?.trim();
+  if (business) {
+    const client = anonClient();
+    const signIn = await client.auth.signInWithPassword({ email, password });
+    if (signIn.error) fail(`The account exists, but the business could not be set up: ${signIn.error.message}. Sign in and finish setup on screen.`);
+    const boot = await client.rpc("bootstrap_account", { p_business_name: business, p_full_name: arg("name")?.trim() ?? "" });
+    if (boot.error) fail(`The account exists, but the business could not be set up: ${boot.error.message}. Sign in and finish setup on screen.`);
+    console.log(`✓ Business "${business}" set up with ${email} as the owner.`);
+  } else {
+    console.log("  On first sign-in you will be asked for your business name.");
+  }
+  console.log("");
+}
+
+main().catch((error) => fail(error instanceof Error ? error.message : String(error)));
