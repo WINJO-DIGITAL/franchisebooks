@@ -144,6 +144,11 @@ export function matchCategory(
   categories: { id: string; name: string }[],
 ): { id: string; name: string } | null {
   const byName = (name: string) => categories.find((c) => c.name.toLowerCase() === name.toLowerCase()) ?? null;
+  // A charge DPD calls "Fuel Usage" is fuel whatever heading the portal files it under, so it must not land in "DPD charges".
+  if (/^\s*fuel\b/i.test(description)) {
+    const fuel = byName("Fuel");
+    if (fuel) return fuel;
+  }
   if (categoryText) {
     const exact = byName(categoryText.trim());
     if (exact) return exact;
