@@ -7,7 +7,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     await expect(page.getByText("Earned by drivers")).toBeVisible();
     await expect(page.getByText("Driver pay").first()).toBeVisible();
-    await expect(page.getByText("Fuel").first()).toBeVisible();
+    await expect(page.getByText("Fuel", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Other expenses").first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Synchronisation" })).toBeVisible();
     // Revenue was entered as an estimate, so profit must be labelled as an estimate.
@@ -156,7 +156,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByRole("row", { name: new RegExp(label) })).toContainText("Alex Example");
     // Clean up: remove from totals with a reason.
     await page.getByRole("row", { name: new RegExp(label) }).getByRole("button", { name: "Remove" }).click();
-    const dialog = page.getByRole("dialog", { name: "Remove this cost from the totals" });
+    const dialog = page.getByRole("dialog", { name: "Remove this expense from the totals" });
     await dialog.getByLabel(/Why\?/).fill("E2E clean-up");
     await dialog.getByRole("button", { name: "Remove" }).click();
     await expect(page.getByText(label)).toHaveCount(0);
