@@ -29,4 +29,4 @@ create policy driver_day_rates_insert on public.driver_day_rates for insert to a
               and (select app_private.can_write())
               and ((select app_private.has_all_franchises()) or app_private.can_access_driver(driver_id)));
 
-revoke update, delete on public.driver_day_rates from anon, authenticated;
+revoke update, delete, truncate on public.driver_day_rates from anon, authenticated;
