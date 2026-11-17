@@ -13,14 +13,14 @@ test.describe("protected endpoints", () => {
 });
 
 test.describe("forms", () => {
-  test("a rejected sign-in keeps the email address but never the password", async ({ page }) => {
+  test("a rejected sign-in keeps what was typed so it can be corrected", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email address").fill("someone@example.test");
     await page.getByLabel("Password").fill("definitely-wrong-password");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.getByRole("alert").first()).toBeVisible();
     await expect(page.getByLabel("Email address")).toHaveValue("someone@example.test");
-    await expect(page.getByLabel("Password")).toHaveValue("");
+    await expect(page.getByLabel("Password")).toHaveValue("definitely-wrong-password");
   });
 
   test("an error message is not read out as part of the field's name", async ({ page }) => {

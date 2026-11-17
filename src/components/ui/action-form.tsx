@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { createContext, startTransition, useActionState, useContext, useEffect, useRef, type FormEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import type { ActionState } from "@/lib/actions/helpers";
 import { Notice } from "./bits";
@@ -18,8 +18,12 @@ export function ActionMessage({ state }: { state: ActionState }) {
   );
 }
 
+const PendingContext = createContext<boolean | null>(null);
+
 export function SubmitButton({ children, pendingLabel, ...props }: React.ComponentProps<typeof Button> & { pendingLabel?: string }) {
-  const { pending } = useFormStatus();
+  const status = useFormStatus();
+  const fromForm = useContext(PendingContext);
+  const pending = fromForm ?? status.pending;
   return (
     <Button type="submit" disabled={pending || props.disabled} {...props}>
       {pending ? (pendingLabel ?? "Saving…") : children}
@@ -40,34 +44,9 @@ export function ActionForm({
   resetOnSuccess?: boolean;
   onSuccess?: (state: ActionState) => void;
 }) {
-  const submitted = useRef<FormData | null>(null);
-  const [state, formAction] = useActionState(async (prev: ActionState, data: FormData) => {
-    submitted.current = data;
-    return action(prev, data);
-  }, initial);
+  const [state, formAction, pending] = useActionState(action, initial);
   const ref = useRef<HTMLFormElement>(null);
   const handled = useRef<ActionState | null>(null);
-
-  // React clears an uncontrolled form after every submit. When something needs correcting
-  // the person should not have to type it all again, so put back what they entered.
-  // A layout effect runs straight after React's own reset, before anything is painted or typed.
-  useLayoutEffect(() => {
-    if (state.ok || !state.message || !submitted.current || !ref.current) return;
-    const data = submitted.current;
-    const form = ref.current;
-    for (const element of Array.from(form.elements)) {
-      if (!(element instanceof HTMLInputElement || element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement) || !element.name) continue;
-      if (element instanceof HTMLInputElement) {
-        if (element.type === "password" || element.type === "file" || element.type === "submit" || element.type === "hidden") continue;
-        if (element.type === "radio" || element.type === "checkbox") {
-          element.checked = data.getAll(element.name).includes(element.value);
-          continue;
-        }
-      }
-      const value = data.get(element.name);
-      if (typeof value === "string" && element.value !== value) element.value = value;
-    }
-  }, [state]);
 
   useEffect(() => {
     if (state.ok && handled.current !== state) {
@@ -77,10 +56,23 @@ export function ActionForm({
     }
   }, [state, resetOnSuccess, onSuccess]);
 
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pending) return;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    const data = new FormData(event.currentTarget, submitter);
+    startTransition(() => formAction(data));
+  }
+
   return (
-    <form ref={ref} action={formAction} className={className} noValidate>
-      {typeof children === "function" ? children(state) : children}
-      {state.message ? <div className="mt-4"><ActionMessage state={state} /></div> : null}
+    // Submitted by hand rather than through the form's `action` prop: React resets an
+    // `action` form after every submit, which wipes what the person typed when something
+    // needs correcting (and can race with them typing the correction).
+    <form ref={ref} onSubmit={onSubmit} className={className} noValidate>
+      <PendingContext.Provider value={pending}>
+        {typeof children === "function" ? children(state) : children}
+        {state.message ? <div className="mt-4"><ActionMessage state={state} /></div> : null}
+      </PendingContext.Provider>
     </form>
   );
 }
