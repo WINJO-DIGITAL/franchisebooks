@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["lhr1"],
+  "crons": [
+    { "path": "/api/cron/tick", "schedule": "*/5 * * * *" }
+  ],
+  "functions": {
+    "src/app/api/cron/tick/route.ts": { "maxDuration": 300 },
+    "src/app/api/dropbox/webhook/route.ts": { "maxDuration": 300 }
+  }
+}
