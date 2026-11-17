@@ -6,7 +6,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAll } from "@/lib/data/fetch-all";
 import { loadPeriodData, type AdjustmentDetail } from "@/lib/data/period";
-import { addMonths, monthRange, type ISODate, type YearMonth } from "@/lib/dates";
+import { addDays, addMonths, monthRange, type ISODate, type YearMonth } from "@/lib/dates";
+import type { DpdPeriod } from "@/lib/finance/periods";
 import {
   combineFranchises, comparePerformance, summarisePeriod,
   type CategoryTotal, type DriverSummary, type FranchiseSummary, type PerformanceComparison,
@@ -46,6 +47,8 @@ export interface ReportAlert {
 export interface MonthlyReport {
   accountName: string;
   month: YearMonth;
+  /** Set for a four-week period report; null for a calendar month. */
+  period: DpdPeriod | null;
   from: ISODate;
   to: ISODate;
   /** Null for the consolidated all-franchise report. */
@@ -66,11 +69,13 @@ export interface MonthlyReport {
 
 const MISSING_TYPES = new Set(["missing_driver_report", "missing_franchise_report", "missing_fuel", "unregistered_driver", "source_conflict"]);
 
-export async function buildMonthlyReport(db: Db, input: { accountId: string; month: YearMonth; franchiseId: string | null }): Promise<MonthlyReport> {
+export async function buildMonthlyReport(db: Db, input: { accountId: string; month: YearMonth; franchiseId: string | null; period?: DpdPeriod | null }): Promise<MonthlyReport> {
   const { accountId, month, franchiseId } = input;
-  const { start, end } = monthRange(month);
-  const baselineFrom = monthRange(addMonths(month, -3)).start;
-  const baselineTo = monthRange(addMonths(month, -1)).end;
+  const period = input.period ?? null;
+  const { start, end } = period ?? monthRange(month);
+  // The "usual" a driver is compared with: the previous three months, or the previous three four-week periods.
+  const baselineFrom = period ? addDays(period.start, -84) : monthRange(addMonths(month, -3)).start;
+  const baselineTo = period ? addDays(period.start, -1) : monthRange(addMonths(month, -1)).end;
 
   const [account, franchises, data, baselineData, anomalies, reviews] = await Promise.all([
     db.from("accounts").select("name").eq("id", accountId).maybeSingle(),
@@ -123,6 +128,7 @@ export async function buildMonthlyReport(db: Db, input: { accountId: string; mon
   return {
     accountName: account.data?.name ?? "",
     month,
+    period,
     from: start,
     to: end,
     franchiseId,

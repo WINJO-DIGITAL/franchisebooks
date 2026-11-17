@@ -53,14 +53,14 @@ isOneToOne: false
                   ]
                 },"app_settings": {
                   Row: {
-                    "account_id": string,"anomaly_config": NonNullable<Json>,"auto_monthly_reports": boolean,"earnings_meaning": string,"revenue_allocation_basis": string,"sync_enabled": boolean,"sync_time_local": string,"sync_timezone": string,"updated_at": string,"updated_by": string | null
+                    "account_id": string,"anomaly_config": NonNullable<Json>,"auto_monthly_reports": boolean,"earnings_meaning": string,"report_frequency": string,"revenue_allocation_basis": string,"sync_enabled": boolean,"sync_time_local": string,"sync_timezone": string,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"anomaly_config"?: NonNullable<Json>,"auto_monthly_reports"?: boolean,"earnings_meaning"?: string,"revenue_allocation_basis"?: string,"sync_enabled"?: boolean,"sync_time_local"?: string,"sync_timezone"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "account_id": string,"anomaly_config"?: NonNullable<Json>,"auto_monthly_reports"?: boolean,"earnings_meaning"?: string,"report_frequency"?: string,"revenue_allocation_basis"?: string,"sync_enabled"?: boolean,"sync_time_local"?: string,"sync_timezone"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"anomaly_config"?: NonNullable<Json>,"auto_monthly_reports"?: boolean,"earnings_meaning"?: string,"revenue_allocation_basis"?: string,"sync_enabled"?: boolean,"sync_time_local"?: string,"sync_timezone"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "account_id"?: string,"anomaly_config"?: NonNullable<Json>,"auto_monthly_reports"?: boolean,"earnings_meaning"?: string,"report_frequency"?: string,"revenue_allocation_basis"?: string,"sync_enabled"?: boolean,"sync_time_local"?: string,"sync_timezone"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -581,14 +581,14 @@ isOneToOne: false
                   ]
                 },"monthly_reports": {
                   Row: {
-                    "account_id": string,"franchise_id": string | null,"generated_at": string,"generated_by": string | null,"id": string,"report_month": string,"storage_path": string,"totals": NonNullable<Json>,"trigger": string
+                    "account_id": string,"franchise_id": string | null,"generated_at": string,"generated_by": string | null,"id": string,"period_end": string | null,"period_start": string | null,"report_month": string,"storage_path": string,"totals": NonNullable<Json>,"trigger": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"report_month": string,"storage_path": string,"totals"?: NonNullable<Json>,"trigger"?: string
+                    "account_id": string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month": string,"storage_path": string,"totals"?: NonNullable<Json>,"trigger"?: string
                   }
                   Update: {
-                    "account_id"?: string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"report_month"?: string,"storage_path"?: string,"totals"?: NonNullable<Json>,"trigger"?: string
+                    "account_id"?: string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month"?: string,"storage_path"?: string,"totals"?: NonNullable<Json>,"trigger"?: string
                   }
                   Relationships: [
                     {

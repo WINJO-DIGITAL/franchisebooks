@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getContext } from "@/lib/context";
-import { isYearMonth, formatMonth } from "@/lib/dates";
+import { formatMonth, isYearMonth, monthOf } from "@/lib/dates";
+import { periodContaining, periodLabel } from "@/lib/finance/periods";
 import { DropboxError } from "@/lib/dropbox/client";
 import { openDropbox } from "@/lib/dropbox/connection";
 import { runDropboxSync } from "@/lib/dropbox/sync";
@@ -165,16 +166,22 @@ export async function disconnectDropbox(_prev: ActionState, _formData: FormData)
 
 export async function generateReport(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const ctx = await getContext();
-  const parsed = parseForm(z.object({ month: z.string().refine(isYearMonth, "Choose a month."), franchiseId: optionalUuid }), formData);
+  // "report" is "month:2026-10" or "period:2026-10-12" (the first day of a DPD four-week period).
+  const parsed = parseForm(z.object({ report: z.string().regex(/^(month:\d{4}-\d{2}|period:\d{4}-\d{2}-\d{2})$/, "Choose a month or period."), franchiseId: optionalUuid }), formData);
   if ("error" in parsed) return parsed.error;
+  const [kind, value] = parsed.data.report.split(":") as ["month" | "period", string];
+  const period = kind === "period" ? periodContaining(value) : null;
+  if (kind === "month" && !isYearMonth(value)) return fail("Choose a month.");
+  if (period && period.start !== value) return fail("Choose a period from the list.");
+  const month = period ? monthOf(period.start) : value;
   if (parsed.data.franchiseId && !ctx.franchises.some((f) => f.id === parsed.data.franchiseId)) return fail("Choose one of your franchises.");
   if (!parsed.data.franchiseId && ctx.role !== "owner" && ctx.franchises.length === 0) return fail("There is nothing to report on yet.");
   try {
     const report = await generateMonthlyReport(createAdminClient(), {
-      accountId: ctx.accountId, month: parsed.data.month, franchiseId: parsed.data.franchiseId, trigger: "manual", userId: ctx.userId,
+      accountId: ctx.accountId, month, period, franchiseId: parsed.data.franchiseId, trigger: "manual", userId: ctx.userId,
     });
     revalidatePath("/reports");
-    return ok(`Report generated for ${formatMonth(parsed.data.month)}.`, { id: report.id });
+    return ok(`Report generated for ${period ? periodLabel(period) : formatMonth(month)}.`, { id: report.id });
   } catch (error) {
     return unexpectedFailure(error, "The report could not be generated.");
   }

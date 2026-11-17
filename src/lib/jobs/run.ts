@@ -6,7 +6,8 @@
 
 import "server-only";
 import { runAnomalyScan } from "@/lib/anomalies/run";
-import { addDays, isYearMonth, londonToday, monthOf, monthRange } from "@/lib/dates";
+import { addDays, isISODate, isYearMonth, londonToday, monthOf, monthRange } from "@/lib/dates";
+import { lastCompletedPeriod, type DpdPeriod } from "@/lib/finance/periods";
 import { runDropboxSync } from "@/lib/dropbox/sync";
 import { PortalError } from "@/lib/dpd/errors";
 import type { PortalSessionPool } from "@/lib/dpd/sync";
@@ -47,16 +48,19 @@ async function execute(db: AdminClient, job: Job, ctx: RunContext): Promise<JobO
       return { status: "succeeded", message: scan.created === 0 ? "Checked for anything unusual: nothing new." : `Checked for anything unusual: ${scan.created} new alert${scan.created === 1 ? "" : "s"}.`, result: { ...scan } };
     }
     case "monthly_report": {
-      const month = String((job.payload as { month?: string } | null)?.month ?? "");
-      if (!isYearMonth(month)) throw new Error("monthly_report job has no valid month");
+      // A report is for a calendar month, or (when payload has periodStart and periodEnd) a DPD four-week period.
+      const payload = (job.payload ?? {}) as { month?: string; periodStart?: string; periodEnd?: string };
+      const period: DpdPeriod | null = isISODate(payload.periodStart) && isISODate(payload.periodEnd) ? { start: payload.periodStart, end: payload.periodEnd } : null;
+      const month = period ? monthOf(period.start) : String(payload.month ?? "");
+      if (!isYearMonth(month)) throw new Error("report job has no valid month or period");
       const generated: string[] = [];
       const { data: franchises } = await db.from("franchises").select("id").eq("account_id", job.account_id).eq("is_active", true);
       const scopes: (string | null)[] = [null, ...(franchises ?? []).map((f) => f.id)];
       for (const franchiseId of scopes.length === 2 ? [scopes[1]!] : scopes) {
-        const report = await generateMonthlyReport(db, { accountId: job.account_id, month, franchiseId, trigger: "auto" });
+        const report = await generateMonthlyReport(db, { accountId: job.account_id, month, period, franchiseId, trigger: "auto" });
         generated.push(report.label);
       }
-      return { status: "succeeded", message: `Monthly report${generated.length === 1 ? "" : "s"} generated: ${generated.join("; ")}.`, result: { generated } };
+      return { status: "succeeded", message: `Report${generated.length === 1 ? "" : "s"} generated: ${generated.join("; ")}.`, result: { generated } };
     }
     default:
       throw new Error(`Unknown job type ${job.job_type}`);
@@ -131,7 +135,7 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
   const { data: released } = await db.rpc("release_stale_jobs", { p_older_than: "45 minutes" });
   result.released = Number(released ?? 0);
 
-  const { data: settingsRows, error } = await db.from("app_settings").select("account_id, sync_enabled, sync_time_local, sync_timezone, auto_monthly_reports");
+  const { data: settingsRows, error } = await db.from("app_settings").select("account_id, sync_enabled, sync_time_local, sync_timezone, auto_monthly_reports, report_frequency");
   if (error) throw new Error(`Could not read schedules: ${error.message}`);
 
   for (const settings of settingsRows ?? []) {
@@ -177,8 +181,20 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
       }
     }
 
-    // Automatic month-end reports.
-    if (settings.auto_monthly_reports && decision.reportMonthDue && (franchises?.length ?? 0) > 0) {
+    // Automatic reports. With report_frequency "dpd_period": one for each DPD four-week period, once it has ended and its
+    // last day's figures have been synced (two days after it ends). Otherwise one for each calendar month, from the 2nd.
+    if (settings.auto_monthly_reports && settings.report_frequency === "dpd_period" && (franchises?.length ?? 0) > 0) {
+      const period = lastCompletedPeriod(londonToday(now));
+      const [{ count: existing }, { count: activity }, { count: jobs }] = await Promise.all([
+        db.from("monthly_reports").select("id", { count: "exact", head: true }).eq("account_id", accountId).eq("period_start", period.start).eq("trigger", "auto"),
+        db.from("daily_earnings").select("id", { count: "exact", head: true }).eq("account_id", accountId).eq("is_current", true).gte("report_date", period.start).lte("report_date", period.end),
+        db.from("import_jobs").select("id", { count: "exact", head: true }).eq("account_id", accountId).eq("job_type", "monthly_report").eq("report_date", period.start),
+      ]);
+      if ((existing ?? 0) === 0 && (jobs ?? 0) === 0 && (activity ?? 0) > 0) {
+        await enqueueJob(db, { accountId, type: "monthly_report", reportDate: period.start, trigger: "schedule", payload: { periodStart: period.start, periodEnd: period.end } });
+        result.queued.monthlyReport += 1;
+      }
+    } else if (settings.auto_monthly_reports && decision.reportMonthDue && (franchises?.length ?? 0) > 0) {
       const month = decision.reportMonthDue;
       const [{ count: existing }, { count: activity }, { count: jobs }] = await Promise.all([
         db.from("monthly_reports").select("id", { count: "exact", head: true }).eq("account_id", accountId).eq("report_month", `${month}-01`).eq("trigger", "auto"),

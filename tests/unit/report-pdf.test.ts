@@ -25,7 +25,7 @@ function report(overrides: Partial<{ revenue: number; revenueStatus: "confirmed"
   });
   const f = summary.franchises[0]!;
   return {
-    accountName: "Synthetic Couriers", month: "2026-11", from: "2026-11-01", to: "2026-11-30", franchiseId: "f1", scopeLabel: "FD-TEST-1 · Synthetic North",
+    accountName: "Synthetic Couriers", month: "2026-11", period: null, from: "2026-11-01", to: "2026-11-30", franchiseId: "f1", scopeLabel: "FD-TEST-1 · Synthetic North",
     generatedAt: "2026-12-02T09:00:00Z", totals: f, franchises: [{ ...f, label: "FD-TEST-1" }],
     drivers: f.drivers.map((d) => ({ ...d, franchiseLabel: "FD-TEST-1", comparison: { earningsPerDayChange: -12.5, stopsPerDayChange: null, parcelsPerDayChange: null, baselineDays: 30 } })),
     categories: f.categories,
@@ -105,5 +105,46 @@ describe("CSV export", () => {
     expect(lines[1]).toBe(`"'=HYPERLINK(""x"")","a, ""b"""`);
     expect(lines[2]).toBe("Plain,-12.50");
     expect(lines[3]).toBe("'@cmd,'+1");
+  });
+});
+
+function periodReport(dayRates: { driverId: string; dayRate: number; effectiveFrom: string }[]): MonthlyReport {
+  const summary = summarisePeriod({
+    from: "2026-11-09", to: "2026-12-06",
+    earnings: [earning({ date: "2026-11-10", gross: 20000 }), earning({ id: "e2", date: "2026-11-11", gross: 25000 })],
+    adjustments: [], covers: [], revenue: [], driverNames: new Map([["d1", "Alex Example"]]), revenueAllocationBasis: "none",
+    costs: [{ id: "c1", kind: "expense", franchiseId: "f1", date: "2026-11-09", amount: 9000, categoryId: "cat", categoryName: "DPD charges", categoryKind: "other", allocation: { scope: "franchise" } }],
+    earningsMeaning: "route_income", dayRates,
+  });
+  const f = summary.franchises[0]!;
+  return {
+    accountName: "Synthetic Couriers", month: "2026-11", period: { start: "2026-11-09", end: "2026-12-06" }, from: "2026-11-09", to: "2026-12-06", franchiseId: "f1",
+    scopeLabel: "FD-TEST-1", generatedAt: "2026-12-08T20:40:00Z", totals: f, franchises: [{ ...f, label: "FD-TEST-1" }],
+    drivers: f.drivers.map((d) => ({ ...d, franchiseLabel: "FD-TEST-1", comparison: { earningsPerDayChange: null, stopsPerDayChange: null, parcelsPerDayChange: null, baselineDays: 0 } })),
+    categories: f.categories, adjustments: [], unusual: [], missingData: [], unresolvedImports: [], coverCount: 0, revenueAllocationBasis: "none",
+  };
+}
+
+describe("four-week period report PDF (income model)", () => {
+  it("titles the period and shows income, wages, charges and profit", async () => {
+    const text = await textOf(periodReport([{ driverId: "d1", dayRate: 12000, effectiveFrom: "2026-10-01" }]));
+    expect(text).toContain("Period report: 09/11/2026 to 06/12/2026");
+    expect(text).toContain("Income (DPD payments)");
+    expect(text).toContain("£450.00"); // income
+    expect(text).toContain("Driver wages");
+    expect(text).toContain("£240.00"); // 2 days x £120
+    expect(text).toContain("£90.00"); // DPD charges
+    expect(text).toContain("£120.00"); // profit: 450 - 240 - 90
+    expect(text).not.toContain("Wages are incomplete");
+    expect(text).not.toMatch(/\$|undefined|NaN/);
+  });
+
+  it("does not state profit when a driver has no day rate, and says so", async () => {
+    const text = await textOf(periodReport([]));
+    expect(text).toContain("Wages are incomplete");
+    expect(text).toContain("no rate");
+    expect(text).toContain("Not available"); // operating profit
+    expect(text).toContain("Income less charges, before wages");
+    expect(text).toContain("£360.00"); // 450 - 90
   });
 });

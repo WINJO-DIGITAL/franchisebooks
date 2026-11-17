@@ -10,14 +10,23 @@ interface Option {
   label: string;
 }
 
-export function GenerateReportForm({ months, franchises, defaultMonth, defaultFranchiseId }: { months: Option[]; franchises: Option[]; defaultMonth: string; defaultFranchiseId: string | null }) {
+export function GenerateReportForm({
+  periods, months, franchises, defaultReport, defaultFranchiseId,
+}: { periods: Option[]; months: Option[]; franchises: Option[]; defaultReport: string; defaultFranchiseId: string | null }) {
   const router = useRouter();
   return (
     <ActionForm action={generateReport} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSuccess={() => router.refresh()}>
       {(state) => (
         <>
-          <Field label="Month" error={state.fieldErrors?.month}>
-            <Select name="month" defaultValue={defaultMonth}>{months.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}</Select>
+          <Field label="What period?" error={state.fieldErrors?.report}>
+            <Select name="report" defaultValue={defaultReport}>
+              <optgroup label="DPD four-week periods">
+                {periods.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </optgroup>
+              <optgroup label="Calendar months">
+                {months.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </optgroup>
+            </Select>
           </Field>
           <Field label="Which franchise?">
             <Select name="franchiseId" defaultValue={defaultFranchiseId ?? ""}>
