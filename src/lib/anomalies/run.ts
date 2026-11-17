@@ -10,7 +10,8 @@ import { loadCosts, loadCovers, loadEarnings } from "@/lib/data/period";
 import { addDays, londonMinutesOfDay, londonToday, parseTimeToMinutes, type ISODate } from "@/lib/dates";
 import type { AdminClient } from "@/lib/supabase/admin";
 import type { JsonObject } from "@/lib/supabase/json";
-import { detectAnomalies, resolveAnomalyConfig, type AnomalyCandidate } from "./detect";
+import { DAILY_PAYMENT_LINE } from "@/lib/ingest/invoice";
+import { detectAnomalies, resolveAnomalyConfig, type AnomalyCandidate, type AnomalyInvoice } from "./detect";
 
 const HISTORY_DAYS = 120;
 /** Reports are treated as due this long after the scheduled sync time. */
@@ -31,7 +32,7 @@ export async function runAnomalyScan(
   const historyFrom = addDays(range.from, -HISTORY_DAYS);
   const filter = { accountId, from: historyFrom, to: range.to };
 
-  const [settings, franchises, drivers, assignments, earnings, costs, covers, conflicts] = await Promise.all([
+  const [settings, franchises, drivers, assignments, earnings, costs, covers, conflicts, invoiceRows] = await Promise.all([
     db.from("app_settings").select("anomaly_config, sync_time_local, sync_timezone").eq("account_id", accountId).maybeSingle().then((r) => must(r, "Loading settings")),
     fetchAll(() => db.from("franchises").select("id, fd_number, name, is_active").eq("account_id", accountId).order("id")),
     fetchAll(() => db.from("drivers").select("id, display_name, is_active, start_date, leaving_date").eq("account_id", accountId).order("id")),
@@ -40,7 +41,13 @@ export async function runAnomalyScan(
     loadCosts(db, filter),
     loadCovers(db, filter),
     fetchAll(() => db.from("review_items").select("id, franchise_id, title, detail, payload, created_at").eq("account_id", accountId).eq("kind", "source_conflict").eq("status", "open").order("id")),
+    fetchAll(() => db.from("dpd_invoices").select("id, franchise_id, invoice_no, period_start, period_end, reconciled, lines, created_at").eq("account_id", accountId).gte("created_at", `${range.from}T00:00:00Z`).order("id")),
   ]);
+  const invoices: AnomalyInvoice[] = invoiceRows.map((r) => {
+    const lines = Array.isArray(r.lines) ? (r.lines as { description?: string; amount?: number }[]) : [];
+    const stopPayNet = lines.filter((l) => l.description && typeof l.amount === "number" && DAILY_PAYMENT_LINE.test(l.description)).reduce((a, l) => a + (l.amount as number), 0);
+    return { id: r.id, franchiseId: r.franchise_id, invoiceNo: r.invoice_no, periodStart: r.period_start, periodEnd: r.period_end, reconciled: r.reconciled, stopPayNet, storedOn: r.created_at.slice(0, 10) };
+  });
 
   const timezone = settings?.sync_timezone ?? "Europe/London";
   const today = londonToday(now, timezone);
@@ -60,7 +67,9 @@ export async function runAnomalyScan(
       id: c.id, kind: c.kind, isFuel: c.kind === "fuel" || c.categoryKind === "fuel", franchiseId: c.franchiseId,
       driverId: c.allocation.scope === "driver" ? c.allocation.driverId : null, date: c.date, amount: c.amount,
       categoryId: c.categoryId, categoryName: c.categoryName, supplier: c.supplier, vehicleRegistration: c.vehicleRegistration, reference: c.reference,
+      fromDpd: c.source === "dpd_portal", unassigned: c.allocation.scope === "unallocated",
     })),
+    invoices,
     covers,
     openConflicts: conflicts.map((c) => {
       const incoming = (c.payload as { incoming?: { report_date?: string } } | null)?.incoming;
@@ -101,7 +110,7 @@ async function saveCandidates(db: AdminClient, accountId: string, candidates: An
   return created;
 }
 
-const SELF_CLOSING = ["missing_franchise_report", "missing_driver_report", "missing_fuel", "unregistered_driver", "source_conflict"];
+const SELF_CLOSING = ["missing_fuel", "unregistered_driver", "source_conflict", "cost_unassigned"];
 
 /** Closes "something is missing" alerts once the missing thing has turned up. Never touches alerts the owner has decided on. */
 async function closeStaleAlerts(

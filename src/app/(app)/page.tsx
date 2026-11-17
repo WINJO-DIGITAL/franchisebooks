@@ -29,7 +29,8 @@ export default async function DashboardPage() {
     loadSyncOverview(supabase, accountId),
     (() => {
       let q = supabase.from("anomalies").select("id, title, severity, subject_date, status, franchise_id", { count: "exact" })
-        .in("status", ["open", "investigating"]).order("severity", { ascending: false }).order("subject_date", { ascending: false }).limit(5);
+        // Only things that need a decision: "info" notes stay on the Alerts page. The few most important are shown.
+        .in("status", ["open", "investigating"]).neq("severity", "info").order("severity", { ascending: false }).order("subject_date", { ascending: false }).limit(3);
       if (franchiseId) q = q.eq("franchise_id", franchiseId);
       return q;
     })(),
@@ -60,7 +61,10 @@ export default async function DashboardPage() {
   const reviewCount = reviewsResult.count ?? 0;
   const flaggedFiles = flaggedResult.count ?? 0;
   // The DPD connection counts when it has not run, or its last run needs attention.
-  const dpdNeedsAttention = sync.dpd.tone === "warn" || sync.dpd.tone === "bad";
+  // Data counts as stale when the last good sync is more than a day and a half old (the sync runs every evening).
+  const staleDpd = !sync.dpd.running && sync.dpd.tone === "good" && sync.dpd.lastSuccessAt != null && Date.now() - new Date(sync.dpd.lastSuccessAt).getTime() > 36 * 3600 * 1000;
+  const dpdNeedsAttention = sync.dpd.tone === "warn" || sync.dpd.tone === "bad" || staleDpd;
+  const dpdHeadline = staleDpd ? "DPD has not synchronised for over a day and a half." : sync.dpd.headline;
   const attention = alertCount + reviewCount + flaggedFiles + (dpdNeedsAttention ? 1 : 0);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => (routeIncome ? f.incomeFromDpd : f.driverCosts)));
@@ -112,7 +116,7 @@ export default async function DashboardPage() {
                 <li className="border-b border-line last:border-0">
                   <Link href="/data" className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50 sm:px-5">
                     <Badge tone={sync.dpd.tone === "bad" ? "bad" : "warn"}>DPD</Badge>
-                    <span className="flex-1 text-[0.9375rem]">{sync.dpd.headline}</span>
+                    <span className="flex-1 text-[0.9375rem]">{dpdHeadline}</span>
                     <ChevronRight className="size-4 text-muted" aria-hidden />
                   </Link>
                 </li>

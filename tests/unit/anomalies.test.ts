@@ -66,105 +66,124 @@ describe("stop consistency", () => {
   });
 });
 
-describe("earnings, stops and parcels", () => {
-  it("stays quiet for normal day-to-day variation", () => {
-    const rows = [...history("d1", "2026-11-13", 20), earning({ date: "2026-11-13", gross: 11000, stops: 92, parcels: 110 })];
-    expect(run({ earnings: rows }).filter((a) => a.driverId === "d1")).toEqual([]);
+describe("sustained drops in stops", () => {
+  /** Mon-Sat history ending 13/11/2026; the last `week` days (the 7 days to the 13th) use `weekStops`. */
+  function rows(baseStops: number, weekStops: number): AnomalyEarning[] {
+    return history("d1", "2026-11-14", 40, { stops: baseStops }).map((r) => (r.date >= "2026-11-07" ? { ...r, stops: weekStops } : r));
+  }
+
+  it("stays quiet for normal variation and for a single bad day", () => {
+    const base = history("d1", "2026-11-13", 40);
+    expect(run({ earnings: [...base, earning({ date: "2026-11-13", stops: 92 })] }).filter((a) => a.driverId === "d1")).toEqual([]);
+    expect(run({ earnings: [...base, earning({ date: "2026-11-13", stops: 50, gross: 6000, parcels: 60 })] }).filter((a) => a.driverId === "d1")).toEqual([]);
   });
 
-  it("flags a large drop with a full explanation and no judgement of the driver", () => {
-    const rows = [...history("d1", "2026-11-13", 20), earning({ date: "2026-11-13", gross: 6000, stops: 50, parcels: 60 })];
-    const found = run({ earnings: rows });
-    const low = found.find((a) => a.type === "earnings_low")!;
-    expect(low).toBeDefined();
-    expect(low.actualValue).toBe("£60.00");
-    expect(low.expectedValue).toContain("£120.00");
-    expect(low.whyFlagged).toContain("50% below");
-    expect(low.whyFlagged).toContain("previous 20 working days");
-    expect(low.suggestedAction.length).toBeGreaterThan(10);
-    expect(low.severity).toBe("urgent");
-    expect(found.some((a) => a.type === "stops_low")).toBe(true);
-    expect(found.some((a) => a.type === "parcels_low")).toBe(true);
-    for (const a of found) expect(`${a.title} ${a.whatHappened}`.toLowerCase()).not.toMatch(/underperform|poor|lazy|bad/);
+  it("never alerts when figures are ABOVE usual: more work is not a problem", () => {
+    const more = rows(100, 200).map((r) => (r.date >= "2026-11-07" ? { ...r, gross: 24000 } : r));
+    expect(run({ earnings: more })).toEqual([]);
   });
 
-  it("flags unexpectedly high payments too", () => {
-    const rows = [...history("d1", "2026-11-13", 20), earning({ date: "2026-11-13", gross: 20000 })];
-    expect(run({ earnings: rows }).map((a) => a.type)).toContain("earnings_high");
+  it("flags stops down across the week, with a plain explanation and no judgement of the driver", () => {
+    const found = run({ earnings: rows(100, 70) }).find((a) => a.type === "sustained_drop")!;
+    expect(found).toBeDefined();
+    expect(found.severity).toBe("attention");
+    expect(found.title).toContain("30%");
+    expect(found.expectedValue).toBe("100 stops a day");
+    expect(found.actualValue).toBe("70 stops a day");
+    expect(found.whyFlagged).toContain("Sundays with Sundays");
+    expect(`${found.title} ${found.whatHappened}`.toLowerCase()).not.toMatch(/underperform|poor|lazy|bad/);
+  });
+
+  it("treats a very large drop as urgent", () => {
+    expect(run({ earnings: rows(100, 50) }).find((a) => a.type === "sustained_drop")?.severity).toBe("urgent");
+  });
+
+  it("compares like days with like: a normally quiet Sunday is not a drop", () => {
+    const base: AnomalyEarning[] = [];
+    for (let d = "2026-10-10"; d <= "2026-11-13"; d = addDays(d, 1)) base.push(earning({ date: d, stops: weekdayOf(d) === 0 ? 40 : 100 }));
+    expect(run({ earnings: base })).toEqual([]);
   });
 
   it("makes no comparison without enough history", () => {
-    const rows = [...history("d1", "2026-11-13", 3), earning({ date: "2026-11-13", gross: 2000, stops: 10, parcels: 10 })];
-    expect(run({ earnings: rows })).toEqual([]);
-  });
-
-  it("respects configurable thresholds", () => {
-    const rows = [...history("d1", "2026-11-13", 20), earning({ date: "2026-11-13", gross: 9600, stops: 100, parcels: 120 })];
-    expect(run({ earnings: rows }).some((a) => a.type === "earnings_low")).toBe(false);
-    const strict = resolveAnomalyConfig({ earningsChangePct: 10, earningsMinDiffPence: 500 });
-    expect(run({ earnings: rows, config: strict }).some((a) => a.type === "earnings_low")).toBe(true);
+    expect(run({ earnings: [...history("d1", "2026-11-13", 4), earning({ date: "2026-11-13", stops: 10 })] })).toEqual([]);
   });
 
   it("produces stable keys so the same alert is never raised twice", () => {
-    const rows = [...history("d1", "2026-11-13", 20), earning({ date: "2026-11-13", gross: 6000 })];
-    const a = run({ earnings: rows }).map((x) => x.dedupeKey).sort();
-    const b = run({ earnings: rows }).map((x) => x.dedupeKey).sort();
+    const a = run({ earnings: rows(100, 70) }).map((x) => x.dedupeKey).sort();
+    const b = run({ earnings: rows(100, 70) }).map((x) => x.dedupeKey).sort();
     expect(a).toEqual(b);
     expect(new Set(a).size).toBe(a.length);
   });
 
   it("notices a changed pay rate and an unusual DPD deduction", () => {
-    const rows = [
-      ...history("d1", "2026-11-13", 20),
-      earning({ date: "2026-11-13", payPerStop: "0.5500", deductions: 4000 }),
-    ];
-    const types = run({ earnings: rows }).map((a) => a.type);
+    const earnings = [...history("d1", "2026-11-13", 20), earning({ date: "2026-11-13", payPerStop: "0.5500", deductions: 4000 })];
+    const types = run({ earnings }).map((a) => a.type);
     expect(types).toContain("pay_rate_changed");
     expect(types).toContain("dpd_deduction_unusual");
   });
+});
 
-  it("flags an erratic stop pattern as information only", () => {
-    const rows: AnomalyEarning[] = history("d1", "2026-11-14", 12).map((r, i) => ({ ...r, stops: i % 2 ? 40 : 130 }));
-    const found = run({ earnings: rows }).find((a) => a.type === "stops_inconsistent");
-    expect(found?.severity).toBe("info");
+describe("income per stop, charges and invoices", () => {
+  const charge = (o: Partial<AnomalyCost>): AnomalyCost => ({
+    id: `x${++seq}`, kind: "expense", isFuel: false, franchiseId: F, driverId: null, date: "2026-11-09", amount: 10000, categoryId: "c",
+    categoryName: "DPD charges", supplier: null, vehicleRegistration: null, reference: null, ...o,
+  });
+
+  it("flags income per stop falling across a franchise, not just a driver", () => {
+    const earnings = history("d1", "2026-11-14", 40, { stops: 100, gross: 12000 }).map((r) => (r.date >= "2026-11-07" ? { ...r, gross: 10000 } : r));
+    const found = run({ earnings }).find((a) => a.type === "yield_low")!;
+    expect(found.title).toContain("income per stop down");
+    expect(found.driverId).toBeNull();
+  });
+
+  it("flags DPD charges rising on the previous period, and ignores a small change", () => {
+    const over = run({ evalFrom: "2026-11-09", costs: [charge({ date: "2026-10-12", amount: 10000 }), charge({ date: "2026-11-09", amount: 13000 })] });
+    expect(over.find((a) => a.type === "charges_spike")?.title).toContain("30%");
+    const small = run({ evalFrom: "2026-11-09", costs: [charge({ date: "2026-10-12", amount: 10000 }), charge({ date: "2026-11-09", amount: 10500 })] });
+    expect(small.some((a) => a.type === "charges_spike")).toBe(false);
+  });
+
+  it("does not treat DPD's own repeated charges as duplicates", () => {
+    const costs = [charge({ fromDpd: true, date: "2026-11-13" }), charge({ fromDpd: true, date: "2026-11-13" })];
+    expect(run({ costs }).some((a) => a.type === "duplicate_cost")).toBe(false);
+    expect(run({ costs: costs.map((c) => ({ ...c, fromDpd: false })) }).some((a) => a.type === "duplicate_cost")).toBe(true);
+  });
+
+  const invoice = (o: object) => ({ id: "inv1", franchiseId: F, invoiceNo: "FI100", periodStart: "2026-11-09", periodEnd: "2026-11-10", reconciled: true, stopPayNet: 24000, storedOn: "2026-11-13", ...o });
+  const paid = [earning({ date: "2026-11-09", gross: 12000 }), earning({ date: "2026-11-10", gross: 12000 })];
+
+  it("stays quiet when an invoice matches the daily payments", () => {
+    expect(run({ earnings: paid, invoices: [invoice({})] }).some((a) => a.type.startsWith("invoice_"))).toBe(false);
+  });
+
+  it("flags an invoice that differs from the daily payments by more than the tolerance", () => {
+    const found = run({ earnings: paid, invoices: [invoice({ stopPayNet: 29000 })] }).find((a) => a.type === "invoice_mismatch")!;
+    expect(found.actualValue).toBe("£240.00");
+    expect(found.expectedValue).toBe("£290.00");
+  });
+
+  it("ignores an old invoice that is only now being stored", () => {
+    const old = invoice({ stopPayNet: 29000, periodStart: "2025-01-06", periodEnd: "2025-02-02" });
+    expect(run({ earnings: paid, invoices: [old] }).some((a) => a.type.startsWith("invoice_"))).toBe(false);
+  });
+
+  it("flags an invoice that could not be read reliably", () => {
+    expect(run({ earnings: paid, invoices: [invoice({ reconciled: false })] }).some((a) => a.type === "invoice_unreadable")).toBe(true);
+  });
+
+  it("flags costs left unassigned for over a week, once per franchise", () => {
+    const found = run({ costs: [charge({ date: "2026-11-02", unassigned: true, fromDpd: false }), charge({ date: "2026-11-03", amount: 5000, unassigned: true, fromDpd: false })] }).filter((a) => a.type === "cost_unassigned");
+    expect(found).toHaveLength(1);
+    expect(found[0]!.title).toContain("2 costs");
   });
 });
 
-describe("missing reports and unregistered drivers", () => {
-  it("flags a franchise with no report on a day it normally has one", () => {
-    const rows = history("d1", "2026-11-13", 24);
-    const found = run({ earnings: rows }).find((a) => a.type === "missing_franchise_report")!;
-    expect(found.subjectDate).toBe("2026-11-13");
-    expect(found.severity).toBe("urgent");
-  });
-
-  it("does not expect a report on a day the franchise does not normally work", () => {
-    const rows = history("d1", "2026-11-15", 24);
-    expect(run({ earnings: rows, evalFrom: "2026-11-15", evalTo: "2026-11-15", reportsExpectedThrough: "2026-11-15" })).toEqual([]);
-  });
-
-  it("does not flag a report that is not due yet", () => {
-    const rows = history("d1", "2026-11-13", 24);
-    expect(run({ earnings: rows, reportsExpectedThrough: "2026-11-12" })).toEqual([]);
-  });
-
-  it("flags a regular driver missing from a report that did arrive", () => {
+describe("absences and missing days are not alerts", () => {
+  it("does not flag a franchise with no report on a day, or a driver missing from a day", () => {
     const rows = [...history("d1", "2026-11-13", 24), ...history("d2", "2026-11-14", 24)];
-    const found = run({ earnings: rows }).filter((a) => a.type === "missing_driver_report");
-    expect(found).toHaveLength(1);
-    expect(found[0]!.driverId).toBe("d1");
-  });
-
-  it("treats a recorded cover as the explanation for an absence", () => {
-    const rows = [...history("d1", "2026-11-13", 24), ...history("d2", "2026-11-14", 24)];
-    const covers = [{ id: "c1", franchiseId: F, date: "2026-11-13", originalDriverId: "d1", coveringDriverId: "d2", expenseAttribution: "original" as const, status: "active" as const }];
-    expect(run({ earnings: rows, covers }).filter((a) => a.type === "missing_driver_report")).toEqual([]);
-  });
-
-  it("does not expect a driver who has left", () => {
-    const rows = [...history("d1", "2026-11-13", 24), ...history("d2", "2026-11-14", 24)];
-    const left = drivers.map((d) => (d.id === "d1" ? { ...d, leavingDate: "2026-11-12" } : d));
-    expect(run({ earnings: rows, drivers: left }).filter((a) => a.type === "missing_driver_report")).toEqual([]);
+    const types = run({ earnings: rows }).map((a) => a.type);
+    expect(types).not.toContain("missing_franchise_report");
+    expect(types).not.toContain("missing_driver_report");
   });
 
   it("flags report names that match no registered driver, once", () => {

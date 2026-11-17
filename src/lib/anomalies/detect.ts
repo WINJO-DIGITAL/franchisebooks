@@ -38,6 +38,15 @@ export interface AnomalyConfig {
   stopVariationPct: number;
   missingReportLookbackWeeks: number;
   missingReportMinHits: number;
+  /** A driver's stops over the last 7 days this far below their own previous 4 weeks (like days compared with like days). */
+  sustainedDropPct: number;
+  /** A franchise's income per stop this far below its previous 4 weeks. */
+  yieldDropPct: number;
+  /** DPD charges this far above the previous period's. */
+  chargesRisePct: number;
+  chargesRiseMinPence: Pence;
+  /** An invoice whose stop pay differs from the daily payments by more than this. */
+  invoiceTolerancePence: Pence;
 }
 
 export const DEFAULT_ANOMALY_CONFIG: AnomalyConfig = {
@@ -58,6 +67,11 @@ export const DEFAULT_ANOMALY_CONFIG: AnomalyConfig = {
   stopVariationPct: 35,
   missingReportLookbackWeeks: 4,
   missingReportMinHits: 3,
+  sustainedDropPct: 20,
+  yieldDropPct: 10,
+  chargesRisePct: 15,
+  chargesRiseMinPence: 2000,
+  invoiceTolerancePence: 500,
 };
 
 /** Merges owner overrides over the defaults, ignoring anything that is not a sensible number. */
@@ -92,6 +106,24 @@ export interface AnomalyCost {
   supplier: string | null;
   vehicleRegistration: string | null;
   reference: string | null;
+  /** True for charges DPD itself raised (they repeat by design, so are not duplicate-checked). */
+  fromDpd?: boolean;
+  /** True when a cost has not been assigned to a driver or the franchise. */
+  unassigned?: boolean;
+}
+
+/** A stored DPD self-billed invoice, with its stop-pay lines already totalled. */
+export interface AnomalyInvoice {
+  id: string;
+  franchiseId: string;
+  invoiceNo: string;
+  periodStart: ISODate;
+  periodEnd: ISODate;
+  reconciled: boolean;
+  /** Pence, excluding VAT: the invoice lines that the daily Payments already contain. */
+  stopPayNet: Pence;
+  /** The day the invoice was stored. */
+  storedOn: ISODate;
 }
 
 export interface AnomalyInput {
@@ -108,13 +140,15 @@ export interface AnomalyInput {
   costs: AnomalyCost[];
   covers: CoverRow[];
   openConflicts: { id: string; franchiseId: string | null; title: string; detail: string; date: ISODate }[];
+  invoices?: AnomalyInvoice[];
 }
 
 export type AnomalyType =
   | "earnings_low" | "earnings_high" | "stops_low" | "stops_high" | "parcels_low" | "parcels_high"
   | "missing_driver_report" | "missing_franchise_report" | "unregistered_driver"
   | "pay_rate_changed" | "dpd_deduction_unusual" | "stops_inconsistent"
-  | "fuel_high" | "missing_fuel" | "duplicate_cost" | "expense_high" | "source_conflict";
+  | "fuel_high" | "missing_fuel" | "duplicate_cost" | "expense_high" | "source_conflict"
+  | "sustained_drop" | "yield_low" | "charges_spike" | "invoice_mismatch" | "invoice_unreadable" | "cost_unassigned";
 
 export type Severity = "info" | "attention" | "urgent";
 
@@ -288,68 +322,6 @@ export function detectAnomalies(input: AnomalyInput): AnomalyCandidate[] {
       const history = days.slice(Math.max(0, i - config.baselineDays), i);
       const basisText = `their previous ${history.length} working days`;
 
-      // Earnings
-      const earningsBase = baselineOf(history.map((h) => h.earnings), config.earningsChangePct, config.minBaselineDays);
-      if (earningsBase) {
-        const diff = day.earnings - earningsBase.mean;
-        if ((day.earnings < earningsBase.low || day.earnings > earningsBase.high) && Math.abs(diff) >= config.earningsMinDiffPence) {
-          const low = diff < 0;
-          const change = pct(day.earnings, earningsBase.mean);
-          out.push({
-            dedupeKey: `earnings|${groupKey}|${day.date}`,
-            type: low ? "earnings_low" : "earnings_high",
-            severity: Math.abs(change) >= 50 ? "urgent" : "attention",
-            franchiseId,
-            driverId,
-            subjectDate: day.date,
-            title: `${name}: earnings ${low ? "well below" : "well above"} usual on ${formatUkDate(day.date)}`,
-            whatHappened: `${name} earned ${formatGBP(day.earnings)} on ${formatUkDateLong(day.date)} in ${label(franchiseId)}. Their usual daily earnings are about ${formatGBP(Math.round(earningsBase.mean))}.`,
-            actualValue: formatGBP(day.earnings),
-            expectedValue: `${formatGBP(Math.round(earningsBase.mean))} (usual range ${formatGBP(Math.max(0, Math.round(earningsBase.low)))}–${formatGBP(Math.round(earningsBase.high))})`,
-            whyFlagged: `This is ${pctText(change)} this driver's own average over ${basisText}, and outside their usual range.`,
-            suggestedAction: low
-              ? "Check whether it was a short day, a different route, or whether part of the day's work is missing from the DPD report."
-              : "Check whether this includes cover for another route or a one-off payment, and that the DPD figure is right.",
-            metric: { actual: day.earnings, mean: Math.round(earningsBase.mean), low: Math.round(earningsBase.low), high: Math.round(earningsBase.high), changePct: change, n: earningsBase.n },
-          });
-        }
-      }
-
-      // Stops and parcels
-      const countChecks = [
-        { field: "stops" as const, pctLimit: config.stopsChangePct, minDiff: config.stopsMinDiff, noun: "stops" },
-        { field: "parcels" as const, pctLimit: config.parcelsChangePct, minDiff: config.parcelsMinDiff, noun: "parcels" },
-      ];
-      for (const check of countChecks) {
-        const value = day[check.field];
-        if (value == null) continue;
-        const values = history.map((h) => h[check.field]).filter((v): v is number => v != null);
-        const base = baselineOf(values, check.pctLimit, config.minBaselineDays);
-        if (!base) continue;
-        const diff = value - base.mean;
-        if ((value < base.low || value > base.high) && Math.abs(diff) >= check.minDiff) {
-          const low = diff < 0;
-          const change = pct(value, base.mean);
-          out.push({
-            dedupeKey: `${check.field}|${groupKey}|${day.date}`,
-            type: `${check.field}_${low ? "low" : "high"}` as AnomalyType,
-            severity: "attention",
-            franchiseId,
-            driverId,
-            subjectDate: day.date,
-            title: `${name}: ${check.noun} ${low ? "well below" : "well above"} usual on ${formatUkDate(day.date)}`,
-            whatHappened: `${name} completed ${value} ${check.noun} on ${formatUkDateLong(day.date)} in ${label(franchiseId)}. They usually complete about ${Math.round(base.mean)}.`,
-            actualValue: `${value} ${check.noun}`,
-            expectedValue: `${Math.round(base.mean)} ${check.noun} (usual range ${Math.max(0, Math.round(base.low))}–${Math.round(base.high)})`,
-            whyFlagged: `This is ${pctText(change)} this driver's own average over their previous ${values.length} working days, and outside their usual range.`,
-            suggestedAction: low
-              ? "Check whether the route or working hours changed that day, or whether some work is missing from the report."
-              : "Check whether the driver covered extra work that day. If so, you may want to record driver cover.",
-            metric: { actual: value, mean: Math.round(base.mean * 10) / 10, low: Math.round(base.low), high: Math.round(base.high), changePct: change, n: base.n },
-          });
-        }
-      }
-
       // Pay rate changes
       const previous = history[history.length - 1];
       if (previous) {
@@ -401,109 +373,201 @@ export function detectAnomalies(input: AnomalyInput): AnomalyCandidate[] {
       }
     }
 
-    // Inconsistent stop pattern (assessed once per week)
-    const recent = days.filter((d) => d.date <= input.evalTo && d.stops != null).slice(-config.baselineDays);
-    if (recent.length >= Math.max(config.minBaselineDays, 8) && recent.some((d) => inEval(d.date))) {
-      const stops = recent.map((d) => d.stops as number);
-      const mean = stops.reduce((a, b) => a + b, 0) / stops.length;
-      const stdev = Math.sqrt(stops.reduce((a, b) => a + (b - mean) ** 2, 0) / stops.length);
-      const variation = mean === 0 ? 0 : Math.round((stdev / mean) * 1000) / 10;
-      if (variation >= config.stopVariationPct) {
-        out.push({
-          dedupeKey: `stops_inconsistent|${groupKey}|${weekStart(input.evalTo)}`,
-          type: "stops_inconsistent",
-          severity: "info",
-          franchiseId,
-          driverId,
-          subjectDate: recent[recent.length - 1]!.date,
-          title: `${name}: stops vary a lot from day to day`,
-          whatHappened: `Over ${name}'s last ${recent.length} working days in ${label(franchiseId)}, daily stops ranged from ${Math.min(...stops)} to ${Math.max(...stops)} (average ${Math.round(mean)}).`,
-          actualValue: `${variation}% day-to-day variation`,
-          expectedValue: `Under ${config.stopVariationPct}%`,
-          whyFlagged: `Day-to-day variation in stops is ${variation}%, above the ${config.stopVariationPct}% level you have set.`,
-          suggestedAction: "This may simply reflect mixed routes or part days. Look at the driver's daily history if it is unexpected.",
-          metric: { variationPct: variation, min: Math.min(...stops), max: Math.max(...stops), mean: Math.round(mean), n: recent.length },
-        });
+    // Sustained drop in stops: the last 7 days against the driver's own previous 4 weeks, like days with like days
+    // (Sundays with Sundays), so a single short day or a different day mix never raises it.
+    {
+      const recentFrom = addDays(input.evalTo, -6);
+      const baseFrom = addDays(recentFrom, -28);
+      const dayType = (date: ISODate) => (weekdayOf(date) === 0 ? "sun" : weekdayOf(date) === 6 ? "sat" : "wk");
+      const withStops = days.filter((d) => d.stops != null);
+      const baseDays = withStops.filter((d) => d.date >= baseFrom && d.date < recentFrom);
+      const recentDays = withStops.filter((d) => d.date >= recentFrom && d.date <= input.evalTo);
+      if (baseDays.length >= 8 && recentDays.length >= 3) {
+        const meanByType = new Map<string, number>();
+        for (const type of ["sun", "sat", "wk"]) {
+          const of = baseDays.filter((d) => dayType(d.date) === type);
+          if (of.length >= 3) meanByType.set(type, of.reduce((a, d) => a + (d.stops as number), 0) / of.length);
+        }
+        let expected = 0;
+        let actual = 0;
+        let counted = 0;
+        for (const d of recentDays) {
+          const usual = meanByType.get(dayType(d.date));
+          if (usual == null) continue;
+          expected += usual;
+          actual += d.stops as number;
+          counted++;
+        }
+        const dropPct = expected > 0 ? Math.round(((expected - actual) / expected) * 1000) / 10 : 0;
+        if (counted >= 3 && dropPct >= config.sustainedDropPct && (expected - actual) / counted >= config.stopsMinDiff) {
+          out.push({
+            dedupeKey: `sustained_drop|${groupKey}|${weekStart(input.evalTo)}`,
+            type: "sustained_drop",
+            severity: dropPct >= 40 ? "urgent" : "attention",
+            franchiseId,
+            driverId,
+            subjectDate: recentDays[recentDays.length - 1]!.date,
+            title: `${name}: stops down ${dropPct}% over the last 7 days`,
+            whatHappened: `${name} completed ${actual} stops over ${counted} working days in the last 7 days in ${label(franchiseId)}. On comparable days over the previous 4 weeks that would have been about ${Math.round(expected)}.`,
+            actualValue: `${Math.round(actual / counted)} stops a day`,
+            expectedValue: `${Math.round(expected / counted)} stops a day`,
+            whyFlagged: `Stops are ${dropPct}% below this driver's own previous 4 weeks, comparing Sundays with Sundays, Saturdays with Saturdays and weekdays with weekdays. It is a pattern across the week, not one short day.`,
+            suggestedAction: "Check whether the route, hours or area changed, or whether work is missing from the DPD reports.",
+            metric: { actual, expected: Math.round(expected), dropPct, days: counted },
+          });
+        }
       }
     }
   }
 
-  // ── Missing reports ───────────────────────────────────────────────────────
+  // The days each franchise has reports for (used to tell which weeks a franchise operated).
+  // A missing day, or a driver absent from a day, is deliberately NOT an alert: the portal is the source of truth,
+  // so a day with no rows is a day with no work. A failed or stale sync is reported separately on the dashboard.
   const reportDatesByFranchise = new Map<string, Set<ISODate>>();
-  const reportDatesByDriver = new Map<string, Set<ISODate>>();
   for (const e of input.earnings) {
     if (!reportDatesByFranchise.has(e.franchiseId)) reportDatesByFranchise.set(e.franchiseId, new Set());
     reportDatesByFranchise.get(e.franchiseId)!.add(e.date);
-    if (e.driverId) {
-      const k = `${e.franchiseId}|${e.driverId}`;
-      if (!reportDatesByDriver.has(k)) reportDatesByDriver.set(k, new Set());
-      reportDatesByDriver.get(k)!.add(e.date);
-    }
   }
-  const usuallyPresent = (dates: Set<ISODate> | undefined, date: ISODate): number => {
-    if (!dates) return 0;
-    let hits = 0;
-    for (let w = 1; w <= config.missingReportLookbackWeeks; w++) if (dates.has(addDays(date, -7 * w))) hits++;
-    return hits;
-  };
-  const lastEvalDate = input.evalTo < input.reportsExpectedThrough ? input.evalTo : input.reportsExpectedThrough;
 
-  for (const franchise of input.franchises) {
-    const franchiseDates = reportDatesByFranchise.get(franchise.id);
-    for (let date = input.evalFrom; date <= lastEvalDate; date = addDays(date, 1)) {
-      const hits = usuallyPresent(franchiseDates, date);
-      if (!franchiseDates?.has(date)) {
-        if (hits >= config.missingReportMinHits) {
-          out.push({
-            dedupeKey: `missing_franchise_report|${franchise.id}|${date}`,
-            type: "missing_franchise_report",
-            severity: "urgent",
-            franchiseId: franchise.id,
-            driverId: null,
-            subjectDate: date,
-            title: `No earnings report for ${franchise.fdNumber} on ${formatUkDate(date)}`,
-            whatHappened: `No daily earnings report has been imported for ${label(franchise.id)} for ${formatUkDateLong(date)}.`,
-            actualValue: "No report",
-            expectedValue: `A report (received on ${hits} of the last ${config.missingReportLookbackWeeks} ${weekdayName(date)}s)`,
-            whyFlagged: `This franchise normally has a report on a ${weekdayName(date)}, and none has arrived for this date.`,
-            suggestedAction: "Run a DPD sync, or upload the report by hand from Data & Integrations. If the franchise did not operate that day, mark this as expected.",
-            metric: { hits, lookbackWeeks: config.missingReportLookbackWeeks },
-          });
-        }
-        continue;
+  // ── Income per stop (yield) ───────────────────────────────────────────────
+  {
+    const recentFrom = addDays(input.evalTo, -6);
+    const baseFrom = addDays(recentFrom, -28);
+    for (const franchise of input.franchises) {
+      let recentIncome = 0, recentStops = 0, baseIncome = 0, baseStops = 0;
+      for (const e of input.earnings) {
+        if (e.franchiseId !== franchise.id || e.stops == null) continue;
+        if (e.date >= recentFrom && e.date <= input.evalTo) { recentIncome += originalEarnings(e); recentStops += e.stops; }
+        else if (e.date >= baseFrom && e.date < recentFrom) { baseIncome += originalEarnings(e); baseStops += e.stops; }
       }
-
-      // The franchise report exists: is a regular driver missing from it?
-      for (const assignment of input.assignments) {
-        if (assignment.franchiseId !== franchise.id) continue;
-        if (assignment.startDate > date || (assignment.endDate && assignment.endDate < date)) continue;
-        const driver = input.drivers.find((d) => d.id === assignment.driverId);
-        if (!driver || !driver.isActive) continue;
-        if ((driver.startDate && driver.startDate > date) || (driver.leavingDate && driver.leavingDate < date)) continue;
-        const driverDates = reportDatesByDriver.get(`${franchise.id}|${driver.id}`);
-        if (driverDates?.has(date)) continue;
-        const driverHits = usuallyPresent(driverDates, date);
-        if (driverHits < config.missingReportMinHits) continue;
-        const covered = input.covers.find(
-          (c) => c.status === "active" && c.date === date && c.franchiseId === franchise.id && c.originalDriverId === driver.id,
-        );
-        if (covered) continue; // absence is already explained by a cover record
+      if (recentStops < 100 || baseStops < 300) continue;
+      const recentYield = recentIncome / recentStops;
+      const baseYield = baseIncome / baseStops;
+      const dropPct = Math.round(((baseYield - recentYield) / baseYield) * 1000) / 10;
+      if (dropPct >= config.yieldDropPct) {
         out.push({
-          dedupeKey: `missing_driver_report|${franchise.id}|${driver.id}|${date}`,
-          type: "missing_driver_report",
+          dedupeKey: `yield_low|${franchise.id}|${weekStart(input.evalTo)}`,
+          type: "yield_low",
           severity: "attention",
           franchiseId: franchise.id,
-          driverId: driver.id,
-          subjectDate: date,
-          title: `${driver.name} is missing from the report for ${formatUkDate(date)}`,
-          whatHappened: `The ${franchise.fdNumber} earnings report for ${formatUkDateLong(date)} has no line for ${driver.name}.`,
-          actualValue: "Not on the report",
-          expectedValue: `On the report (worked ${driverHits} of the last ${config.missingReportLookbackWeeks} ${weekdayName(date)}s)`,
-          whyFlagged: `${driver.name} normally works on a ${weekdayName(date)} and no cover has been recorded for this date.`,
-          suggestedAction: "If the driver was off, record who covered (Record Driver Cover) or mark this as expected. Otherwise check the DPD report.",
-          metric: { hits: driverHits, weekday: weekdayOf(date) },
+          driverId: null,
+          subjectDate: input.evalTo,
+          title: `${franchise.fdNumber}: income per stop down ${dropPct}%`,
+          whatHappened: `${label(franchise.id)} earned ${formatGBP(Math.round(recentYield))} per stop over the last 7 days, against ${formatGBP(Math.round(baseYield))} over the previous 4 weeks.`,
+          actualValue: `${formatGBP(Math.round(recentYield))} per stop`,
+          expectedValue: `${formatGBP(Math.round(baseYield))} per stop`,
+          whyFlagged: `Income per stop is ${dropPct}% below the franchise's previous 4 weeks. That usually means a rate change, a different mix of work, or fewer higher-paying stops.`,
+          suggestedAction: "Compare this week's payments with last month's on the Earnings page, and check DPD has not changed a rate.",
+          metric: { recentYield: Math.round(recentYield), baseYield: Math.round(baseYield), dropPct, recentStops, baseStops },
         });
       }
+    }
+  }
+
+  // ── DPD charges rising ────────────────────────────────────────────────────
+  {
+    const chargeCosts = input.costs.filter((c) => !c.isFuel && /dpd/i.test(c.categoryName));
+    const byFranchise = groupBy(chargeCosts, (c) => c.franchiseId ?? "none");
+    for (const [franchiseId, items] of byFranchise) {
+      if (franchiseId === "none") continue;
+      const totals = new Map<ISODate, Pence>();
+      for (const c of items) totals.set(c.date, (totals.get(c.date) ?? 0) + c.amount);
+      const dates = [...totals.keys()].sort();
+      for (let i = 1; i < dates.length; i++) {
+        const date = dates[i]!;
+        if (!inEval(date)) continue;
+        const total = totals.get(date)!;
+        const previous = totals.get(dates[i - 1]!)!;
+        if (previous <= 0) continue;
+        const risePct = pct(total, previous);
+        if (risePct >= config.chargesRisePct && total - previous >= config.chargesRiseMinPence) {
+          out.push({
+            dedupeKey: `charges_spike|${franchiseId}|${date}`,
+            type: "charges_spike",
+            severity: "attention",
+            franchiseId,
+            driverId: null,
+            subjectDate: date,
+            title: `${label(franchiseId)}: DPD charges up ${risePct}% on last period`,
+            whatHappened: `DPD charged ${label(franchiseId)} ${formatGBP(total)} for the period starting ${formatUkDateLong(date)}, against ${formatGBP(previous)} the period before.`,
+            actualValue: formatGBP(total),
+            expectedValue: formatGBP(previous),
+            whyFlagged: `The charges are ${risePct}% (${formatGBP(total - previous)}) higher than the previous period.`,
+            suggestedAction: "Open the Charges breakdown for this period and look for a new or larger line.",
+            metric: { total, previous, risePct },
+          });
+        }
+      }
+    }
+  }
+
+  // ── Invoices that disagree with the daily payments ────────────────────────
+  for (const invoice of input.invoices ?? []) {
+    if (!inEval(invoice.storedOn)) continue;
+    // Only recent periods: an old invoice that is stored late (history back-filled) is not news.
+    if (invoice.periodEnd < addDays(input.evalFrom, -35)) continue;
+    if (!invoice.reconciled) {
+      out.push({
+        dedupeKey: `invoice_unreadable|${invoice.id}`,
+        type: "invoice_unreadable",
+        severity: "attention",
+        franchiseId: invoice.franchiseId,
+        driverId: null,
+        subjectDate: invoice.storedOn,
+        title: `Invoice ${invoice.invoiceNo} could not be checked`,
+        whatHappened: `The self-billed invoice ${invoice.invoiceNo} for ${label(invoice.franchiseId)} was downloaded, but its lines could not be read reliably, so it is not counted in income.`,
+        actualValue: null,
+        expectedValue: null,
+        whyFlagged: "The lines on the invoice did not add up to its own total, so the reading cannot be trusted.",
+        suggestedAction: "Open the invoice in the DPD portal and tell your developer the correct lines, or ignore it if the extras are small.",
+        metric: { invoiceNo: invoice.invoiceNo },
+      });
+      continue;
+    }
+    let daily = 0;
+    for (const e of input.earnings) {
+      if (e.franchiseId === invoice.franchiseId && e.date >= invoice.periodStart && e.date <= invoice.periodEnd) daily += originalEarnings(e);
+    }
+    const diff = daily - invoice.stopPayNet;
+    if (Math.abs(diff) > config.invoiceTolerancePence) {
+      out.push({
+        dedupeKey: `invoice_mismatch|${invoice.id}`,
+        type: "invoice_mismatch",
+        severity: "attention",
+        franchiseId: invoice.franchiseId,
+        driverId: null,
+        subjectDate: invoice.storedOn,
+        title: `Invoice ${invoice.invoiceNo} does not match the daily payments`,
+        whatHappened: `The invoice for ${label(invoice.franchiseId)} (${formatUkDate(invoice.periodStart)} to ${formatUkDate(invoice.periodEnd)}) shows ${formatGBP(invoice.stopPayNet)} of stop pay. The daily payments for the same dates add up to ${formatGBP(daily)}.`,
+        actualValue: formatGBP(daily),
+        expectedValue: formatGBP(invoice.stopPayNet),
+        whyFlagged: `They differ by ${formatGBP(Math.abs(diff))}, more than the ${formatGBP(config.invoiceTolerancePence)} allowed. A day may be missing from the daily payments, or posted late.`,
+        suggestedAction: "Re-run the DPD sync for that period. If it still differs, compare the invoice with the Payments page.",
+        metric: { daily, invoice: invoice.stopPayNet, diff },
+      });
+    }
+  }
+
+  // ── Costs left unassigned ─────────────────────────────────────────────────
+  {
+    const stale = input.costs.filter((c) => c.unassigned && c.date <= addDays(input.evalTo, -7));
+    for (const [franchiseId, items] of groupBy(stale, (c) => c.franchiseId ?? "none")) {
+      const total = items.reduce((a, c) => a + c.amount, 0);
+      out.push({
+        dedupeKey: `cost_unassigned|${franchiseId}|${weekStart(input.evalTo)}`,
+        type: "cost_unassigned",
+        severity: "attention",
+        franchiseId: franchiseId === "none" ? null : franchiseId,
+        driverId: null,
+        subjectDate: input.evalTo,
+        title: `${items.length} cost${items.length === 1 ? "" : "s"} still not assigned (${formatGBP(total)})`,
+        whatHappened: `${items.length} cost${items.length === 1 ? " has" : "s have"} been waiting more than a week to be assigned to a driver or the franchise, ${formatGBP(total)} in all.`,
+        actualValue: `${items.length} unassigned`,
+        expectedValue: "None",
+        whyFlagged: "Unassigned costs are counted in totals but cannot be attributed, so driver and franchise profit are less accurate until they are assigned.",
+        suggestedAction: "Open Fuel & Expenses, choose Unallocated, and assign each cost.",
+        metric: { count: items.length, total },
+      });
     }
   }
 
@@ -591,7 +655,7 @@ export function detectAnomalies(input: AnomalyInput): AnomalyCandidate[] {
 
   // ── Possible duplicate costs ──────────────────────────────────────────────
   const duplicateGroups = groupBy(
-    input.costs.filter((c) => c.amount !== 0),
+    input.costs.filter((c) => c.amount !== 0 && !c.fromDpd),
     (c) => `${c.isFuel ? "fuel" : `cat:${c.categoryId ?? c.categoryName}`}|${c.date}|${c.amount}|${(c.vehicleRegistration ?? c.supplier ?? "").toLowerCase().replace(/\s+/g, "")}`,
   );
   for (const [, group] of duplicateGroups) {
