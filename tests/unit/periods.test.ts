@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastCompletedPeriod, periodContaining, periodLabel, previousPeriod, recentPeriods } from "@/lib/finance/periods";
+import { invoiceDueDate, lastCompletedPeriod, periodContaining, periodLabel, previousPeriod, recentPeriods } from "@/lib/finance/periods";
 
 describe("DPD four-week periods", () => {
   it("matches the periods seen in the portal", () => {
@@ -26,13 +26,23 @@ describe("DPD four-week periods", () => {
     expect(list.map((p) => p.start)).toEqual(["2026-11-09", "2026-10-12", "2026-09-14"]);
   });
 
-  it("the last completed period waits two days after the end so the final day's sync has run", () => {
-    // Period ends Sunday 8 Nov 2026. Monday 9th: still too early. Tuesday 10th: due.
+  it("the invoice falls due five days after the period ends, as on DPD's self-billed invoices", () => {
+    // Checked on real invoices: period 12/10/2026 to 08/11/2026, invoice date 08/11/2026, due 13/11/2026.
+    expect(invoiceDueDate({ start: "2026-10-12", end: "2026-11-08" })).toBe("2026-11-13");
+    expect(invoiceDueDate({ start: "2026-09-14", end: "2026-10-11" })).toBe("2026-10-16");
+    expect(invoiceDueDate({ start: "2026-08-17", end: "2026-09-13" })).toBe("2026-09-18");
+    expect(invoiceDueDate({ start: "2026-05-25", end: "2026-06-21" })).toBe("2026-06-26");
+  });
+
+  it("the last completed period is the one whose invoice is due, so its report is made on the due date", () => {
+    // Period ends Sunday 8 Nov 2026, invoice due Friday 13 Nov.
     expect(lastCompletedPeriod("2026-11-08")).toEqual({ start: "2026-09-14", end: "2026-10-11" });
-    expect(lastCompletedPeriod("2026-11-09")).toEqual({ start: "2026-09-14", end: "2026-10-11" });
-    expect(lastCompletedPeriod("2026-11-10")).toEqual({ start: "2026-10-12", end: "2026-11-08" });
+    expect(lastCompletedPeriod("2026-11-12")).toEqual({ start: "2026-09-14", end: "2026-10-11" });
+    expect(lastCompletedPeriod("2026-11-13")).toEqual({ start: "2026-10-12", end: "2026-11-08" });
     expect(lastCompletedPeriod("2026-11-17")).toEqual({ start: "2026-10-12", end: "2026-11-08" });
-    expect(lastCompletedPeriod("2026-12-08")).toEqual({ start: "2026-11-09", end: "2026-12-06" });
+    expect(lastCompletedPeriod("2026-12-11")).toEqual({ start: "2026-11-09", end: "2026-12-06" });
+    // a different delay can still be asked for
+    expect(lastCompletedPeriod("2026-11-10", 2)).toEqual({ start: "2026-10-12", end: "2026-11-08" });
   });
 
   it("labels a period with UK dates", () => {

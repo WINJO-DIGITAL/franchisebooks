@@ -20,6 +20,18 @@ export interface DpdPeriod {
   end: ISODate;
 }
 
+/**
+ * DPD dates each self-billed invoice on the last day of the period and makes it due five days later
+ * (checked on six invoices: period ending Sunday 8 Nov 2026, invoice dated 08/11/2026, due 13/11/2026).
+ * The period report is generated on that due date.
+ */
+export const INVOICE_DUE_DAYS_AFTER_PERIOD_END = 5;
+
+/** The date DPD's self-billed invoice for a period falls due, and the day its report is generated. */
+export function invoiceDueDate(period: DpdPeriod): ISODate {
+  return addDays(period.end, INVOICE_DUE_DAYS_AFTER_PERIOD_END);
+}
+
 /** The period that contains a date. */
 export function periodContaining(date: ISODate): DpdPeriod {
   const offset = daysBetween(DPD_PERIOD_ANCHOR, date);
@@ -34,11 +46,11 @@ export function previousPeriod(period: DpdPeriod): DpdPeriod {
 }
 
 /**
- * The most recent period that has finished and had time for its last day's
- * figures to arrive: it ended at least `graceDays` days ago (default 2, so the
- * Monday-evening sync that follows a Sunday end has run by Tuesday).
+ * The most recent period whose invoice is now due: it ended at least `graceDays`
+ * days ago. The default is the invoice due date (five days after the end), which
+ * also leaves time for the last day's figures to have synced.
  */
-export function lastCompletedPeriod(today: ISODate, graceDays = 2): DpdPeriod {
+export function lastCompletedPeriod(today: ISODate, graceDays = INVOICE_DUE_DAYS_AFTER_PERIOD_END): DpdPeriod {
   let period = periodContaining(today);
   while (daysBetween(period.end, today) < graceDays) period = previousPeriod(period);
   return period;

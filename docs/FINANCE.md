@@ -37,6 +37,8 @@ The business is VAT registered, so every figure in the app is **net of VAT**: VA
 
 * **Income:** the DPD Payments figures are net. DPD's self-billed invoice adds 20% VAT on top. Checked on the FD42102 invoice for 12/10/2026 to 08/11/2026: net £7,303.36, VAT £1,460.67, total £8,764.03.
 * **Charges:** DPD's Transaction Charges are imported excluding VAT (the portal shows "£11.47 (excl. £2.29 VAT)").
+* **How to read a DPD self-billed invoice:** every line amount and "Total exc VAT" are **excluding VAT**. VAT (20%) is shown separately in the VAT analysis, and "Invoice total" is net plus VAT. The VAT shown is the business's output tax due to HMRC. Each invoice names its period ("for period 12/10/2026 to 08/11/2026"), the FD number, an invoice date and a due date.
+* **Invoice dates:** the invoice is dated on the last day of the four-week period and falls due five days later (six invoices checked, all the same). Automatic period reports are generated on that due date. Change `INVOICE_DUE_DAYS_AFTER_PERIOD_END` in `src/lib/finance/periods.ts` if that needs to move.
 * **Not yet in income:** the invoice also carries a *Fuel Supplement* (£71.27 that period) and a *C&D App* line (£9.23). They are not in the daily Payments rows, so income is a little under the invoice net. Everything else on the invoice ties to the daily figures exactly: weekday, Saturday and Sunday stops and pay, and excess parcels.
 * **Same-day entries:** DPD can list two entries for one driver, route and day (for example a second run). They are added together, since the ledger holds one row per driver, route and day. A row that repeats with identical figures is treated as a likely double-listing and held for checking.
 

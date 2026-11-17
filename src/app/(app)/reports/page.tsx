@@ -40,7 +40,7 @@ export default async function ReportsPage() {
 
   return (
     <>
-      <PageHeader title="Reports" description={byPeriod ? "PDF reports for each DPD four-week period. One is made automatically two days after each period ends. Original DPD figures and manual adjustments are always shown separately." : "Monthly PDF reports. Original DPD figures and manual adjustments are always shown separately. Reports for last month are made automatically after month end."} />
+      <PageHeader title="Reports" description={byPeriod ? "PDF reports for each DPD four-week period. One is made automatically on the date DPD's invoice for that period falls due (five days after it ends). Original DPD figures and manual adjustments are always shown separately." : "Monthly PDF reports. Original DPD figures and manual adjustments are always shown separately. Reports for last month are made automatically after month end."} />
       <Section title="Generate a report">
         <Panel>
           <GenerateReportForm
