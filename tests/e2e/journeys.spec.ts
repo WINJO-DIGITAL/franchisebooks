@@ -16,7 +16,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await page.getByText("Add", { exact: true }).first().click();
     await expect(page.getByRole("link", { name: /Pay adjustment/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /Driver cover/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /^Expense/ })).toBeVisible();
+    await expect(page.locator('a[href="/expenses?add=1"]')).toBeVisible(); // the Add menu's Expense item, not the Expenses menu entry
     await expect(page.getByRole("button", { name: /Sync DPD/ })).toBeVisible();
     // All eight sections are reachable from the sidebar.
     for (const name of ["Dashboard", "Drivers", "Income", "Expenses", "Adjustments", "Reports", "Data & Integrations", "Settings"]) {
