@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, CheckCircle2, ChevronRight } from "lucide-react";
 import { AddMenu } from "@/components/add-menu";
+import { AttentionPanel } from "@/components/attention-panel";
 import { DailyColumns, type DailyPoint } from "@/components/daily-columns";
 import { SyncButtons } from "@/components/sync-buttons";
 import { Badge, Notice, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
@@ -95,74 +95,20 @@ export default async function DashboardPage() {
         </Notice>
       ) : null}
 
-      {/* Is anything wrong? What needs my attention? */}
-      <Section>
-        {attention === 0 ? (
-          <Panel className="flex items-center gap-3">
-            <CheckCircle2 className="size-6 shrink-0 text-good" aria-hidden />
-            <div>
-              <p className="font-medium">Everything is up to date.</p>
-              <p className="text-sm text-muted">Nothing needs your attention right now.</p>
-            </div>
-          </Panel>
-        ) : (
-          <Panel flush>
-            <div className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-5">
-              <AlertTriangle className="size-5 shrink-0 text-warn" aria-hidden />
-              <h2 className="font-semibold">
-                {attention} {attention === 1 ? "thing needs" : "things need"} your attention
-              </h2>
-            </div>
-            <ul>
-              {dpdNeedsAttention ? (
-                <li className="border-b border-line last:border-0">
-                  <Link href="/data" className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50 sm:px-5">
-                    <Badge tone={sync.dpd.tone === "bad" ? "bad" : "warn"}>DPD</Badge>
-                    <span className="flex-1 text-[0.9375rem]">{dpdHeadline}</span>
-                    <ChevronRight className="size-4 text-muted" aria-hidden />
-                  </Link>
-                </li>
-              ) : null}
-              {flaggedFiles > 0 ? (
-                <li className="border-b border-line last:border-0">
-                  <Link href="/data#attention" className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50 sm:px-5">
-                    <Badge tone="warn">Import</Badge>
-                    <span className="flex-1 text-[0.9375rem]">{flaggedFiles === 1 ? "1 imported file needs checking" : `${flaggedFiles} imported files need checking`}</span>
-                    <ChevronRight className="size-4 text-muted" aria-hidden />
-                  </Link>
-                </li>
-              ) : null}
-              {reviewCount > 0 ? (
-                <li className="border-b border-line last:border-0">
-                  <Link href="/data#attention" className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50 sm:px-5">
-                    <Badge tone="warn">Import</Badge>
-                    <span className="flex-1 text-[0.9375rem]">
-                      {reviewCount === 1 ? (reviewsResult.data?.[0]?.title ?? "1 report needs checking") : `${reviewCount} reports need checking`}
-                    </span>
-                    <ChevronRight className="size-4 text-muted" aria-hidden />
-                  </Link>
-                </li>
-              ) : null}
-              {alerts.map((alert) => (
-                <li key={alert.id} className="border-b border-line last:border-0">
-                  <Link href={`/alerts#${alert.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50 sm:px-5">
-                    <Badge tone={SEVERITY[alert.severity]?.tone ?? "warn"}>{formatUkDate(alert.subject_date).slice(0, 5)}</Badge>
-                    <span className="flex-1 text-[0.9375rem]">{alert.title}</span>
-                    <ChevronRight className="size-4 text-muted" aria-hidden />
-                  </Link>
-                </li>
-              ))}
-              {alertCount > alerts.length ? (
-                <li>
-                  <Link href="/alerts" className="block px-4 py-3 text-sm font-medium text-accent hover:bg-sunken/50 sm:px-5">
-                    See all {alertCount} alerts
-                  </Link>
-                </li>
-              ) : null}
-            </ul>
-          </Panel>
-        )}
-      </Section>
+      {/* Only shown when something needs a look; the all-clear message lives on the Alerts page (the bell). */}
+      {attention > 0 ? (
+        <Section>
+          <AttentionPanel
+            total={attention}
+            dpd={dpdNeedsAttention ? { tone: sync.dpd.tone, headline: dpdHeadline } : null}
+            flaggedFiles={flaggedFiles}
+            reviewCount={reviewCount}
+            reviewTitle={reviewsResult.data?.[0]?.title}
+            alerts={alerts}
+            alertCount={alertCount}
+          />
+        </Section>
+      ) : null}
 
       {/* Today */}
       <Section

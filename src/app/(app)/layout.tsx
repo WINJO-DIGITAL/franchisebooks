@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { AlertsBell } from "@/components/shell/alerts-bell";
+import { loadAttentionCount } from "@/lib/data/attention";
 import { BottomNav, SidebarNav } from "@/components/shell/nav";
 import { FranchiseSwitcher } from "@/components/shell/franchise-switcher";
 import { signOut } from "@/lib/actions/auth";
@@ -7,12 +9,8 @@ import { franchiseLabel, getContext } from "@/lib/context";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getContext();
-  const [alerts, reviews] = await Promise.all([
-    ctx.supabase.from("anomalies").select("id", { count: "exact", head: true }).in("status", ["open", "investigating"]),
-    ctx.supabase.from("review_items").select("id", { count: "exact", head: true }).eq("status", "open"),
-  ]);
-  const alertCount = alerts.count ?? 0;
-  const reviewCount = reviews.count ?? 0;
+  const attention = await loadAttentionCount(ctx.supabase, ctx.accountId, ctx.today);
+  const reviewCount = attention.reviews;
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[15.5rem_1fr]">
@@ -49,15 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             franchises={ctx.franchises.filter((f) => f.isActive || f.id === ctx.franchiseId).map((f) => ({ id: f.id, label: franchiseLabel(f) }))}
             selected={ctx.franchiseId}
           />
-          <Link
-            href="/alerts"
-            className="relative ml-auto flex h-10 shrink-0 items-center gap-2 rounded-lg px-2 text-sm sm:px-3 font-medium text-ink-soft hover:bg-sunken"
-            aria-label={alertCount > 0 ? `${alertCount} alerts need attention` : "Alerts"}
-          >
-            <Bell className="size-[18px]" aria-hidden />
-            <span className="hidden sm:inline">Alerts</span>
-            {alertCount > 0 ? <span className="num rounded-full bg-bad px-1.5 text-xs font-semibold text-white">{alertCount}</span> : null}
-          </Link>
+          <AlertsBell count={attention.total} />
         </header>
         <main className="mx-auto w-full max-w-6xl px-4 pb-28 pt-6 sm:px-6 sm:pt-8 lg:px-8 lg:pb-16">{children}</main>
       </div>

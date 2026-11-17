@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertStatusForm } from "@/components/alerts/status-form";
+import { AllClear, AttentionPanel } from "@/components/attention-panel";
 import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/bits";
 import { cn } from "@/components/ui/cn";
 import { franchiseLabel, getContext } from "@/lib/context";
+import { loadAttentionCount } from "@/lib/data/attention";
+import { loadSyncOverview } from "@/lib/data/status";
 import { formatUkDateLong, formatUkDateTime } from "@/lib/dates";
 import { ANOMALY_STATUS, SEVERITY } from "@/lib/labels";
 
@@ -28,6 +31,16 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
     .limit(100);
   if (ctx.franchiseId) query = query.eq("franchise_id", ctx.franchiseId);
   const { data: alerts } = await query;
+  // The bell's whole story: alongside the alerts, the sync and import checks that also need a look.
+  const [attention, sync, firstReview] = view.key === "open"
+    ? await Promise.all([
+        loadAttentionCount(ctx.supabase, ctx.accountId, ctx.today),
+        loadSyncOverview(ctx.supabase, ctx.accountId),
+        ctx.supabase.from("review_items").select("title").eq("status", "open").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      ])
+    : [null, null, null];
+  const extras = attention ? attention.reviews + attention.files + (attention.dpd ? 1 : 0) : 0;
+  const dpdHeadline = sync && attention?.dpd ? (sync.dpd.tone === "good" ? "DPD has not synchronised for two days." : sync.dpd.headline) : null;
   const { data: driverRows } = await ctx.supabase.from("drivers").select("id, display_name");
   const driverName = new Map((driverRows ?? []).map((d) => [d.id, d.display_name]));
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
@@ -46,10 +59,24 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
         ))}
       </nav>
 
+      {extras > 0 && attention && sync ? (
+        <div className="mb-5">
+          <AttentionPanel
+            total={extras}
+            dpd={attention.dpd && dpdHeadline ? { tone: sync.dpd.tone, headline: dpdHeadline } : null}
+            flaggedFiles={attention.files}
+            reviewCount={attention.reviews}
+            reviewTitle={firstReview?.data?.title}
+          />
+        </div>
+      ) : null}
+
       {list.length === 0 ? (
-        <EmptyState title={view.key === "open" ? "Nothing needs your attention" : "No alerts have been dealt with yet"}>
-          {view.key === "open" ? "When something looks unusual — a missing report, an odd figure, a possible duplicate — it will appear here with an explanation." : null}
-        </EmptyState>
+        view.key === "open" ? (
+          extras === 0 ? <AllClear /> : null
+        ) : (
+          <EmptyState title="No alerts have been dealt with yet">{null}</EmptyState>
+        )
       ) : (
         <ul className="space-y-3">
           {list.map((alert) => (
