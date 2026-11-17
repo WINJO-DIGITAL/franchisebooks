@@ -43,6 +43,15 @@ export function driverKeyFor(ref: string | null, name: string): string {
   return cleanedRef ? `ref:${cleanedRef.toLowerCase()}` : `name:${nameTokensKey(name)}`;
 }
 
+/**
+ * DPD sometimes writes a driver as "FD46578 Matthew Jackson", with the route's FD number in front. The same name is the
+ * same person, so the prefix is ignored when finding the driver. (The stored driver key is NOT changed: it identifies
+ * the source row, and changing it would make an already imported day look new.)
+ */
+export function stripFdPrefix(name: string): string {
+  return name.replace(/^\s*FD[-\s]?\d+\s+/i, "");
+}
+
 function assignedOn(driver: RosterDriver, franchiseId: string | null, date: ISODate): boolean {
   return driver.assignments.some(
     (a) => (franchiseId == null || a.franchiseId === franchiseId) && a.startDate <= date && (a.endDate == null || a.endDate >= date),
@@ -68,10 +77,10 @@ export function matchDriver(
   }
   if (!source.name || source.name.trim() === "") return { driverId: null, method: null, ambiguous: false };
 
-  const key = nameTokensKey(source.name);
+  const key = nameTokensKey(stripFdPrefix(source.name));
   if (key === "") return { driverId: null, method: null, ambiguous: false };
   let candidates = roster.filter(
-    (d) => nameTokensKey(d.displayName) === key || d.aliases.some((alias) => nameTokensKey(alias) === key),
+    (d) => nameTokensKey(stripFdPrefix(d.displayName)) === key || d.aliases.some((alias) => nameTokensKey(stripFdPrefix(alias)) === key),
   );
   if (candidates.length > 1) {
     // Two drivers share the name: only decide if exactly one of them worked this franchise on this date.

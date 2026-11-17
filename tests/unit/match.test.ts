@@ -15,6 +15,12 @@ describe("driver matching", () => {
     expect(matchDriver({ ref: null, name: "EXAMPLE, Alex", franchiseId: "f1", date: "2026-11-14" }, roster).driverId).toBe("d1");
     expect(matchDriver({ ref: null, name: "a. example", franchiseId: "f1", date: "2026-11-14" }, roster).driverId).toBe("d1");
   });
+  it("treats a route's FD number written before a name as the same person", () => {
+    expect(matchDriver({ ref: null, name: "FD46578 Alex Example", franchiseId: "f1", date: "2026-11-14" }, roster)).toMatchObject({ driverId: "d1", method: "name" });
+    expect(matchDriver({ ref: null, name: "FD 46578 EXAMPLE, Alex", franchiseId: "f1", date: "2026-11-14" }, roster).driverId).toBe("d1");
+    // the stored row key is unchanged, so a day already imported is not mistaken for a new one
+    expect(driverKeyFor(null, "FD46578 Alex Example")).not.toBe(driverKeyFor(null, "Alex Example"));
+  });
   it("uses franchise and date to tell apart two drivers with the same name", () => {
     expect(matchDriver({ ref: null, name: "Sam Twin", franchiseId: "f2", date: "2026-11-14" }, roster).driverId).toBe("d3");
     expect(matchDriver({ ref: null, name: "Sam Twin", franchiseId: "f1", date: "2026-03-01" }, roster).driverId).toBe("d2");
