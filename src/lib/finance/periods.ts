@@ -21,16 +21,22 @@ export interface DpdPeriod {
 }
 
 /**
- * DPD dates each self-billed invoice on the last day of the period and makes it due five days later
- * (checked on six invoices: period ending Sunday 8 Nov 2026, invoice dated 08/11/2026, due 13/11/2026).
- * The period report is generated on that due date.
+ * DPD dates each self-billed invoice on the last day of the billing period and makes it due five days later
+ * (checked on six invoices: "for period 12/10/2026 to 08/11/2026", invoice dated 08/11/2026, due 13/11/2026).
  */
 export const INVOICE_DUE_DAYS_AFTER_PERIOD_END = 5;
 
-/** The date DPD's self-billed invoice for a period falls due, and the day its report is generated. */
+/** The date DPD's self-billed invoice for a period falls due (the invoice itself is dated on the period's last day). */
 export function invoiceDueDate(period: DpdPeriod): ISODate {
   return addDays(period.end, INVOICE_DUE_DAYS_AFTER_PERIOD_END);
 }
+
+/**
+ * The period report, which tells drivers what they earned, is made as soon as the period closes: the evening
+ * after its last day, when the nightly sync has brought in that last day's figures. One day, not the invoice's
+ * five-day payment term.
+ */
+export const REPORT_DELAY_DAYS_AFTER_PERIOD_END = 1;
 
 /** The period that contains a date. */
 export function periodContaining(date: ISODate): DpdPeriod {
@@ -46,11 +52,10 @@ export function previousPeriod(period: DpdPeriod): DpdPeriod {
 }
 
 /**
- * The most recent period whose invoice is now due: it ended at least `graceDays`
- * days ago. The default is the invoice due date (five days after the end), which
- * also leaves time for the last day's figures to have synced.
+ * The most recent period that has closed and is ready to report on: it ended at least `graceDays`
+ * days ago (default one, so the evening sync after its last day has run).
  */
-export function lastCompletedPeriod(today: ISODate, graceDays = INVOICE_DUE_DAYS_AFTER_PERIOD_END): DpdPeriod {
+export function lastCompletedPeriod(today: ISODate, graceDays = REPORT_DELAY_DAYS_AFTER_PERIOD_END): DpdPeriod {
   let period = periodContaining(today);
   while (daysBetween(period.end, today) < graceDays) period = previousPeriod(period);
   return period;

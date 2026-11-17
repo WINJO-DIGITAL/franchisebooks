@@ -53,6 +53,16 @@ async function execute(db: AdminClient, job: Job, ctx: RunContext): Promise<JobO
       const period: DpdPeriod | null = isISODate(payload.periodStart) && isISODate(payload.periodEnd) ? { start: payload.periodStart, end: payload.periodEnd } : null;
       const month = period ? monthOf(period.start) : String(payload.month ?? "");
       if (!isYearMonth(month)) throw new Error("report job has no valid month or period");
+      // A period report must not be made from stale figures: wait until a DPD sync has succeeded since the period closed.
+      if (period) {
+        const { data: connection } = await db.from("integration_connections").select("config").eq("account_id", job.account_id).eq("provider", "dpd").maybeSingle();
+        if ((connection?.config as { portalMap?: unknown } | null)?.portalMap) {
+          const closed = addDays(period.end, 1);
+          const { count: synced } = await db.from("import_jobs").select("id", { count: "exact", head: true })
+            .eq("account_id", job.account_id).eq("job_type", "dpd_sync").in("status", ["succeeded", "partial"]).gte("report_date", closed);
+          if ((synced ?? 0) === 0) throw new Error(`The report for ${period.start} to ${period.end} is waiting for a DPD sync after the period closed.`);
+        }
+      }
       const generated: string[] = [];
       const { data: franchises } = await db.from("franchises").select("id").eq("account_id", job.account_id).eq("is_active", true);
       const scopes: (string | null)[] = [null, ...(franchises ?? []).map((f) => f.id)];
@@ -188,7 +198,7 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
       const [{ count: existing }, { count: activity }, { count: jobs }] = await Promise.all([
         db.from("monthly_reports").select("id", { count: "exact", head: true }).eq("account_id", accountId).eq("period_start", period.start).eq("trigger", "auto"),
         db.from("daily_earnings").select("id", { count: "exact", head: true }).eq("account_id", accountId).eq("is_current", true).gte("report_date", period.start).lte("report_date", period.end),
-        db.from("import_jobs").select("id", { count: "exact", head: true }).eq("account_id", accountId).eq("job_type", "monthly_report").eq("report_date", period.start),
+        db.from("import_jobs").select("id", { count: "exact", head: true }).eq("account_id", accountId).eq("job_type", "monthly_report").eq("report_date", period.start).in("status", ["queued", "running", "succeeded", "partial"]),
       ]);
       if ((existing ?? 0) === 0 && (jobs ?? 0) === 0 && (activity ?? 0) > 0) {
         await enqueueJob(db, { accountId, type: "monthly_report", reportDate: period.start, trigger: "schedule", payload: { periodStart: period.start, periodEnd: period.end } });

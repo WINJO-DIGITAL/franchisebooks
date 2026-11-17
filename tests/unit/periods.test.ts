@@ -34,15 +34,16 @@ describe("DPD four-week periods", () => {
     expect(invoiceDueDate({ start: "2026-05-25", end: "2026-06-21" })).toBe("2026-06-26");
   });
 
-  it("the last completed period is the one whose invoice is due, so its report is made on the due date", () => {
-    // Period ends Sunday 8 Nov 2026, invoice due Friday 13 Nov.
+  it("the report is made the evening after the period closes, once its last day has synced", () => {
+    // Period ends Sunday 8 Nov 2026 (the invoice date). On the 8th itself it is still the current period.
     expect(lastCompletedPeriod("2026-11-08")).toEqual({ start: "2026-09-14", end: "2026-10-11" });
-    expect(lastCompletedPeriod("2026-11-12")).toEqual({ start: "2026-09-14", end: "2026-10-11" });
-    expect(lastCompletedPeriod("2026-11-13")).toEqual({ start: "2026-10-12", end: "2026-11-08" });
+    expect(lastCompletedPeriod("2026-11-09")).toEqual({ start: "2026-10-12", end: "2026-11-08" });
     expect(lastCompletedPeriod("2026-11-17")).toEqual({ start: "2026-10-12", end: "2026-11-08" });
-    expect(lastCompletedPeriod("2026-12-11")).toEqual({ start: "2026-11-09", end: "2026-12-06" });
+    expect(lastCompletedPeriod("2026-12-06")).toEqual({ start: "2026-10-12", end: "2026-11-08" });
+    expect(lastCompletedPeriod("2026-12-07")).toEqual({ start: "2026-11-09", end: "2026-12-06" });
     // a different delay can still be asked for
-    expect(lastCompletedPeriod("2026-11-10", 2)).toEqual({ start: "2026-10-12", end: "2026-11-08" });
+    expect(lastCompletedPeriod("2026-11-10", 5)).toEqual({ start: "2026-09-14", end: "2026-10-11" });
+    expect(lastCompletedPeriod("2026-11-13", 5)).toEqual({ start: "2026-10-12", end: "2026-11-08" });
   });
 
   it("labels a period with UK dates", () => {
