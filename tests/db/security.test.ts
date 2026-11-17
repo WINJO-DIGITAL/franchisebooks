@@ -156,6 +156,13 @@ describe("roles and franchise-level access", () => {
     expect(ownerChanged).toHaveLength(1);
   });
 
+  it("an owner can add a franchise and read it straight back", async () => {
+    const rows = await asUser(a.ownerId, (run) =>
+      run<{ id: string }>("insert into public.franchises (account_id, fd_number, name) values ($1, $2, 'Readback') returning id", [a.accountId, `${a.fdNumber}-RB`]),
+    );
+    expect(rows).toHaveLength(1);
+  });
+
   it("nobody can change their own role", async () => {
     await expect(asUser(viewer, (run) => run("update public.user_profiles set role = 'owner' where id = $1", [viewer]))).rejects.toThrow(/permission denied/);
   });

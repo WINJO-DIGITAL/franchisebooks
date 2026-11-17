@@ -142,8 +142,11 @@ create policy franchise_access_read on public.user_franchise_access for select t
   using (user_id = (select auth.uid()) or ((select app_private.is_owner()) and app_private.can_access_franchise(franchise_id)));
 
 -- franchises
+-- All-franchise users are matched without a table lookup, so a row just inserted can be read back
+-- in the same statement (INSERT … RETURNING). Limited users go through the access list.
 create policy franchises_read on public.franchises for select to authenticated
-  using (account_id = (select app_private.current_account_id()) and app_private.can_access_franchise(id));
+  using (account_id = (select app_private.current_account_id())
+         and ((select app_private.has_all_franchises()) or app_private.can_access_franchise(id)));
 create policy franchises_insert on public.franchises for insert to authenticated
   with check (account_id = (select app_private.current_account_id()) and (select app_private.is_owner()));
 create policy franchises_update on public.franchises for update to authenticated

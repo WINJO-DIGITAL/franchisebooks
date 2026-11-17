@@ -18,3 +18,5 @@ supabase/.branches/
 # Downloaded portal documents and diagnostics must never be committed
 /var/
 tsconfig.tsbuildinfo
+# Observed portal structure is for the owner/developer to review before sharing
+docs/PORTAL_INVENTORY.generated.*
