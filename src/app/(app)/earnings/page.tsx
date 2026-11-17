@@ -202,7 +202,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                   <tr key={`${d.franchiseId}-${d.key}`}>
                     <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
                     {showFranchise ? <td className="hidden sm:table-cell">{franchiseName.get(d.franchiseId) ?? ""}</td> : null}
-                    <td className="num">{[...(routesByKey.get(key) ?? [])].join(", ") || "—"}</td>
+                    <td className="num">{[...(routesByKey.get(key) ?? [])].join(" / ") || "—"}</td>
                     <td className="r num hidden sm:table-cell">{d.stops ?? "—"}</td>
                     <td className="r num hidden sm:table-cell">{d.parcels ?? "—"}</td>
                     <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>

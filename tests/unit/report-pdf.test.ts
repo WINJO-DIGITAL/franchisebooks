@@ -27,7 +27,7 @@ function report(overrides: Partial<{ revenue: number; revenueStatus: "confirmed"
   return {
     accountName: "Synthetic Couriers", month: "2026-11", period: null, from: "2026-11-01", to: "2026-11-30", franchiseId: "f1", scopeLabel: "FD-TEST-1 · Synthetic North",
     generatedAt: "2026-12-02T09:00:00Z", totals: f, franchises: [{ ...f, label: "FD-TEST-1" }],
-    drivers: f.drivers.map((d) => ({ ...d, franchiseLabel: "FD-TEST-1", comparison: { earningsPerDayChange: -12.5, stopsPerDayChange: null, parcelsPerDayChange: null, baselineDays: 30 } })),
+    drivers: f.drivers.map((d) => ({ ...d, franchiseLabel: "FD-TEST-1", routes: ["101", "102"], comparison: { earningsPerDayChange: -12.5, stopsPerDayChange: null, parcelsPerDayChange: null, baselineDays: 30 } })),
     categories: f.categories,
     adjustments: [
       { id: "a1", date: "2026-11-03", driverName: "Alex Example", franchiseLabel: "FD-TEST-1", type: "additional_payment", amount: 5000, reason: "Covered an extra route", isReversal: false, isReversed: false, fromCover: false },
@@ -120,7 +120,7 @@ function periodReport(dayRates: { driverId: string; dayRate: number; effectiveFr
   return {
     accountName: "Synthetic Couriers", month: "2026-11", period: { start: "2026-11-09", end: "2026-12-06" }, from: "2026-11-09", to: "2026-12-06", franchiseId: "f1",
     scopeLabel: "FD-TEST-1", generatedAt: "2026-12-08T20:40:00Z", totals: f, franchises: [{ ...f, label: "FD-TEST-1" }],
-    drivers: f.drivers.map((d) => ({ ...d, franchiseLabel: "FD-TEST-1", comparison: { earningsPerDayChange: null, stopsPerDayChange: null, parcelsPerDayChange: null, baselineDays: 0 } })),
+    drivers: f.drivers.map((d) => ({ ...d, franchiseLabel: "FD-TEST-1", routes: ["101", "102"], comparison: { earningsPerDayChange: null, stopsPerDayChange: null, parcelsPerDayChange: null, baselineDays: 0 } })),
     categories: f.categories, adjustments: [], unusual: [], missingData: [], unresolvedImports: [], coverCount: 0, revenueAllocationBasis: "none",
   };
 }
@@ -129,7 +129,7 @@ describe("four-week period report PDF (income model)", () => {
   it("titles the period and shows income, wages, charges and profit", async () => {
     const text = await textOf(periodReport([{ driverId: "d1", dayRate: 12000, effectiveFrom: "2026-10-01" }]));
     expect(text).toContain("Period report: 09/11/2026 to 06/12/2026");
-    expect(text).toContain("Income (DPD payments)");
+    expect(text).toContain("Total income");
     expect(text).toContain("£450.00"); // income
     expect(text).toContain("Driver wages");
     expect(text).toContain("£240.00"); // 2 days x £120
@@ -144,7 +144,7 @@ describe("four-week period report PDF (income model)", () => {
     expect(text).toContain("Wages are incomplete");
     expect(text).toContain("no rate");
     expect(text).toContain("Not available"); // operating profit
-    expect(text).toContain("Income less charges, before wages");
+    expect(text).toContain("Income less expenses, before wages");
     expect(text).toContain("£360.00"); // 450 - 90
   });
 });

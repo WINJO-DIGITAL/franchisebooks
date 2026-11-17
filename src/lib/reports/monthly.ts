@@ -19,6 +19,8 @@ type Db = SupabaseClient<Database>;
 export interface ReportDriver extends DriverSummary {
   franchiseLabel: string;
   comparison: PerformanceComparison;
+  /** Route numbers the driver ran in the period. Shown separated by " / " so they never read as one large number. */
+  routes: string[];
 }
 
 export interface ReportAdjustment {
@@ -95,7 +97,13 @@ export async function buildMonthlyReport(db: Db, input: { accountId: string; mon
     }),
   ]);
 
-  const label = new Map(franchises.map((f) => [f.id, f.name ? `${f.fd_number} · ${f.name}` : f.fd_number]));
+  const label = new Map(franchises.map((f) => [f.id, f.name && f.name !== f.fd_number ? `${f.fd_number} · ${f.name}` : f.fd_number]));
+  const routesByDriver = new Map<string, Set<string>>();
+  for (const e of data.earnings) {
+    if (!e.route) continue;
+    const k = `${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`;
+    routesByDriver.set(k, (routesByDriver.get(k) ?? new Set()).add(e.route));
+  }
   const summary = summarisePeriod(data);
   const baseline = summarisePeriod(baselineData);
   const scoped = franchiseId ? summary.franchises.filter((f) => f.franchiseId === franchiseId) : summary.franchises;
@@ -109,6 +117,7 @@ export async function buildMonthlyReport(db: Db, input: { accountId: string; mon
       ...d,
       franchiseLabel: label.get(f.franchiseId!) ?? "",
       comparison: comparePerformance(d, baselineByKey.get(`${f.franchiseId}|${d.key}`) ?? null),
+      routes: [...(routesByDriver.get(`${f.franchiseId}|${d.key}`) ?? [])].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true })),
     })))
     .sort((a, b) => a.franchiseLabel.localeCompare(b.franchiseLabel) || a.name.localeCompare(b.name, "en-GB"));
 

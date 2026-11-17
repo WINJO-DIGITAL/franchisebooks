@@ -14,6 +14,9 @@ import { changeText, type MonthlyReport } from "./monthly";
 const INK = "#16191d";
 const MUTED = "#66707c";
 const LINE = "#cfcbc0";
+const BAND = "#f3f1ea";
+const GOOD = "#0e5a4e";
+const BAD = "#a3261f";
 const ACCENT = "#0e5a4e";
 const MARGIN = 42;
 const PAGE_WIDTH = 595.28;
@@ -52,10 +55,11 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     }
   };
   const heading = (text: string, note?: string) => {
-    ensure(54);
-    y += 10;
-    doc.font("Helvetica-Bold").fontSize(12.5).fillColor(INK).text(text, MARGIN, y, { lineBreak: false });
-    y += 17;
+    ensure(90);
+    y += 14;
+    doc.rect(MARGIN, y + 1, 3, 13).fill(ACCENT);
+    doc.font("Helvetica-Bold").fontSize(13).fillColor(INK).text(text, MARGIN + 9, y, { lineBreak: false });
+    y += 19;
     if (note) {
       doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(note, MARGIN, y, { width: CONTENT });
       y = doc.y + 4;
@@ -70,8 +74,17 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     doc.text(text, MARGIN, y, { width: CONTENT });
     y += height + 5;
   };
-  const table = (columns: Column[], rows: string[][], options: { footer?: string[]; fontSize?: number } = {}) => {
+  type Row = string[] | { group: string };
+  const table = (columns: Column[], rows: Row[], options: { footer?: string[]; fontSize?: number } = {}) => {
     const size = options.fontSize ?? 8.5;
+    let stripe = false;
+    const drawGroup = (text: string) => {
+      if (y + 40 > PAGE_HEIGHT - MARGIN - 24) { doc.addPage(); y = MARGIN; header(); }
+      doc.rect(MARGIN, y + 2, CONTENT, 16).fill(BAND);
+      doc.font("Helvetica-Bold").fontSize(size).fillColor(ACCENT).text(text, MARGIN + 4, y + 6, { width: CONTENT - 8, lineBreak: false });
+      y += 20;
+      stripe = false;
+    };
     const drawRow = (cells: string[], bold: boolean, color: string) => {
       doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(size).fillColor(color);
       const heights = cells.map((text, i) => doc.heightOfString(text || " ", { width: columns[i]!.width - 6 }));
@@ -82,6 +95,9 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
         header();
         doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(size).fillColor(color);
       }
+      if (stripe && !bold) doc.rect(MARGIN, y, CONTENT, rowHeight).fill("#faf9f5");
+      stripe = !stripe;
+      doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(size).fillColor(color);
       let x = MARGIN;
       cells.forEach((text, i) => {
         const column = columns[i]!;
@@ -93,17 +109,18 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     };
     const header = () => {
       doc.font("Helvetica-Bold").fontSize(7.5).fillColor(MUTED);
+      const titleH = Math.max(...columns.map((c) => doc.heightOfString(c.title.toUpperCase(), { width: c.width - 6 })));
       let x = MARGIN;
       for (const column of columns) {
-        doc.text(column.title.toUpperCase(), x + 3, y + 2, { width: column.width - 6, align: column.align ?? "left", lineBreak: false });
+        doc.text(column.title.toUpperCase(), x + 3, y + 2, { width: column.width - 6, align: column.align ?? "left" });
         x += column.width;
       }
-      y += 14;
+      y += titleH + 8;
       doc.moveTo(MARGIN, y).lineTo(MARGIN + CONTENT, y).lineWidth(0.8).strokeColor(LINE).stroke();
     };
     ensure(40);
     header();
-    for (const row of rows) drawRow(row, false, INK);
+    for (const row of rows) { if (Array.isArray(row)) drawRow(row, false, INK); else drawGroup(row.group); }
     if (options.footer) drawRow(options.footer, true, INK);
     y += 8;
   };
@@ -120,42 +137,67 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   doc.fontSize(8.5).fillColor(MUTED).text(`${formatUkDate(report.from)} to ${formatUkDate(report.to)}   |   Generated ${formatUkDateTime(report.generatedAt)}`, MARGIN, y);
   y += 16;
 
-  // ── Franchise overview ────────────────────────────────────────────────────
+  // ── At a glance ───────────────────────────────────────────────────────────
   const t = report.totals;
-  heading("Franchise overview");
   const plus = (value: string, complete: boolean) => (complete ? value : `${value} +`);
-  const overview: [string, string, string][] = routeIncome ? [
-    ["Income (DPD payments)", t.revenueStatus === "unavailable" ? "None" : money(t.revenueTotal), STATUS_TEXT[t.revenueStatus]!],
-    ["Driver wages (day rate x days worked)", plus(money(t.wages), t.wagesComplete), t.wagesComplete ? "" : `${t.driversMissingRate} driver${t.driversMissingRate === 1 ? " has" : "s have"} no day rate`],
-    ["Fuel costs", money(t.fuel), ""],
-    ["Other expenses (including DPD charges)", money(t.otherExpenses), ""],
-    ["Total operating costs", plus(money(t.operatingCosts), t.wagesComplete), ""],
-    ["Operating profit", t.operatingProfit == null ? "Not available" : money(t.operatingProfit), t.operatingProfit == null ? "wages incomplete" : STATUS_TEXT[t.profitStatus]!],
-    ["Income less charges, before wages", t.profitBeforeWages == null ? "Not available" : money(t.profitBeforeWages), ""],
-    ["Profit margin", t.marginPercent == null ? "Not available" : `${t.marginPercent}%`, ""],
+  const profitText = t.operatingProfit == null ? "Not available" : money(t.operatingProfit);
+  const profitColor = t.operatingProfit == null ? MUTED : t.operatingProfit < 0 ? BAD : GOOD;
+  const cards: { label: string; value: string; sub: string; color: string }[] = routeIncome ? [
+    { label: "INCOME FROM DPD", value: t.revenueStatus === "unavailable" ? "None" : money(t.revenueTotal), sub: "payments to you", color: INK },
+    { label: "DRIVER WAGES", value: plus(money(t.wages), t.wagesComplete), sub: t.wagesComplete ? "day rate x days" : `${t.driversMissingRate} without a day rate`, color: INK },
+    { label: "EXPENSES", value: money(t.fuel + t.otherExpenses), sub: "DPD charges and fuel", color: INK },
+    { label: "PROFIT", value: profitText, sub: t.operatingProfit == null ? "wages incomplete" : t.marginPercent == null ? "" : `${t.marginPercent}% margin`, color: profitColor },
   ] : [
-    ["Revenue", t.revenueStatus === "unavailable" ? "Not entered" : money(t.revenueTotal), STATUS_TEXT[t.revenueStatus]!],
-    ["Driver costs (pay after adjustments)", money(t.driverCosts), ""],
-    ["   of which original DPD earnings", money(t.driverOriginalEarnings), "from DPD documents"],
-    ["   of which manual adjustments", money(t.driverAdjustmentsNet, { signed: true }), "entered by hand"],
-    ["Fuel costs", money(t.fuel), ""],
-    ["Other expenses", money(t.otherExpenses), ""],
-    ["Total operating costs", money(t.operatingCosts), ""],
-    ["Operating profit", t.operatingProfit == null ? "Not available" : money(t.operatingProfit), t.operatingProfit == null ? "revenue not entered" : STATUS_TEXT[t.profitStatus]!],
-    ["Profit margin", t.marginPercent == null ? "Not available" : `${t.marginPercent}%`, ""],
+    { label: "REVENUE", value: t.revenueStatus === "unavailable" ? "Not entered" : money(t.revenueTotal), sub: STATUS_TEXT[t.revenueStatus]!, color: INK },
+    { label: "DRIVER COSTS", value: money(t.driverCosts), sub: "pay after adjustments", color: INK },
+    { label: "EXPENSES", value: money(t.fuel + t.otherExpenses), sub: "fuel and other", color: INK },
+    { label: "PROFIT", value: profitText, sub: t.operatingProfit == null ? "revenue not entered" : t.marginPercent == null ? "" : `${t.marginPercent}% margin`, color: profitColor },
   ];
-  for (const [label, value, note] of overview) {
-    ensure(16);
-    const bold = label === "Operating profit" || label === "Revenue" || label.startsWith("Income (");
-    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(INK).text(label, MARGIN, y, { width: 260, lineBreak: false });
-    doc.text(value, MARGIN + 260, y, { width: 110, align: "right", lineBreak: false });
-    if (note) doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(note, MARGIN + 382, y + 1, { width: CONTENT - 382, lineBreak: false });
-    y += 16;
+  heading("At a glance");
+  const gap = 8;
+  const cardW = (CONTENT - gap * 3) / 4;
+  ensure(64);
+  cards.forEach((c, i) => {
+    const x = MARGIN + i * (cardW + gap);
+    doc.roundedRect(x, y, cardW, 56, 4).lineWidth(0.8).fillAndStroke(i === 3 ? BAND : "#ffffff", LINE);
+    doc.font("Helvetica-Bold").fontSize(7).fillColor(MUTED).text(c.label, x + 9, y + 8, { width: cardW - 18, lineBreak: false, characterSpacing: 0.5 });
+    doc.font("Helvetica-Bold").fontSize(c.value.length > 11 ? 12.5 : 15).fillColor(c.color).text(c.value, x + 9, y + 21, { width: cardW - 18, lineBreak: false });
+    doc.font("Helvetica").fontSize(7.5).fillColor(MUTED).text(c.sub, x + 9, y + 42, { width: cardW - 18, lineBreak: false });
+  });
+  y += 68;
+
+  // The working behind the cards, as a simple statement that reads top to bottom.
+  const stopPay = t.incomeFromDpd - t.otherDpdPayments;
+  const statement: [string, string, string, boolean][] = routeIncome ? [
+    ["Stop pay from DPD", money(stopPay), "from the daily payment reports", false],
+    ...(t.otherDpdPayments > 0 ? [["Other DPD payments", money(t.otherDpdPayments), "Fuel Supplement, C&D App", false] as [string, string, string, boolean]] : []),
+    ["Total income", t.revenueStatus === "unavailable" ? "None" : money(t.revenueTotal), STATUS_TEXT[t.revenueStatus]!, true],
+    ["less Driver wages", plus(money(t.wages), t.wagesComplete), t.wagesComplete ? "" : `${t.driversMissingRate} driver${t.driversMissingRate === 1 ? " has" : "s have"} no day rate`, false],
+    ["less DPD charges and other expenses", money(t.otherExpenses), "", false],
+    ["less Fuel", money(t.fuel), "", false],
+    ["Operating profit", profitText, t.operatingProfit == null ? "wages incomplete" : STATUS_TEXT[t.profitStatus]!, true],
+    ["Income less expenses, before wages", t.profitBeforeWages == null ? "Not available" : money(t.profitBeforeWages), "", false],
+  ] : [
+    ["Revenue", t.revenueStatus === "unavailable" ? "Not entered" : money(t.revenueTotal), STATUS_TEXT[t.revenueStatus]!, true],
+    ["less Driver costs (pay after adjustments)", money(t.driverCosts), "", false],
+    ["      original DPD earnings", money(t.driverOriginalEarnings), "from DPD documents", false],
+    ["      manual adjustments", money(t.driverAdjustmentsNet, { signed: true }), "entered by hand", false],
+    ["less Fuel", money(t.fuel), "", false],
+    ["less Other expenses", money(t.otherExpenses), "", false],
+    ["Operating profit", profitText, t.operatingProfit == null ? "revenue not entered" : STATUS_TEXT[t.profitStatus]!, true],
+  ];
+  for (const [label, value, note, bold] of statement) {
+    ensure(18);
+    if (bold) doc.rect(MARGIN, y - 2, CONTENT, 17).fill(BAND);
+    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(INK).text(label, MARGIN + 6, y, { width: 260, lineBreak: false });
+    doc.text(value, MARGIN + 266, y, { width: 100, align: "right", lineBreak: false });
+    if (note) doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(note, MARGIN + 380, y + 1, { width: CONTENT - 380, lineBreak: false });
+    y += 17;
   }
-  y += 2;
+  y += 4;
   if (routeIncome) {
     if (!t.wagesComplete) {
-      paragraph(`Wages are incomplete: ${t.driversMissingRate} driver${t.driversMissingRate === 1 ? "" : "s"} worked days with no day rate set, so operating profit is not stated. Income less charges is shown instead. Set day rates under Drivers to complete it.`, MUTED);
+      paragraph(`Wages are incomplete: ${t.driversMissingRate} driver${t.driversMissingRate === 1 ? "" : "s"} worked days with no day rate set, so operating profit is not stated. Income less expenses is shown instead. Set day rates under Drivers to complete it.`, MUTED);
     }
   } else if (t.revenueStatus === "unavailable") {
     paragraph("No revenue has been entered for this period, so profit cannot be reported. Driver earnings are a cost and are never treated as revenue.", MUTED);
@@ -183,7 +225,17 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   }
 
   // ── Driver breakdown ──────────────────────────────────────────────────────
-  heading("Driver breakdown", routeIncome ? "“Income” is what DPD paid for each driver's routes. “Wage” is the day rate for each day worked, plus any adjustments; “no rate” means no day rate is set." : "“DPD earnings” are the original figures from DPD documents. “Adjustments” are manual entries. “Final pay” is the two added together.");
+  heading("Driver breakdown", routeIncome ? "“Income” is what DPD paid for each driver's routes. “Wage” is the day rate for each day worked, plus any adjustments; “no rate” means no day rate is set. Where a driver ran more than one route, the route numbers are separated by a slash." : "“DPD earnings” are the original figures from DPD documents. “Adjustments” are manual entries. “Final pay” is the two added together.");
+  const withGroups = <T extends { franchiseLabel: string }>(list: T[], build: (d: T) => string[]): Row[] => {
+    const rows: Row[] = [];
+    let last = "";
+    for (const d of list) {
+      if (!report.franchiseId && d.franchiseLabel !== last) { rows.push({ group: d.franchiseLabel }); last = d.franchiseLabel; }
+      rows.push(build(d));
+    }
+    return rows;
+  };
+  const routesText = (d: { routes: string[] }) => (d.routes.length ? d.routes.join(" / ") : "-");
   if (report.drivers.length === 0) paragraph("No driver earnings were recorded for this period.", MUTED);
   else if (routeIncome) {
     const worked = report.drivers.filter((d) => d.daysWorked > 0);
@@ -191,34 +243,34 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     const wageSum = worked.reduce((a, d) => a + (d.wage ?? 0), 0);
     table(
       [
-        { title: "Driver", width: 130 }, { title: "Days", width: 32, align: "right" }, { title: "Stops", width: 44, align: "right" }, { title: "Parcels", width: 50, align: "right" },
-        { title: "Income", width: 74, align: "right" }, { title: "Income/stop", width: 60, align: "right" }, { title: "Wage", width: 70, align: "right" }, { title: "Vs usual", width: 51, align: "right" },
+        { title: "Driver", width: 108 }, { title: "Route", width: 52 }, { title: "Days", width: 28, align: "right" }, { title: "Stops", width: 40, align: "right" }, { title: "Parcels", width: 44, align: "right" },
+        { title: "Income", width: 68, align: "right" }, { title: "Per stop", width: 46, align: "right" }, { title: "Wage", width: 68, align: "right" }, { title: "Vs usual", width: 49, align: "right" },
       ],
-      worked.map((d) => [
-        `${d.name}${d.registered ? "" : " (not registered)"}${!report.franchiseId ? `\n${d.franchiseLabel}` : ""}`,
+      withGroups(worked, (d) => [
+        `${d.name}${d.registered ? "" : " (not registered)"}`, routesText(d),
         String(d.daysWorked), d.stopsIncomplete ? `${d.stops}*` : d.stops.toLocaleString("en-GB"), d.parcelsIncomplete ? `${d.parcels}*` : d.parcels.toLocaleString("en-GB"),
         money(d.originalEarnings), d.stopsIncomplete ? "-" : money(d.earningsPerStop), d.wageComplete && d.wage != null ? money(d.wage) : "no rate", changeText(d.comparison.earningsPerDayChange),
       ]),
-      { fontSize: 8, footer: ["Total", "", worked.reduce((a, d) => a + d.stops, 0).toLocaleString("en-GB"), worked.reduce((a, d) => a + d.parcels, 0).toLocaleString("en-GB"), money(incomeSum), "", plus(money(wageSum), worked.every((d) => d.wageComplete)), ""] },
+      { fontSize: 8, footer: ["Total", "", "", worked.reduce((a, d) => a + d.stops, 0).toLocaleString("en-GB"), worked.reduce((a, d) => a + d.parcels, 0).toLocaleString("en-GB"), money(incomeSum), "", plus(money(wageSum), worked.every((d) => d.wageComplete)), ""] },
     );
     paragraph("“Vs usual” compares average daily income with the driver's own average over the previous three periods. * = some reports did not include this count.", MUTED);
   } else {
     const sum = (pick: (d: MonthlyReport["drivers"][number]) => number) => report.drivers.reduce((a, d) => a + pick(d), 0);
     table(
       [
-        { title: "Driver", width: 110 }, { title: "Days", width: 30, align: "right" }, { title: "Parcels", width: 44, align: "right" },
-        { title: "Stops", width: 40, align: "right" }, { title: "DPD earnings", width: 68, align: "right" }, { title: "Adjustments", width: 62, align: "right" },
-        { title: "Final pay", width: 66, align: "right" }, { title: "Expenses", width: 54, align: "right" }, { title: "Vs usual", width: 37, align: "right" },
+        { title: "Driver", width: 100 }, { title: "Route", width: 46 }, { title: "Days", width: 26, align: "right" }, { title: "Parcels", width: 40, align: "right" },
+        { title: "Stops", width: 36, align: "right" }, { title: "DPD earnings", width: 62, align: "right" }, { title: "Adjust.", width: 50, align: "right" },
+        { title: "Final pay", width: 62, align: "right" }, { title: "Expenses", width: 52, align: "right" }, { title: "Vs usual", width: 37, align: "right" },
       ],
-      report.drivers.map((d) => [
-        `${d.name}${d.registered ? "" : " (not registered)"}${!report.franchiseId ? `\n${d.franchiseLabel}` : ""}`,
+      withGroups(report.drivers, (d) => [
+        `${d.name}${d.registered ? "" : " (not registered)"}`, routesText(d),
         String(d.daysWorked), d.parcelsIncomplete ? `${d.parcels}*` : d.parcels.toLocaleString("en-GB"), d.stopsIncomplete ? `${d.stops}*` : d.stops.toLocaleString("en-GB"),
         money(d.originalEarnings), d.adjustmentsNet === 0 ? "-" : money(d.adjustmentsNet, { signed: true }), money(d.finalEarnings),
         d.fuel + d.otherExpenses === 0 ? "-" : money(d.fuel + d.otherExpenses), changeText(d.comparison.earningsPerDayChange),
       ]),
       {
         fontSize: 8,
-        footer: ["Total", "", sum((d) => d.parcels).toLocaleString("en-GB"), sum((d) => d.stops).toLocaleString("en-GB"), money(sum((d) => d.originalEarnings)), money(sum((d) => d.adjustmentsNet), { signed: true }), money(sum((d) => d.finalEarnings)), money(sum((d) => d.fuel + d.otherExpenses)), ""],
+        footer: ["Total", "", "", sum((d) => d.parcels).toLocaleString("en-GB"), sum((d) => d.stops).toLocaleString("en-GB"), money(sum((d) => d.originalEarnings)), money(sum((d) => d.adjustmentsNet), { signed: true }), money(sum((d) => d.finalEarnings)), money(sum((d) => d.fuel + d.otherExpenses)), ""],
       },
     );
     paragraph("“Vs usual” compares average daily earnings with the driver's own average over the previous three months. * = some reports did not include this count.", MUTED);
@@ -229,7 +281,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   if (report.categories.length === 0) paragraph("No fuel or expenses were recorded for this period.", MUTED);
   else {
     table(
-      [{ title: "Category", width: 171 }, { title: "Total", width: 86, align: "right" }, { title: "Attributed to drivers", width: 96, align: "right" }, { title: "Franchise general", width: 86, align: "right" }, { title: "Unallocated", width: 72, align: "right" }],
+      [{ title: "Category", width: 171 }, { title: "Total", width: 86, align: "right" }, { title: "To drivers", width: 96, align: "right" }, { title: "Franchise", width: 86, align: "right" }, { title: "Unallocated", width: 72, align: "right" }],
       report.categories.map((c) => [c.name, money(c.total), money(c.allocatedToDrivers), money(c.franchiseGeneral), money(c.unallocated)]),
       { footer: ["Total", money(t.fuel + t.otherExpenses), money(report.categories.reduce((a, c) => a + c.allocatedToDrivers, 0)), money(report.categories.reduce((a, c) => a + c.franchiseGeneral, 0)), money(t.unallocatedCosts)] },
     );
@@ -274,6 +326,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   const range = doc.bufferedPageRange();
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(range.start + i);
+    doc.page.margins.bottom = 0;
     doc.font("Helvetica").fontSize(7.5).fillColor(MUTED);
     doc.text(`${report.scopeLabel} · ${rangeText}`, MARGIN, PAGE_HEIGHT - MARGIN + 6, { width: CONTENT / 2, lineBreak: false });
     doc.text(`Page ${i + 1} of ${range.count}`, MARGIN + CONTENT / 2, PAGE_HEIGHT - MARGIN + 6, { width: CONTENT / 2, align: "right", lineBreak: false });

@@ -154,7 +154,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                         {where ? <span className="mt-0.5 block text-sm text-muted sm:hidden">{where}</span> : null}
                       </td>
                       <td className="hidden sm:table-cell">{now.length ? now.map((a) => franchiseName.get(a.franchise_id) ?? "—").join(", ") : <span className="text-muted">Not assigned</span>}</td>
-                      <td className="num hidden sm:table-cell">{now.map((a) => a.route).filter(Boolean).join(", ") || <span className="text-muted">—</span>}</td>
+                      <td className="num hidden sm:table-cell">{now.map((a) => a.route).filter(Boolean).join(" / ") || <span className="text-muted">—</span>}</td>
                       <td className="r num">{figures?.days ?? 0}</td>
                       <td className="r num font-medium">{figures ? formatGBP(figures.income) : <span className="text-muted">—</span>}</td>
                       <td className="r num hidden sm:table-cell">{rate == null ? <span className="text-muted">Not set</span> : formatGBP(rate)}</td>
@@ -188,8 +188,8 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                       {!d.is_active ? <Badge className="ml-2">Inactive</Badge> : null}
                     </td>
                     <td>{now.length ? now.map((a) => franchiseName.get(a.franchise_id) ?? "—").join(", ") : <span className="text-muted">Not assigned</span>}</td>
-                    <td>{now.map((a) => a.route).filter(Boolean).join(", ") || <span className="text-muted">—</span>}</td>
-                    <td className="num">{now.map((a) => a.vehicle_registration).filter(Boolean).join(", ") || <span className="text-muted">—</span>}</td>
+                    <td>{now.map((a) => a.route).filter(Boolean).join(" / ") || <span className="text-muted">—</span>}</td>
+                    <td className="num">{now.map((a) => a.vehicle_registration).filter(Boolean).join(" / ") || <span className="text-muted">—</span>}</td>
                     <td className="r num">{pay?.days ?? 0}</td>
                     <td className="r num font-medium">{pay ? formatGBP(pay.pay) : <span className="text-muted">—</span>}</td>
                   </tr>
