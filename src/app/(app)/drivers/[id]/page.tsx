@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AddAssignmentForm, EditDriverForm, EndAssignmentForm } from "@/components/drivers/forms";
+import { AddAssignmentForm, EditDriverForm, EndAssignmentForm, SetDayRateForm } from "@/components/drivers/forms";
 import { Badge, EmptyState, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
 import { LinkButton } from "@/components/ui/button";
 import { baselineOf, classifyStops, resolveAnomalyConfig, STOP_CONSISTENCY_LABEL, type StopConsistency } from "@/lib/anomalies/detect";
@@ -9,8 +9,9 @@ import { franchiseLabel, getContext } from "@/lib/context";
 import { loadAdjustments, loadCosts, loadEarnings } from "@/lib/data/period";
 import { addDays, addMonths, formatMonth, formatUkDate, formatUkDateLong, monthOf, monthRange } from "@/lib/dates";
 import { buildDriverDays, totalAdjustments } from "@/lib/finance/calc";
+import { wageForDriver, type DayRate } from "@/lib/finance/wages";
 import { adjustmentLabel } from "@/lib/labels";
-import { formatGBP, percentChange, perUnit, sumPence } from "@/lib/money";
+import { formatGBP, fromDb, percentChange, perUnit, sumPence } from "@/lib/money";
 import type { Tone } from "@/components/ui/bits";
 
 export const metadata: Metadata = { title: "Driver" };
@@ -30,14 +31,17 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const historyFrom = monthRange(addMonths(month, -3)).start;
   const filter = { accountId: ctx.accountId, from: historyFrom, to: ctx.today, driverId: id };
 
-  const [assignmentsResult, earnings, adjustments, costs, settings, conflicts] = await Promise.all([
+  const [assignmentsResult, earnings, adjustments, costs, settings, conflicts, rateResult] = await Promise.all([
     ctx.supabase.from("driver_assignments").select("id, franchise_id, route, vehicle_registration, start_date, end_date").eq("driver_id", id).order("start_date", { ascending: false }),
     loadEarnings(ctx.supabase, filter),
     loadAdjustments(ctx.supabase, filter),
     loadCosts(ctx.supabase, { accountId: ctx.accountId, from: historyFrom, to: ctx.today }),
     ctx.supabase.from("app_settings").select("anomaly_config").eq("account_id", ctx.accountId).maybeSingle(),
     ctx.supabase.from("review_items").select("payload").eq("kind", "source_conflict").eq("status", "open"),
+    ctx.supabase.from("driver_day_rates").select("id, day_rate, effective_from, note").eq("driver_id", id).order("effective_from", { ascending: false }),
   ]);
+  const rateRows = rateResult.data ?? [];
+  const dayRates: DayRate[] = rateRows.map((r) => ({ driverId: id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from }));
   const assignments = assignmentsResult.data ?? [];
   const config = resolveAnomalyConfig(settings.data?.anomaly_config);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
@@ -56,6 +60,8 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const parcels = worked.reduce((n, d) => n + (d.parcels ?? 0), 0);
   const myCosts = costs.filter((c) => c.allocation.scope === "driver" && c.allocation.driverId === id);
   const monthCosts = myCosts.filter((c) => c.date >= monthStart);
+  const monthWage = wageForDriver(id, worked.map((d) => d.date), dayRates);
+  const currentRate = dayRates.find((r) => r.effectiveFrom <= ctx.today) ?? null;
 
   // Stop consistency: each day against the driver's own previous working days.
   const conflictDates = new Set(
@@ -104,6 +110,36 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
             {stops > 0 ? ` · ${formatGBP(perUnit(monthOriginal, stops))} per stop · ${(parcels / stops).toFixed(2)} parcels per stop` : ""}
           </p>
         </Panel>
+      </Section>
+
+      <Section
+        title="Day rate and wage"
+        description="The wage is the day rate in force on each day worked, added up. Changing the rate never alters wages already worked."
+        actions={ctx.canWrite ? <SetDayRateForm driverId={id} today={ctx.today} /> : null}
+      >
+        <dl className="grid gap-4 sm:grid-cols-3">
+          <Stat label="Current day rate" value={currentRate ? formatGBP(currentRate.dayRate) : "Not set"} />
+          <Stat label="Days worked this month" value={String(monthWage.daysWorked)} />
+          <Stat
+            label="Wage this month"
+            value={monthWage.complete ? formatGBP(monthWage.wage) : `${formatGBP(monthWage.wage)} (incomplete)`}
+            sub={monthWage.complete ? undefined : `${monthWage.missingDates.length} worked day(s) have no day rate in force.`}
+          />
+        </dl>
+        {rateRows.length > 0 ? (
+          <TableWrap>
+            <table className="table">
+              <thead><tr><th>From</th><th className="r">Day rate</th><th>Note</th></tr></thead>
+              <tbody>
+                {rateRows.map((r) => (
+                  <tr key={r.id}><td>{formatUkDate(r.effective_from)}</td><td className="r num">{formatGBP(fromDb(r.day_rate))}</td><td>{r.note ?? ""}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        ) : (
+          <EmptyState title="No day rate set yet">Set the amount this driver is paid for each day worked. Wages cannot be worked out until a rate is set.</EmptyState>
+        )}
       </Section>
 
       <Section title="Earnings history" description="Last 45 days. DPD figures are shown exactly as imported; adjustments are separate.">

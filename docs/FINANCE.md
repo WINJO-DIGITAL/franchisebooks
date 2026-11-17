@@ -31,6 +31,14 @@ All figures shown anywhere in the app (dashboard, driver pages, reports, exports
 * Driver cover moves *pay* between drivers with two linked adjustments that sum to the same total, so franchise driver costs are unchanged. The owner chooses whether that day's fuel/expenses stay with the original driver, follow the covering driver, or go to the franchise. Cancelling the cover reverses its adjustments.
 * Combined (all-franchise) profit is only shown when every franchise with costs has revenue entered; otherwise it would silently understate revenue.
 
+## Driver wages (day rates)
+
+* Each driver has a **day rate** (what they are paid per day worked), set on the driver's page. Rates are append-only: a change is a new row with an *applies from* date, so wages already worked never move.
+* **Wage** for a period = the sum, over each day the driver worked, of the day rate in force on that day. A day worked on several routes counts once.
+* A worked day with **no rate in force** is never counted as zero. The wage is shown as *incomplete* and the missing dates are listed.
+* The wage is a driver cost. It is separate from franchise revenue, which is entered on its own.
+* Code: `src/lib/finance/wages.ts` (tested in `tests/unit/wages.test.ts`), table `driver_day_rates`.
+
 ## Revenue
 
 Revenue entries are per franchise, per month or per day, with status *confirmed* or *estimated*, and sit inside one calendar month (a database constraint) so reports never have to apportion them. If the real DPD documents turn out to carry franchise revenue, it can be imported into the same table.

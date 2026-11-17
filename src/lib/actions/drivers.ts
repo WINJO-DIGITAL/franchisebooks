@@ -6,7 +6,8 @@ import { z } from "zod";
 import { getContext } from "@/lib/context";
 import { normaliseName } from "@/lib/ingest/match";
 import { dbFailure, fail, ok, parseForm, type ActionState } from "./helpers";
-import { isoDate, optionalIsoDate, optionalText, optionalUuid, registration, uuid } from "./schemas";
+import { moneyAmount, isoDate, optionalIsoDate, optionalText, optionalUuid, registration, uuid } from "./schemas";
+import { toDb } from "@/lib/money";
 
 const driverFields = {
   displayName: z.string().min(2, "Enter the driver's name.").max(120),
@@ -175,4 +176,40 @@ export async function linkUnregisteredDriver(_prev: ActionState, formData: FormD
 
   revalidatePath("/", "layout");
   return ok(`Done. ${linked ?? 0} report ${linked === 1 ? "day is" : "days are"} now linked to this driver, and future reports will match automatically.`);
+}
+
+/**
+ * Sets the day rate a driver is paid from a date. Append-only: changing the rate
+ * adds a new row, so wages already worked are never altered.
+ */
+const dayRateSchema = z.object({
+  driverId: uuid,
+  dayRate: moneyAmount,
+  effectiveFrom: isoDate,
+  note: optionalText(500),
+});
+
+export async function setDayRate(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const ctx = await getContext();
+  if (!ctx.canWrite) return fail("You do not have permission to change day rates.");
+  const parsed = parseForm(dayRateSchema, formData);
+  if ("error" in parsed) return parsed.error;
+  const d = parsed.data;
+  if (d.effectiveFrom > ctx.today) return fail("A day rate cannot start in the future.", null, { effectiveFrom: "Choose today or an earlier date." });
+
+  const { error } = await ctx.supabase.from("driver_day_rates").insert({
+    account_id: ctx.accountId,
+    driver_id: d.driverId,
+    day_rate: Number(toDb(d.dayRate)),
+    effective_from: d.effectiveFrom,
+    note: d.note,
+    created_by: ctx.userId,
+  });
+  if (error) {
+    return error.code === "23505"
+      ? fail("A day rate already starts on that date. Choose a different date.", error.message, { effectiveFrom: "A rate already starts on this date." })
+      : dbFailure(error);
+  }
+  revalidatePath(`/drivers/${d.driverId}`);
+  return ok("Day rate saved. Earlier wages are unchanged.");
 }

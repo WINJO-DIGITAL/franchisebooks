@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addAssignment, createDriver, endAssignment, linkUnregisteredDriver, updateDriver } from "@/lib/actions/drivers";
+import { addAssignment, createDriver, endAssignment, linkUnregisteredDriver, setDayRate, updateDriver } from "@/lib/actions/drivers";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -195,6 +195,34 @@ export function LinkDriverForm({ franchiseId, driverKey, sourceName, drivers }: 
               ) : null}
               <p className="text-sm text-muted">The DPD figures themselves are not changed — they are simply linked to the right person.</p>
               <SubmitButton>Confirm</SubmitButton>
+            </>
+          )}
+        </ActionForm>
+      </Dialog>
+    </>
+  );
+}
+
+export function SetDayRateForm({ driverId, today }: { driverId: string; today: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Set day rate</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Set day rate">
+        <ActionForm action={setDayRate} className="space-y-4" onSuccess={() => setOpen(false)}>
+          {(state) => (
+            <>
+              <input type="hidden" name="driverId" value={driverId} />
+              <Field label="Amount paid per day worked (£)" hint="For example 160 or 160.50." error={state.fieldErrors?.dayRate}>
+                <Input name="dayRate" inputMode="decimal" required />
+              </Field>
+              <Field label="Applies from" hint="Days worked on or after this date use this rate." error={state.fieldErrors?.effectiveFrom}>
+                <Input name="effectiveFrom" type="date" defaultValue={today} max={today} required />
+              </Field>
+              <Field label="Note (optional)">
+                <Input name="note" />
+              </Field>
+              <SubmitButton>Save day rate</SubmitButton>
             </>
           )}
         </ActionForm>

@@ -161,6 +161,32 @@ isOneToOne: false
       referencedColumns: ["id","account_id"]
     }
                   ]
+                },"driver_day_rates": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"day_rate": number,"driver_id": string,"effective_from": string,"id": string,"note": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"day_rate": number,"driver_id": string,"effective_from": string,"id"?: string,"note"?: string | null
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"day_rate"?: number,"driver_id"?: string,"effective_from"?: string,"id"?: string,"note"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "driver_day_rates_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "driver_day_rates_driver_id_account_id_fkey"
+      columns: ["driver_id","account_id"]
+isOneToOne: false
+      referencedRelation: "drivers"
+      referencedColumns: ["id","account_id"]
+    }
+                  ]
                 },"driver_assignments": {
                   Row: {
                     "account_id": string,"created_at": string,"created_by": string | null,"driver_id": string,"end_date": string | null,"franchise_id": string,"id": string,"notes": string | null,"route": string | null,"start_date": string,"updated_at": string,"vehicle_registration": string | null
