@@ -20,7 +20,7 @@ export default defineConfig({
   },
   projects: [
     { name: "setup", testMatch: /auth\.setup\.ts/ },
-    { name: "desktop", testIgnore: /auth\.setup\.ts|auth\.spec\.ts/, use: { ...devices["Desktop Chrome"], storageState: "tests/e2e/.auth/owner.json" }, dependencies: ["setup"] },
+    { name: "desktop", testIgnore: /auth\.setup\.ts|auth\.spec\.ts|responsive\.spec\.ts/, use: { ...devices["Desktop Chrome"], storageState: "tests/e2e/.auth/owner.json" }, dependencies: ["setup"] },
     { name: "mobile", testMatch: /responsive\.spec\.ts/, use: { ...devices["Pixel 7"], storageState: "tests/e2e/.auth/owner.json" }, dependencies: ["setup"] },
     { name: "signed-out", testMatch: /auth\.spec\.ts/, use: { ...devices["Desktop Chrome"] } },
   ],

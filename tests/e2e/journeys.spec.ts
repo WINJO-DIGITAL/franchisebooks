@@ -137,8 +137,9 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByRole("row", { name: /E2E two front tyres/ })).toContainText("Alex Example");
     // Clean up: remove from totals with a reason.
     await page.getByRole("row", { name: /E2E two front tyres/ }).getByRole("button", { name: "Remove" }).click();
-    await page.getByLabel(/Why\?/).fill("E2E clean-up");
-    await page.getByRole("button", { name: "Remove" }).last().click();
+    const dialog = page.getByRole("dialog", { name: "Remove this cost from the totals" });
+    await dialog.getByLabel(/Why\?/).fill("E2E clean-up");
+    await dialog.getByRole("button", { name: "Remove" }).click();
     await expect(page.getByText("E2E two front tyres")).toHaveCount(0);
   });
 
@@ -184,6 +185,8 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await page.getByLabel("Amount received from DPD").fill("12000");
     await page.getByLabel("Is this figure confirmed?").selectOption("confirmed");
     await page.getByRole("button", { name: "Save revenue" }).click();
-    await expect(page.getByText(/Revenue of £12,000\.00 saved as confirmed/)).toBeVisible();
+    // The dialog closes on success; the new entry appears in the table.
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("row", { name: /Confirmed.*£12,000\.00/ }).first()).toBeVisible();
   });
 });
