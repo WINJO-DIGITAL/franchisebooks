@@ -111,12 +111,12 @@ test.describe("forgotten password", () => {
     await page.getByLabel("New password", { exact: true }).fill("short");
     await page.getByLabel("Type it again").fill("short");
     await page.getByRole("button", { name: "Save new password" }).click();
-    await expect(page.getByText("Use at least 10 characters.")).toBeVisible();
+    await expect(page.getByRole("alert").getByText("Use at least 10 characters.")).toBeVisible();
 
     await page.getByLabel("New password", { exact: true }).fill(newPassword);
     await page.getByLabel("Type it again").fill(`${newPassword}x`);
     await page.getByRole("button", { name: "Save new password" }).click();
-    await expect(page.getByText("The two passwords do not match.")).toBeVisible();
+    await expect(page.getByRole("alert").getByText("The two passwords do not match.")).toBeVisible();
 
     await page.getByLabel("New password", { exact: true }).fill(newPassword);
     await page.getByLabel("Type it again").fill(newPassword);

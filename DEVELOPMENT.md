@@ -12,8 +12,9 @@ _Living document. Last updated 17 November 2026._
 | 4. Integrations | Built and tested against synthetic stand-ins; **not run against real DPD or real Dropbox** |
 | 5. Financial intelligence | Done |
 | 6. Reporting | Done |
-| 7. Quality assurance | Done for what can be tested locally — 266 automated tests + 27 browser tests green (see below) |
-| 8. Deployment | Prepared (config, Dockerfile, guide); **not deployed** |
+| (merge) | Work from the `ops-qa` branch (CI, error pages, health check, accessibility and responsive tests, runbook, deploy configs) combined with the application; see `docs/OPS_NOTES.md` |
+| 7. Quality assurance | Done for what can be tested locally — 332 automated tests + 145 browser tests green (see below) |
+| 8. Deployment | Prepared (Vercel/Fly/Railway/Render configs, worker image built and run locally, CI workflow, runbook); **not deployed** |
 
 ## What has and has not been tested
 
@@ -31,7 +32,7 @@ _Living document. Last updated 17 November 2026._
 | DPD browser automation against a **synthetic mock portal**: login, read-only network guard, refusing write-looking clicks, MFA stop, bad password, layout change → diagnostic screenshot + retry, untrusted report → review | integration (real headless Chromium) | 10 |
 | Dropbox OAuth URL, token refresh, revoked access, incremental sync, duplicates, conflicts, webhook signature | integration (fake Dropbox API) | 12 |
 | Scheduler tick (no double queueing, concurrency, crash recovery, month-end), cron auth, report generation | integration | 11 |
-| Browser journeys: sign-in/out, dashboard, adjustment wizard + reversal, cover, upload + duplicate, held document, expense assign/void, report download, drivers, alerts, revenue, no sideways scrolling and bottom navigation on every page at phone size | Playwright e2e (desktop + Pixel 7), run twice consecutively | 27 |
+| Browser journeys: sign-in/out, dashboard, adjustment wizard + reversal, cover, upload + duplicate, held document, expense assign/void, report download, drivers, alerts, revenue, no sideways scrolling and bottom navigation on every page at phone size | Playwright e2e (desktop + Pixel 7), run twice consecutively | 145 (desktop, phone, and the demo-data journeys) |
 
 **NOT tested — needs credentials or a live environment:**
 
@@ -49,6 +50,10 @@ _Living document. Last updated 17 November 2026._
 * "Sign out" ended the session on **every** device; it now signs out the current device only (found by the browser tests).
 * Dropbox webhook returned 503 when Dropbox is unconfigured; browser test accepts 403/503 as "refused".
 * `npm audit` (production): 2 moderate findings in the `exceljs` dependency tree (minimatch/uuid). Not exploitable here — Excel files are parsed server-side from the owner's own uploads — but worth upgrading when `exceljs` releases a fix.
+
+* Password-reset email links ended on the sign-in page (redirect allow-list, host mismatch and a wrong-host redirect); fixed, with a browser test that follows the real emailed link.
+* Field error text was part of the field's accessible name; forms wiped typed values after a rejected submission; header and toolbars overflowed at 320px wide. All fixed and covered by tests.
+* Worker image: built and run (health endpoint, token check, Chromium launches). Built here with the sandbox's proxy certificate injected; a normal network needs nothing extra.
 
 ## Known limitations
 
