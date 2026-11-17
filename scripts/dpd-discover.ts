@@ -26,7 +26,13 @@ async function main() {
     console.error("Set DPD_PORTAL_URL, DPD_USERNAME and DPD_PASSWORD first. Nothing has been contacted.");
     process.exit(1);
   }
-  const map = portalMapSchema.parse({ version: 1, franchise: { mode: "none" }, reports: [{ id: "placeholder", label: "placeholder", kind: "earnings", navigate: [], collect: { mode: "table" } }] });
+  // The sign-in form posts to the portal's /esg/user/ endpoint (observed), so that single POST is allowed during login.
+  const map = portalMapSchema.parse({
+    version: 1,
+    login: { postPatterns: ["^https://myportal\\.drivers\\.dpd\\.co\\.uk/esg/user/?(\\?.*)?$"] },
+    franchise: { mode: "none" },
+    reports: [{ id: "placeholder", label: "placeholder", kind: "earnings", navigate: [], collect: { mode: "table" } }],
+  });
   const session = await PortalSession.open(credentials, map);
   try {
     console.log("Signing in (read-only)…");

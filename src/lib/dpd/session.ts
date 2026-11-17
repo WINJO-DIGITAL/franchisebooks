@@ -63,6 +63,8 @@ export class PortalSession {
       context.setDefaultNavigationTimeout(45_000);
       await guard.install(context);
       const page = await context.newPage();
+      // Code compiled by tsx adds a `__name` helper to functions passed to page.evaluate; define it in the page too.
+      await page.addInitScript({ content: "window.__name = window.__name || ((f) => f);" });
       return new PortalSession(browser, context, page, guard, credentials, map);
     } catch (error) {
       await browser.close().catch(() => undefined);
@@ -144,8 +146,11 @@ export class PortalSession {
     await this.settle();
 
     const body = (await this.page.locator("body").innerText().catch(() => "")).slice(0, 4000);
-    const signedIn = await this.page.getByRole("link", { name: new RegExp(login.signedInName, "i") })
-      .or(this.page.getByRole("button", { name: new RegExp(login.signedInName, "i") })).count();
+    // The portal is an Angular app: its navigation (including "Log out") is drawn a few seconds after the page loads.
+    const signedInMarker = this.page.getByRole("link", { name: new RegExp(login.signedInName, "i") })
+      .or(this.page.getByRole("button", { name: new RegExp(login.signedInName, "i") }));
+    await signedInMarker.first().waitFor({ state: "attached", timeout: 20_000 }).catch(() => undefined);
+    const signedIn = await signedInMarker.count();
 
     if (!signedIn) {
       if (MFA_TEXT.test(body)) {
