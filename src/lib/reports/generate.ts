@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { formatMonth, type YearMonth } from "@/lib/dates";
 import { toDb } from "@/lib/money";
 import type { AdminClient } from "@/lib/supabase/admin";
@@ -14,7 +15,7 @@ export async function generateMonthlyReport(
   const report = await buildMonthlyReport(db, input);
   const pdf = await renderMonthlyReportPdf(report);
   const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
-  const storagePath = `${input.accountId}/${input.month}/${input.franchiseId ?? "all"}-${stamp}.pdf`;
+  const storagePath = `${input.accountId}/${input.month}/${input.franchiseId ?? "all"}-${stamp}-${randomUUID().slice(0, 8)}.pdf`;
   const upload = await db.storage.from("reports").upload(storagePath, pdf, { contentType: "application/pdf", upsert: false });
   if (upload.error) throw new Error(`Could not store the report: ${upload.error.message}`);
 
