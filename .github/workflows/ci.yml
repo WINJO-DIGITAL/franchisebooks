@@ -61,7 +61,10 @@ jobs:
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
             echo "SUPABASE_DB_URL=$DB_URL"
             echo "ENCRYPTION_KEY=$CI_ENCRYPTION_KEY"
+            echo "CRON_SECRET=ci-cron-secret-not-a-real-secret"
           } > .env.local
+      - name: Install the browser (the DPD portal tests drive a headless Chromium)
+        run: npx playwright install --with-deps chromium
       - name: Database tests
         run: npm run test:db
       - name: Integration tests
