@@ -1,0 +1,176 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Badge, EmptyState, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
+import { buttonClass, LinkButton } from "@/components/ui/button";
+import { franchiseLabel, getContext } from "@/lib/context";
+import { loadPeriodData } from "@/lib/data/period";
+import { addDays, addMonths, formatMonth, formatUkDate, formatUkDateLong, isISODate, isYearMonth, monthOf, monthRange } from "@/lib/dates";
+import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
+import { SOURCE_LABEL } from "@/lib/labels";
+import { formatGBP, sumPence } from "@/lib/money";
+
+export const metadata: Metadata = { title: "Earnings" };
+
+export default async function EarningsPage({ searchParams }: { searchParams: Promise<{ date?: string; month?: string }> }) {
+  const params = await searchParams;
+  const ctx = await getContext();
+  const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
+  const showFranchise = !ctx.franchise && ctx.franchises.length > 1;
+
+  // ── Month view ────────────────────────────────────────────────────────────
+  if (isYearMonth(params.month)) {
+    const month = params.month;
+    const { start, end } = monthRange(month);
+    const data = await loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId });
+    const summary = summarisePeriod(data);
+    const t = summary.combined;
+    const rows = summary.franchises.filter((f) => f.franchiseId).flatMap((f) => f.drivers.map((d) => ({ ...d, franchise: franchiseName.get(f.franchiseId!) ?? "" })));
+    return (
+      <>
+        <PageHeader
+          title="Earnings"
+          description={`${formatMonth(month)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
+          actions={<><LinkButton href="/earnings" variant="secondary">Daily view</LinkButton><a className={buttonClass("secondary")} href={`/api/export/drivers?month=${month}`}>Download spreadsheet</a></>}
+        />
+        <div className="mb-6 flex items-center gap-2">
+          <Link href={`/earnings?month=${addMonths(month, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous month"><ChevronLeft className="size-4" aria-hidden /></Link>
+          <span className="min-w-36 text-center font-medium">{formatMonth(month)}</span>
+          {addMonths(month, 1) <= monthOf(ctx.today) ? <Link href={`/earnings?month=${addMonths(month, 1)}`} className={buttonClass("secondary", "sm")} aria-label="Next month"><ChevronRight className="size-4" aria-hidden /></Link> : null}
+        </div>
+        <Section>
+          <Panel>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+              <Stat size="lg" label="Driver pay" value={formatGBP(t.driverCosts)} sub="After adjustments" />
+              <Stat label="DPD earnings" value={formatGBP(t.driverOriginalEarnings)} sub="As imported" />
+              <Stat label="Additional payments" value={formatGBP(t.driverAdditionalPayments)} />
+              <Stat label="Deductions" value={formatGBP(t.driverDeductions)} />
+            </div>
+          </Panel>
+        </Section>
+        {rows.length === 0 ? <EmptyState title="No earnings for this month" /> : (
+          <TableWrap>
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th className="r">Days</th><th className="r">Parcels</th><th className="r">Stops</th>
+                  <th className="r">Per stop</th><th className="r">DPD earnings</th><th className="r">Added</th><th className="r">Deducted</th><th className="r">Final pay</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((d) => (
+                  <tr key={`${d.franchiseId}-${d.key}`}>
+                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
+                    {showFranchise ? <td>{d.franchise}</td> : null}
+                    <td className="r num">{d.daysWorked}</td>
+                    <td className="r num">{d.parcels.toLocaleString("en-GB")}</td>
+                    <td className="r num">{d.stops.toLocaleString("en-GB")}</td>
+                    <td className="r num">{formatGBP(d.earningsPerStop)}</td>
+                    <td className="r num">{formatGBP(d.originalEarnings)}</td>
+                    <td className="r num">{d.additionalPayments ? formatGBP(d.additionalPayments, { signed: true }) : "—"}</td>
+                    <td className="r num">{d.deductions ? formatGBP(-d.deductions) : "—"}</td>
+                    <td className="r num font-semibold">{formatGBP(d.finalEarnings)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total</td>{showFranchise ? <td /> : null}<td /><td className="r num">{t.parcels.toLocaleString("en-GB")}</td><td className="r num">{t.stops.toLocaleString("en-GB")}</td><td />
+                  <td className="r num">{formatGBP(t.driverOriginalEarnings)}</td><td className="r num">{formatGBP(t.driverAdditionalPayments, { signed: true })}</td>
+                  <td className="r num">{formatGBP(-t.driverDeductions)}</td><td className="r num">{formatGBP(t.driverCosts)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </TableWrap>
+        )}
+      </>
+    );
+  }
+
+  // ── Day view ──────────────────────────────────────────────────────────────
+  let date = isISODate(params.date) ? params.date : null;
+  if (!date) {
+    let q = ctx.supabase.from("daily_earnings").select("report_date").eq("is_current", true).lte("report_date", ctx.today).order("report_date", { ascending: false }).limit(1);
+    if (ctx.franchiseId) q = q.eq("franchise_id", ctx.franchiseId);
+    const { data: latest } = await q;
+    date = latest?.[0]?.report_date ?? ctx.today;
+  }
+  const data = await loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: date, to: date, franchiseId: ctx.franchiseId });
+  const days = buildDriverDays(data.earnings, data.adjustments, data.driverNames).sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
+  const fileByKey = new Map(data.earnings.map((e) => [`${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`, e]));
+  const totalOriginal = sumPence(days.map((d) => d.originalEarnings));
+  const totalAdjust = sumPence(days.map((d) => d.adjustmentsNet));
+
+  return (
+    <>
+      <PageHeader
+        title="Earnings"
+        description={`${formatUkDateLong(date)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
+        actions={<><LinkButton href={`/earnings?month=${monthOf(date)}`} variant="secondary">Monthly view</LinkButton>{ctx.canWrite ? <LinkButton href={`/adjustments/new?date=${date}`}>Add Pay Adjustment</LinkButton> : null}</>}
+      />
+      <form method="get" className="mb-6 flex flex-wrap items-center gap-2">
+        <Link href={`/earnings?date=${addDays(date, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous day"><ChevronLeft className="size-4" aria-hidden /></Link>
+        <label className="sr-only" htmlFor="earnings-date">Date</label>
+        <input id="earnings-date" type="date" name="date" defaultValue={date} max={ctx.today} className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-sm" />
+        <button type="submit" className={buttonClass("secondary", "sm")}>Go</button>
+        {date < ctx.today ? <Link href={`/earnings?date=${addDays(date, 1)}`} className={buttonClass("secondary", "sm")} aria-label="Next day"><ChevronRight className="size-4" aria-hidden /></Link> : null}
+      </form>
+
+      <Section>
+        <Panel>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+            <Stat size="lg" label="Driver pay" value={formatGBP(totalOriginal + totalAdjust)} sub="After adjustments" />
+            <Stat label="DPD earnings" value={formatGBP(totalOriginal)} sub="As imported" />
+            <Stat label="Adjustments" value={totalAdjust === 0 ? "None" : formatGBP(totalAdjust, { signed: true })} />
+            <Stat label="Stops" value={days.reduce((n, d) => n + (d.stops ?? 0), 0).toLocaleString("en-GB")} sub={`${days.reduce((n, d) => n + (d.parcels ?? 0), 0).toLocaleString("en-GB")} parcels`} />
+          </div>
+        </Panel>
+      </Section>
+
+      {days.length === 0 ? (
+        <EmptyState title={`No earnings for ${formatUkDate(date)}`} action={<LinkButton href="/data" variant="secondary">Go to Data &amp; Integrations</LinkButton>}>
+          No DPD report has been imported for this day. Sync DPD, or upload the report by hand.
+        </EmptyState>
+      ) : (
+        <TableWrap>
+          <table className="ledger">
+            <thead>
+              <tr>
+                <th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th className="r">Parcels</th><th className="r">Stops</th><th className="r">Gross</th>
+                <th className="r">DPD deductions</th><th className="r">DPD extras</th><th className="r">DPD earnings</th><th className="r">Adjustments</th><th className="r">Final pay</th><th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {days.map((d) => {
+                const source = fileByKey.get(`${d.franchiseId}|${d.key}`);
+                return (
+                  <tr key={`${d.franchiseId}-${d.key}`}>
+                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
+                    {showFranchise ? <td>{franchiseName.get(d.franchiseId) ?? ""}</td> : null}
+                    <td className="r num">{d.parcels ?? "—"}</td>
+                    <td className="r num">{d.stops ?? "—"}</td>
+                    <td className="r num">{d.hasReport ? formatGBP(d.gross) : "—"}</td>
+                    <td className="r num">{d.dpdDeductions ? formatGBP(-d.dpdDeductions) : "—"}</td>
+                    <td className="r num">{d.dpdAdditional ? formatGBP(d.dpdAdditional, { signed: true }) : "—"}</td>
+                    <td className="r num">{d.hasReport ? formatGBP(d.originalEarnings) : <span className="text-muted">No report</span>}</td>
+                    <td className="r num">{d.adjustmentCount === 0 ? "—" : formatGBP(d.adjustmentsNet, { signed: true })}</td>
+                    <td className="r num font-semibold">{formatGBP(d.finalEarnings)}</td>
+                    <td className="text-sm">{source ? <a href={`/api/files/${source.importedFileId}`} className="text-accent hover:underline">{SOURCE_LABEL[source.source] ?? "Document"}</a> : <span className="text-muted">—</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>Total</td>{showFranchise ? <td /> : null}<td className="r num">{days.reduce((n, d) => n + (d.parcels ?? 0), 0)}</td><td className="r num">{days.reduce((n, d) => n + (d.stops ?? 0), 0)}</td>
+                <td className="r num">{formatGBP(sumPence(days.map((d) => d.gross)))}</td><td /><td />
+                <td className="r num">{formatGBP(totalOriginal)}</td><td className="r num">{totalAdjust === 0 ? "—" : formatGBP(totalAdjust, { signed: true })}</td>
+                <td className="r num">{formatGBP(totalOriginal + totalAdjust)}</td><td />
+              </tr>
+            </tfoot>
+          </table>
+        </TableWrap>
+      )}
+    </>
+  );
+}

@@ -8,7 +8,7 @@ import { baselineOf, classifyStops, resolveAnomalyConfig, STOP_CONSISTENCY_LABEL
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadAdjustments, loadCosts, loadEarnings } from "@/lib/data/period";
 import { addDays, addMonths, formatMonth, formatUkDate, formatUkDateLong, monthOf, monthRange } from "@/lib/dates";
-import { buildDriverDays, originalEarnings, totalAdjustments } from "@/lib/finance/calc";
+import { buildDriverDays, totalAdjustments } from "@/lib/finance/calc";
 import { adjustmentLabel } from "@/lib/labels";
 import { formatGBP, percentChange, perUnit, sumPence } from "@/lib/money";
 import type { Tone } from "@/components/ui/bits";
