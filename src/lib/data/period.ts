@@ -10,6 +10,7 @@ import type {
   AdjustmentRow, AdjustmentType, CostAllocation, CostRow, CoverRow, EarningRow, EarningsMeaning, OtherPaymentRow, PeriodInput, RevenueAllocationBasis, RevenueRow,
 } from "@/lib/finance/calc";
 import type { DayRate } from "@/lib/finance/wages";
+import { DAILY_PAYMENT_LINE } from "@/lib/ingest/invoice";
 import { fromDb, fromDbNullable } from "@/lib/money";
 import type { Database } from "@/lib/supabase/database.types";
 import { fetchAll, must } from "./fetch-all";
@@ -295,9 +296,6 @@ export async function loadDayRates(db: Db, accountId: string): Promise<DayRate[]
   const rows = await fetchAll(() => db.from("driver_day_rates").select("driver_id, day_rate, effective_from").eq("account_id", accountId).order("effective_from").order("id"));
   return rows.map((r) => ({ driverId: r.driver_id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from }));
 }
-
-/** The invoice lines that are NOT daily stop pay (those are already in the daily Payments), from trusted invoices only. */
-const DAILY_PAYMENT_LINE = /successful|collection|delivery\s+stops|\bstops\b|excess\s*parcels|\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b/i;
 
 export interface OtherPaymentDetail extends OtherPaymentRow {
   invoiceDate: ISODate;

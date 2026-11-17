@@ -9,7 +9,7 @@ except where this section says otherwise.
 | --- | --- |
 | Your Account → Payments | Per-day, per-driver rows for a four-week period: date, stops, total parcels, excess parcels, stop pay, parcel pay, total, route, mileage, driver. Filters: Routes (FD numbers), Year, Period (13 a year). History back to 2021. A per-period fuel supplement line. Row downloads. **Imported.** |
 | Your Account → Charges | Fixed and variable cost lines per period, amounts shown excluding VAT. Same filters. **Imported as expenses.** |
-| Your Account → Invoices | Monthly self-billed invoice, DPD invoice and remittance advice (PDF downloads). **Not imported** (no importer). |
+| Your Account → Invoices | Monthly self-billed invoice, DPD invoice and remittance advice (PDF downloads). **Self-billed invoices imported nightly** into `dpd_invoices` (read with OCR; only new ones are downloaded). DPD invoices and remittance advice not used. |
 | Your Drivers | Driver list with number, status, depot and rating. **Not imported.** |
 | Overview, Messages, Help, DPD Media | Compliments and feedback; messages; policy PDFs; videos. Not used. |
 | Fuel card, vehicles, routes (as separate pages) | **Not found** in this portal. |

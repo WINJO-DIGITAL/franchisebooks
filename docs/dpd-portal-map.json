@@ -34,8 +34,8 @@
         "transform": {
           "rename": {
             "Total Parcels": "Parcels",
-            "Parcels": "Parcel pay (\u00a3)",
-            "Stop": "Stop pay (\u00a3)",
+            "Parcels": "Parcel pay (£)",
+            "Stop": "Stop pay (£)",
             "Total": "Gross earnings"
           },
           "dropRows": [
@@ -98,6 +98,32 @@
           ]
         },
         "tableHeader": "^(?=.*Charge)(?!.*Balance)"
+      }
+    },
+    {
+      "id": "invoices",
+      "label": "Self-billed invoices",
+      "kind": "invoices",
+      "navigate": [
+        {
+          "action": "goto",
+          "path": "/manage-account#/invoices"
+        },
+        {
+          "action": "select",
+          "label": "Routes",
+          "option": "{fd}"
+        }
+      ],
+      "date": {
+        "mode": "none"
+      },
+      "collect": {
+        "mode": "invoices",
+        "yearLabel": "Year",
+        "rowPattern": "Self Billed",
+        "numberColumn": 1,
+        "max": 40
       }
     }
   ]

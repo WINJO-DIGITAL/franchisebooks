@@ -4,7 +4,7 @@
  */
 
 import type { Browser, BrowserContext, Download, Locator, Page } from "playwright";
-import type { ISODate } from "@/lib/dates";
+import { londonToday, type ISODate } from "@/lib/dates";
 import { scrubSecrets } from "@/lib/logger";
 import { PortalError } from "./errors";
 import { ReadOnlyGuard, safeClick, WRITE_ACTION_PATTERN } from "./guard";
@@ -271,12 +271,16 @@ export class PortalSession {
   }
 
   /** Navigates to one report for one franchise and date, and collects its document(s). */
-  async collectReport(report: PortalReport, fd: string, date: ISODate): Promise<CollectedDocument[]> {
+  async collectReport(report: PortalReport, fd: string, date: ISODate, options: { knownInvoiceNumbers?: ReadonlySet<string> } = {}): Promise<CollectedDocument[]> {
     const values: TemplateValues = { fd, date, period: null };
     await this.runSteps(report.navigate, values, `${report.id}:navigate`);
     await this.selectDate(report, values);
     const stem = `${report.id}_${fd.replace(/[^A-Za-z0-9]+/g, "-")}_${date}`;
     const sourceRef = `${new URL(this.page.url()).pathname} (${report.label})`;
+
+    if (report.collect.mode === "invoices") {
+      return this.collectInvoices(report, report.collect, fd, sourceRef, options.knownInvoiceNumbers ?? new Set());
+    }
 
     if (report.collect.mode === "download") {
       const { locator, name } = this.locate(report.collect.trigger, values);
@@ -349,6 +353,59 @@ export class PortalSession {
     const [yyyy, mm, dd] = date.split("-");
     const lines = [`Franchise: ${fd},Report date: ${dd}/${mm}/${yyyy}`, ...rows.filter((r) => r.length > 0).map((r) => r.map(csvCell).join(","))];
     return [{ filename: `${stem}.csv`, mimeType: "text/csv", bytes: new Uint8Array(Buffer.from(lines.join("\r\n") + "\r\n", "utf8")), sourceRef }];
+  }
+
+  /**
+   * Self-billed invoices for one franchise: every invoice row in the current year (and last year in January) whose
+   * number is not already stored. Each PDF is fetched through the browser's own session, like a link download.
+   */
+  private async collectInvoices(
+    report: PortalReport,
+    config: Extract<PortalReport["collect"], { mode: "invoices" }>,
+    fd: string,
+    sourceRef: string,
+    known: ReadonlySet<string>,
+  ): Promise<CollectedDocument[]> {
+    const yearSelect = this.page.getByLabel(new RegExp(`^\\s*${escapeRegExp(config.yearLabel)}`, "i")).first();
+    await yearSelect.waitFor({ state: "attached", timeout: 20_000 }).catch(() => undefined);
+    if (!(await yearSelect.count())) {
+      throw new PortalError("layout", `${report.id}:year`, `The “${config.yearLabel}” filter was not found on the “${report.label}” page. The portal layout may have changed.`);
+    }
+    const today = londonToday();
+    const years = [today.slice(0, 4), ...(today.slice(5, 7) === "01" ? [String(Number(today.slice(0, 4)) - 1)] : [])];
+    const pattern = new RegExp(config.rowPattern, "i");
+    const seen = new Set<string>();
+    const found: { number: string; href: string }[] = [];
+
+    for (const year of years) {
+      const options = (await yearSelect.locator("option").allTextContents()).map((t) => t.trim());
+      if (!options.includes(year)) continue;
+      await yearSelect.selectOption({ label: year });
+      await this.page.locator("table tr").filter({ hasText: pattern }).first().waitFor({ state: "attached", timeout: 15_000 }).catch(() => undefined);
+      const rows = await this.page.locator("table tr").evaluateAll(
+        (trs, [source, column]) => trs
+          .filter((tr) => new RegExp(source, "i").test((tr as HTMLElement).innerText))
+          .map((tr) => ({
+            number: (tr.querySelectorAll("td")[column] as HTMLElement | undefined)?.innerText.trim() ?? "",
+            href: (tr.querySelector("a") as HTMLAnchorElement | null)?.href ?? "",
+          })),
+        [config.rowPattern, config.numberColumn] as const,
+      );
+      for (const row of rows) {
+        if (!row.number || !row.href || seen.has(row.number)) continue;
+        seen.add(row.number);
+        if (!known.has(row.number)) found.push(row);
+      }
+    }
+
+    const documents: CollectedDocument[] = [];
+    for (const row of found.slice(0, config.max)) {
+      await this.pace();
+      const response = await this.context.request.get(new URL(row.href, this.page.url()).toString());
+      if (!response.ok()) throw new PortalError("network", `${report.id}:invoices`, `Invoice ${row.number} for ${fd} could not be downloaded.`, `HTTP ${response.status()}`);
+      documents.push({ filename: `${row.number}.pdf`, mimeType: "application/pdf", bytes: new Uint8Array(await response.body()), sourceRef });
+    }
+    return documents;
   }
 
   private async readDownload(download: Download, stem: string, sourceRef: string): Promise<CollectedDocument> {

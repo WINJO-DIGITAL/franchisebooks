@@ -15,6 +15,7 @@ import "server-only";
 import { formatUkDate, londonToday } from "@/lib/dates";
 import { env } from "@/lib/env";
 import { importDocument, type ImportOutcome } from "@/lib/ingest/pipeline";
+import { importSelfBilledInvoice, type InvoiceImportOutcome } from "@/lib/ingest/invoice-import";
 import type { Job, JobOutcome } from "@/lib/jobs/queue";
 import { describeError, logger } from "@/lib/logger";
 import type { AdminClient } from "@/lib/supabase/admin";
@@ -112,13 +113,28 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   }
 
   const outcomes: ImportOutcome[] = [];
+  const invoices: InvoiceImportOutcome[] = [];
   const failures: { report: string; message: string }[] = [];
+  // Invoices already stored are not downloaded again; a new invoice is fetched on the first night it is listed.
+  const { data: storedInvoices } = await db.from("dpd_invoices").select("invoice_no").eq("account_id", job.account_id).eq("franchise_id", franchise.id);
+  const knownInvoiceNumbers = new Set((storedInvoices ?? []).map((r) => r.invoice_no));
 
   for (const report of map.reports) {
     try {
       // Each report starts from the franchise's landing page.
       await session.openFranchise(franchise.fd_number, date);
-      const documents = await session.collectReport(report, franchise.fd_number, date);
+      const documents = await session.collectReport(report, franchise.fd_number, date, { knownInvoiceNumbers });
+      if (report.kind === "invoices") {
+        for (const document of documents) {
+          const outcome = await importSelfBilledInvoice(db, { accountId: job.account_id, franchiseId: franchise.id, fdNumber: franchise.fd_number, portalInvoiceNo: document.filename.replace(/\.pdf$/i, ""), bytes: document.bytes });
+          invoices.push(outcome);
+          if (outcome.status === "stored" && outcome.invoiceNo) knownInvoiceNumbers.add(outcome.invoiceNo);
+          if (outcome.status !== "stored" || !outcome.reconciled) {
+            await logSync(db, job, "warning", "invoice_needs_checking", outcome.message, { invoiceNo: outcome.invoiceNo, status: outcome.status, reconciled: outcome.reconciled });
+          }
+        }
+        continue;
+      }
       for (const document of documents) {
         outcomes.push(await importDocument(db, {
           accountId: job.account_id, source: "dpd_portal", sourceRef: document.sourceRef, filename: document.filename,
@@ -152,18 +168,22 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   const inserted = outcomes.reduce((n, o) => n + o.inserted, 0);
   const needsReview = outcomes.filter((o) => o.status === "needs_review" || o.status === "failed").length;
   const blockedWrites = session.guard.blocked.length;
-  const result = { reportDate: date, documents: outcomes.length, inserted, needsReview, failures, blockedRequests: blockedWrites };
+  const invoicesStored = invoices.filter((i) => i.status === "stored").length;
+  const invoicesToCheck = invoices.filter((i) => i.status !== "stored" || !i.reconciled).length;
+  const result = { reportDate: date, documents: outcomes.length, inserted, needsReview, invoicesStored, invoicesToCheck, failures, blockedRequests: blockedWrites };
 
-  if (outcomes.length === 0 && failures.length > 0) {
+  if (outcomes.length === 0 && invoices.length === 0 && failures.length > 0) {
     await touchConnection(db, job.account_id, { error: failures[0]!.message });
     // Nothing at all could be collected: treat as a failure so it is retried.
     throw new PortalError("layout", "sync", failures[0]!.message, failures.map((f) => `${f.report}: ${f.message}`).join(" | "));
   }
 
   const parts = [`${inserted} new record${inserted === 1 ? "" : "s"} imported`];
+  if (invoicesStored > 0) parts.push(`${invoicesStored} new invoice${invoicesStored === 1 ? "" : "s"} stored`);
   if (needsReview > 0) parts.push(`${needsReview} report${needsReview === 1 ? "" : "s"} need checking`);
+  if (invoicesToCheck > 0) parts.push(`${invoicesToCheck} invoice${invoicesToCheck === 1 ? "" : "s"} need checking`);
   if (failures.length > 0) parts.push(`${failures.length} report${failures.length === 1 ? "" : "s"} could not be collected`);
-  const clean = failures.length === 0 && needsReview === 0;
+  const clean = failures.length === 0 && needsReview === 0 && invoicesToCheck === 0;
   const message = `${franchise.fd_number}, ${formatUkDate(date)}: ${clean ? "DPD synchronised successfully. " : ""}${parts.join(", ")}.`;
 
   await touchConnection(db, job.account_id, { success: true });

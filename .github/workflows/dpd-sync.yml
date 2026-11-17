@@ -74,6 +74,11 @@ jobs:
         if: steps.gate.outputs.run == 'true'
         run: npm ci --no-audit --no-fund
 
+      - name: Install the invoice reader (OCR)
+        if: steps.gate.outputs.run == 'true'
+        # DPD's self-billed invoices are pictures, so they are read with Tesseract, rendered by poppler.
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq tesseract-ocr poppler-utils
+
       - name: Restore the browser download
         if: steps.gate.outputs.run == 'true'
         uses: actions/cache@v4

@@ -124,8 +124,8 @@ describe("transformTable", () => {
 describe("the DPD portal map", () => {
   const map = portalMapSchema.parse(JSON.parse(readFileSync("docs/dpd-portal-map.json", "utf8")));
 
-  it("passes the portal map schema and covers Payments and Charges", () => {
-    expect(map.reports.map((r) => [r.id, r.kind])).toEqual([["payments", "earnings"], ["charges", "expenses"]]);
+  it("passes the portal map schema and covers Payments, Charges and the self-billed invoices", () => {
+    expect(map.reports.map((r) => [r.id, r.kind])).toEqual([["payments", "earnings"], ["charges", "expenses"], ["invoices", "invoices"]]);
   });
 
   it("turns a Payments table into earnings rows the importer accepts", async () => {

@@ -68,6 +68,20 @@ const collect = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("download"), trigger: target }),
   /** Fetch every link on the page whose name matches (e.g. one PDF per driver). */
   z.object({ mode: z.literal("links"), namePattern: z.string().min(1), max: z.number().int().positive().max(100).default(40) }),
+  /**
+   * The self-billed invoices list: one row per invoice, each with a link to its PDF. Only the current year is listed
+   * (plus the previous year in January). Invoices already stored are skipped, so each one is downloaded once.
+   */
+  z.object({
+    mode: z.literal("invoices"),
+    /** The drop-down that picks the year. */
+    yearLabel: z.string().default("Year"),
+    /** Rows whose text matches this are invoices; other rows (remittance advice, DPD invoices) are ignored. */
+    rowPattern: z.string().default("Self Billed"),
+    /** Zero-based column holding the invoice number. */
+    numberColumn: z.number().int().min(0).max(10).default(1),
+    max: z.number().int().positive().max(100).default(40),
+  }),
   /** Read an on-page table (converted to CSV for the import pipeline). tables "all" joins every table on the page that shares the first table's headings. */
   z.object({
     mode: z.literal("table"),
@@ -82,7 +96,7 @@ const collect = z.discriminatedUnion("mode", [
 export const reportSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   label: z.string().min(1),
-  kind: z.enum(["earnings", "fuel", "expenses"]),
+  kind: z.enum(["earnings", "fuel", "expenses", "invoices"]),
   /** Steps from the franchise's landing page to the report page. */
   navigate: z.array(step).max(8),
   date: dateSelection.default({ mode: "none" }),
