@@ -1,40 +1,67 @@
 # Development log
 
-_Living document. Updated at the end of each phase._
+_Living document. Last updated 17 November 2026._
 
 ## Status at a glance
 
 | Phase | State |
 | --- | --- |
-| 1. Discovery and architecture | Done (portal inspection itself is blocked on credentials — see below) |
-| 2. Foundation | In progress |
-| 3. Core application | Pending |
-| 4. Integrations | Pending (import pipeline done) |
-| 5. Financial intelligence | Pending (engine and database rules done) |
-| 6. Reporting | Pending |
-| 7. Quality assurance | Ongoing — tests are written alongside each part |
-| 8. Deployment | Pending |
+| 1. Discovery and architecture | Done, **except inspecting the real DPD portal** (no credentials were available) |
+| 2. Foundation | Done |
+| 3. Core application | Done |
+| 4. Integrations | Built and tested against synthetic stand-ins; **not run against real DPD or real Dropbox** |
+| 5. Financial intelligence | Done |
+| 6. Reporting | Done |
+| 7. Quality assurance | In progress — see test table |
+| 8. Deployment | Prepared (config, Dockerfile, guide); **not deployed** |
 
-## Completed
+## What has and has not been tested
 
-* Environment inspection, discovery report, architecture (`docs/`).
-* Supabase schema, integrity guards, audit triggers, RLS, RPC functions,
-  storage buckets (`supabase/migrations/`).
-* Money and UK date utilities; central finance engine; anomaly detection.
-* Document extraction (PDF/CSV/XLSX), parsers, matching, import pipeline.
-* Job queue helpers and schedule decision logic.
-* Tests: unit (finance, anomalies, parsing, matching, money, dates),
-  database (security + financial rules), integration (pipeline end to end).
+**Tested automatically (all against synthetic data):**
 
-## Blocked on external input
+| Area | How | Count |
+| --- | --- | --- |
+| Money, dates, UK formatting | unit | ~65 |
+| Financial calculations + reconciliation (original + adjustments = final, for generated data) | unit | ~25 |
+| Anomaly detection, stop-consistency classification | unit | ~25 |
+| PDF / CSV / Excel parsing, column recognition, matching | unit (real PDFs generated with PDFKit and parsed back) | ~45 |
+| Schedule (UK time / BST), retry backoff, crypto, secret scrubbing, report PDF content | unit | ~25 |
+| Row level security, franchise/business isolation, roles, append-only ledgers, cover, adjustments, imports, conflicts, job queue, audit | database tests against local Postgres as each role | 51 |
+| Import pipeline end to end, duplicates, review queue, reconciliation to DB sums | integration | ~15 |
+| DPD browser automation against a **synthetic mock portal**: login, read-only network guard, refusing write-looking clicks, MFA stop, bad password, layout change → diagnostic screenshot + retry, untrusted report → review | integration (real headless Chromium) | 10 |
+| Dropbox OAuth URL, token refresh, revoked access, incremental sync, duplicates, conflicts, webhook signature | integration (fake Dropbox API) | 12 |
+| Scheduler tick (no double queueing, concurrency, crash recovery, month-end), cron auth, report generation | integration | 11 |
+| Browser journeys: sign-in/out, dashboard, adjustment wizard + reversal, cover, upload + duplicate, held document, expense assign/void, report download, drivers, alerts, revenue, mobile layout of every page | Playwright e2e (desktop + phone) | see below |
 
-* **DPD portal**: no credentials → portal not inspected; portal map not
-  written; real sync untested.
-* **Dropbox**: no app key/secret → OAuth and sync untested against the real API.
-* **Production Supabase project**: organisation is on the Free plan with both
-  project slots used.
+**NOT tested — needs credentials or a live environment:**
+
+* Anything against the **real DPD portal** — login, navigation, downloads. The mock portal proves the mechanics, not DPD's actual pages.
+* **Parsing of real DPD documents.** Parsers are driven by column headings and verified on synthetic documents laid out like a typical tabular statement. Real layouts may need heading synonyms added (`src/lib/ingest/columns.ts`) — a one-line change each. Scanned/image PDFs cannot be read (no OCR) and go to review.
+* **Real Dropbox** (OAuth consent, webhook delivery from Dropbox).
+* Production Supabase, Vercel deployment, cron on Vercel, the worker on a host.
+* Email (password reset delivery).
+* Load/performance with a year of real data.
+
+## Known limitations
+
+* **Portal map is not written.** It can only be written after the portal has been explored with real credentials (`npm run dpd:discover`). Until then automatic DPD sync is off; Dropbox and manual upload work.
+* The meaning of DPD "earnings" vs franchise revenue is assumed per the brief (earnings = cost; revenue entered separately). See `docs/FINANCE.md`.
+* One business per deployment is the intended use (the schema is multi-tenant, onboarding creates one account per signed-up user, and public sign-up should be off).
+* Roles: `owner`, `manager`, `viewer`. There is no in-app screen for inviting extra users yet; add them with SQL or a script (the schema and RLS support them, including per-franchise access).
+* No OCR; no vehicle-level or route-level revenue; no payroll export.
+* Revenue sharing between drivers is an estimate by a chosen basis and is always labelled as such.
+* The demo data seeder and e2e tests only run against a local database (they refuse anything else).
+
+## External input needed to finish
+
+1. DPD portal URL + authorised login (worker env vars) → run exploration → portal map.
+2. Confirmation that automated access is permitted by your DPD agreement / portal terms; whether the portal uses MFA/CAPTCHA.
+3. 2–3 real sample documents (earnings, fuel, expenses) to calibrate parsers.
+4. Where franchise revenue can be obtained (statement/invoice?).
+5. Dropbox app key + secret.
+6. A production Supabase project (Free plan slots are both in use in the connected organisation).
+7. Vercel project + worker host.
 
 ## Next step
 
-Build the UI (auth, layout, dashboard, drivers, earnings, expenses,
-adjustments, reports, data & integrations, settings).
+Run the browser journeys to completion and fix anything they reveal; then a final review pass over security and accessibility, update this log with the final numbers, and push.

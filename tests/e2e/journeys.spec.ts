@@ -74,11 +74,12 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByText(/original DPD figures are unchanged/i)).toBeVisible();
     // Clean up through the app: cancelling reverses the pay adjustments.
     await page.goto("/adjustments");
-    const cover = page.getByRole("row", { name: /Blake Sample.*Alex Example/ }).first();
+    const cover = page.getByRole("row").filter({ has: page.getByRole("button", { name: "Cancel" }) }).first();
+    await expect(cover).toContainText("Blake Sample");
     await cover.getByRole("button", { name: "Cancel" }).click();
     await page.getByLabel("Why is it being cancelled?").fill("E2E clean-up");
     await page.getByRole("button", { name: "Cancel cover record" }).click();
-    await expect(page.getByRole("row", { name: /Blake Sample.*Alex Example/ }).first()).toContainText("Cancelled");
+    await expect(page.getByRole("row").filter({ hasText: "Cancelled" }).first()).toContainText("Blake Sample");
   });
 
   test("uploads an earnings PDF by hand, and refuses to import the same file twice", async ({ page }) => {
@@ -89,12 +90,12 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await page.goto("/data");
     await page.locator("#upload-files").setInputFiles({ name: `e2e-earnings-${date}.pdf`, mimeType: "application/pdf", buffer });
     await page.getByRole("button", { name: "Import files" }).click();
-    await expect(page.getByText(/4 driver records imported/)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/not matched to a registered driver/)).toBeVisible();
+    await expect(page.getByRole("status").getByText(/4 driver records imported/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("status").getByText(/not matched to a registered driver/)).toBeVisible();
     await page.goto("/data");
     await page.locator("#upload-files").setInputFiles({ name: "same-file-renamed.pdf", mimeType: "application/pdf", buffer });
     await page.getByRole("button", { name: "Import files" }).click();
-    await expect(page.getByText(/already been imported/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("alert").or(page.getByRole("status")).getByText(/already been imported/).first()).toBeVisible({ timeout: 30_000 });
     // The original document is available from the earnings page for that day.
     await page.goto(`/earnings?date=${date}`);
     await expect(page.getByRole("link", { name: "Uploaded by hand" }).first()).toBeVisible();
@@ -106,7 +107,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await page.goto("/data");
     await page.locator("#upload-files").setInputFiles({ name: `e2e-corrupt-${date}.pdf`, mimeType: "application/pdf", buffer });
     await page.getByRole("button", { name: "Import files" }).click();
-    await expect(page.getByText(/needs checking before it is imported/)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("alert").getByText(/needs checking before it is imported/)).toBeVisible({ timeout: 30_000 });
     await page.goto(`/earnings?date=${date}`);
     await expect(page.getByText(`No earnings for`)).toBeVisible();
     await page.goto("/data#attention");
