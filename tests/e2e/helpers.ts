@@ -6,8 +6,8 @@ import { expect, type Page } from "@playwright/test";
 export const NAV_ROUTES = [
   { href: "/", label: "Dashboard" },
   { href: "/drivers", label: "Drivers" },
-  { href: "/earnings", label: "Earnings" },
-  { href: "/expenses", label: "Fuel & Expenses" },
+  { href: "/earnings", label: "Income" },
+  { href: "/expenses", label: "Expenses" },
   { href: "/adjustments", label: "Adjustments" },
   { href: "/reports", label: "Reports" },
   { href: "/data", label: "Data & Integrations" },

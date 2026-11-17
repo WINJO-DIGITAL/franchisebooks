@@ -10,8 +10,8 @@ type NavItem = { href: string; label: string; short?: string; icon: typeof Layou
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/drivers", label: "Drivers", icon: Users },
-  { href: "/earnings", label: "Earnings", icon: PoundSterling },
-  { href: "/expenses", label: "Fuel & Expenses", short: "Costs", icon: Fuel },
+  { href: "/earnings", label: "Income", icon: PoundSterling },
+  { href: "/expenses", label: "Expenses", icon: Fuel },
   { href: "/adjustments", label: "Adjustments", icon: SlidersHorizontal },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/data", label: "Data & Integrations", icon: RefreshCw },

@@ -10,7 +10,7 @@ import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
 
-export const metadata: Metadata = { title: "Earnings" };
+export const metadata: Metadata = { title: "Income" };
 
 export default async function EarningsPage({ searchParams }: { searchParams: Promise<{ date?: string; month?: string }> }) {
   const params = await searchParams;
@@ -30,7 +30,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
     return (
       <>
         <PageHeader
-          title="Earnings"
+          title="Income"
           description={`${formatMonth(month)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
           actions={<><LinkButton href="/earnings" variant="secondary">Daily view</LinkButton><a className={buttonClass("secondary")} href={`/api/export/drivers?month=${month}`}>Download spreadsheet</a></>}
         />
@@ -150,7 +150,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        title="Earnings"
+        title="Income"
         description={`${formatUkDateLong(date)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
         actions={<><LinkButton href={`/earnings?month=${monthOf(date)}`} variant="secondary">Monthly view</LinkButton>{ctx.canWrite ? <LinkButton href={`/adjustments/new?date=${date}`}>Add Pay Adjustment</LinkButton> : null}</>}
       />

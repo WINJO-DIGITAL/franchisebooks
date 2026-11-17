@@ -116,7 +116,7 @@ export default async function DashboardPage() {
                   sub={m.wagesComplete ? "Day rate × days worked" : <Link href="/drivers" className="text-accent underline">Set day rates for {m.driversMissingRate} {m.driversMissingRate === 1 ? "driver" : "drivers"}</Link>}
                 />
                 <Stat
-                  label="Charges"
+                  label="Expenses"
                   value={formatGBP(m.fuel + m.otherExpenses)}
                   sub={m.unallocatedCosts > 0 ? <Link href="/expenses?show=unallocated" className="text-accent underline">{formatGBP(m.unallocatedCosts)} not yet assigned</Link> : "DPD charges and expenses"}
                 />
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
                   <th className="r hidden sm:table-cell">Stops</th>
                   <th className="sm:min-w-56">{routeIncome ? "Income" : "Driver pay"}</th>
                   {routeIncome ? <th className="r hidden sm:table-cell">Wages</th> : <th className="r hidden sm:table-cell">Fuel</th>}
-                  <th className="r hidden sm:table-cell">{routeIncome ? "Charges" : "Other"}</th>
+                  <th className="r hidden sm:table-cell">{routeIncome ? "Expenses" : "Other"}</th>
                   <th className="r">Profit</th>
                 </tr>
               </thead>
@@ -233,9 +233,11 @@ export default async function DashboardPage() {
                   <tr key={`${d.franchiseId}-${d.key}`}>
                     <td className="font-medium">
                       {d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <span>{d.name} <Badge tone="warn">Not registered</Badge></span>}
-                      {routesByDriver.get(`${d.franchiseId}|${d.key}`)?.size ? (
-                        <span className="block text-xs font-normal text-muted">Route {[...routesByDriver.get(`${d.franchiseId}|${d.key}`)!].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true })).join(" / ")}</span>
-                      ) : null}
+                      {(() => {
+                        const routes = [...(routesByDriver.get(`${d.franchiseId}|${d.key}`) ?? [])].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true }));
+                        const where = [!ctx.franchise ? franchiseName.get(d.franchiseId) : null, routes.length ? `Route ${routes.join(" / ")}` : null].filter(Boolean).join(" · ");
+                        return where ? <span className="block text-xs font-normal text-muted">{where}</span> : null;
+                      })()}
                     </td>
                     <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
                     <td className="r num hidden sm:table-cell">{d.avgStopsPerDayX10 == null ? "—" : (d.avgStopsPerDayX10 / 10).toFixed(1)}</td>

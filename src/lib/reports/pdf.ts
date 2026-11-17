@@ -209,7 +209,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   if (!report.franchiseId && report.franchises.length > 1 && routeIncome) {
     heading("By franchise");
     table(
-      [{ title: "Franchise", width: 151 }, { title: "Income", width: 90, align: "right" }, { title: "Wages", width: 90, align: "right" }, { title: "Charges", width: 90, align: "right" }, { title: "Profit", width: 90, align: "right" }],
+      [{ title: "Franchise", width: 151 }, { title: "Income", width: 90, align: "right" }, { title: "Wages", width: 90, align: "right" }, { title: "Expenses", width: 90, align: "right" }, { title: "Profit", width: 90, align: "right" }],
       report.franchises.map((f) => [f.label, money(f.incomeFromDpd), plus(money(f.wages), f.wagesComplete), money(f.fuel + f.otherExpenses), f.operatingProfit == null ? "n/a" : money(f.operatingProfit)]),
     );
   } else if (!report.franchiseId && report.franchises.length > 1) {

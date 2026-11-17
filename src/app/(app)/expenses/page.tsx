@@ -14,7 +14,7 @@ import { addDays, addMonths, formatMonth, formatUkDate, isYearMonth, monthOf, mo
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
 
-export const metadata: Metadata = { title: "Fuel & Expenses" };
+export const metadata: Metadata = { title: "Expenses" };
 
 const FILTERS = [
   { key: "all", label: "Everything" },
@@ -55,7 +55,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        title="Fuel & Expenses"
+        title="Expenses"
         description={`${formatMonth(month)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
         actions={ctx.canWrite ? (
           <AddExpenseButton
@@ -74,7 +74,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <Section>
         <Panel>
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-            <Stat size="lg" label="Total costs" value={formatGBP(fuelTotal + otherTotal)} />
+            <Stat size="lg" label="Total expenses" value={formatGBP(fuelTotal + otherTotal)} />
             <Stat label="Fuel" value={costs.some(isFuel) ? formatGBP(fuelTotal) : "None"} sub={litres > 0 ? `${litres.toLocaleString("en-GB", { maximumFractionDigits: 0 })} litres` : costs.some(isFuel) ? undefined : "No fuel data imported"} />
             <Stat label="Other expenses" value={formatGBP(otherTotal)} />
             <Stat label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} sub={unallocated.length ? `${unallocated.length} item${unallocated.length === 1 ? "" : "s"} to assign` : "Nothing waiting"} />
@@ -92,8 +92,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       </nav>
 
       {visible.length === 0 ? (
-        <EmptyState title={show === "unallocated" ? "Nothing is waiting to be assigned" : `No costs recorded for ${formatMonth(month)}`}>
-          {show === "unallocated" ? "Every cost this month has been assigned to a driver or to the franchise." : "Fuel and expense reports appear here when they are synced or uploaded. You can also add an expense by hand."}
+        <EmptyState title={show === "unallocated" ? "Nothing is waiting to be assigned" : `No expenses recorded for ${formatMonth(month)}`}>
+          {show === "unallocated" ? "Every expense this month has been assigned to a driver or to the franchise." : "Fuel and expense reports appear here when they are synced or uploaded. You can also add an expense by hand."}
         </EmptyState>
       ) : (
         <TableWrap>
@@ -128,7 +128,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                     {ctx.canWrite ? (
                       <span className="inline-flex gap-1">
                         <AssignCostButton kind={c.kind} id={c.id} drivers={drivers} current={c.allocation.scope} summary={`${c.kind === "fuel" ? "Fuel" : c.categoryName} · ${formatGBP(c.amount)} · ${formatUkDate(c.date)}${c.vehicleRegistration ? ` · ${c.vehicleRegistration}` : ""}`} />
-                        <ReasonDialog action={voidCost} fields={{ kind: c.kind, id: c.id }} trigger="Remove" title="Remove this cost from the totals" submitLabel="Remove"
+                        <ReasonDialog action={voidCost} fields={{ kind: c.kind, id: c.id }} trigger="Remove" title="Remove this expense from the totals" submitLabel="Remove"
                           reasonLabel="Why? (for example: duplicate, entered in error)" explanation="The record is kept, marked as void, and no longer counts in any total. This cannot be undone." />
                       </span>
                     ) : null}
@@ -146,7 +146,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       {otherPayments.length > 0 ? (
         <section className="mt-10" aria-labelledby="other-dpd-payments">
           <h2 id="other-dpd-payments" className="text-lg font-semibold">Other DPD payments</h2>
-          <p className="mb-3 text-sm text-muted">Extra lines DPD pays you on its invoices, such as the Fuel Supplement and C&amp;D App. They are income, not costs, so they are not in the totals above. Amounts exclude VAT.</p>
+          <p className="mb-3 text-sm text-muted">Extra lines DPD pays you on its invoices, such as the Fuel Supplement and C&amp;D App. They are income, not expenses, so they are not in the totals above. Amounts exclude VAT.</p>
           <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2">
             <Stat label="Paid to you" value={formatGBP(otherPaymentsTotal)} />
             {otherByLabel.map(([label, amount]) => <Stat key={label} label={label} value={formatGBP(amount)} />)}

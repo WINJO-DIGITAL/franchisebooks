@@ -347,7 +347,7 @@ export function CoverWizard({ franchises, drivers, today, defaults }: {
               <p className="mt-0.5 text-muted">{formatUkDateLong(date)}{franchise ? ` · ${franchise.label}` : ""}{route ? ` · ${route}` : ""}</p>
               <dl className="mt-4 space-y-2 border-t border-line pt-3 text-sm">
                 <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Pay</dt><dd>{paySummary}</dd></div>
-                <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Costs</dt><dd>That day&rsquo;s fuel and expenses {expenseSummary}.</dd></div>
+                <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Expenses</dt><dd>That day&rsquo;s fuel and expenses {expenseSummary}.</dd></div>
                 {notes ? <div className="flex gap-2"><dt className="w-24 shrink-0 text-muted">Notes</dt><dd>{notes}</dd></div> : null}
               </dl>
             </div>

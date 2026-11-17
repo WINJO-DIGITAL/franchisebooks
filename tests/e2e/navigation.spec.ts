@@ -39,7 +39,7 @@ test.describe("navigation on a phone", () => {
     await page.goto("/");
     const bar = page.getByRole("navigation", { name: "Main" }).last();
     await expect(bar).toBeVisible();
-    for (const label of ["Dashboard", "Drivers", "Earnings", "Fuel & Expenses", "More"]) {
+    for (const label of ["Dashboard", "Drivers", "Income", "Expenses", "More"]) {
       await expect(bar.getByRole("link", { name: label })).toBeVisible();
     }
   });

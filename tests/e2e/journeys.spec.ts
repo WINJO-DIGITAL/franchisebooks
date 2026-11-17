@@ -19,7 +19,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByRole("link", { name: /^Expense/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Sync DPD/ })).toBeVisible();
     // All eight sections are reachable from the sidebar.
-    for (const name of ["Dashboard", "Drivers", "Earnings", "Fuel & Expenses", "Adjustments", "Reports", "Data & Integrations", "Settings"]) {
+    for (const name of ["Dashboard", "Drivers", "Income", "Expenses", "Adjustments", "Reports", "Data & Integrations", "Settings"]) {
       await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name })).toBeVisible();
     }
   });

@@ -565,7 +565,7 @@ export function detectAnomalies(input: AnomalyInput): AnomalyCandidate[] {
         actualValue: `${items.length} unassigned`,
         expectedValue: "None",
         whyFlagged: "Unassigned costs are counted in totals but cannot be attributed, so driver and franchise profit are less accurate until they are assigned.",
-        suggestedAction: "Open Fuel & Expenses, choose Unallocated, and assign each cost.",
+        suggestedAction: "Open Expenses, choose Unallocated, and assign each cost.",
         metric: { count: items.length, total },
       });
     }
@@ -674,7 +674,7 @@ export function detectAnomalies(input: AnomalyInput): AnomalyCandidate[] {
       actualValue: `${group.length} matching costs`,
       expectedValue: "1",
       whyFlagged: "Same date, same amount and same vehicle or supplier. They have different references, so both were kept.",
-      suggestedAction: "If one is a genuine duplicate, void it in Fuel & Expenses. If both are real, mark this as expected.",
+      suggestedAction: "If one is a genuine duplicate, void it in Expenses. If both are real, mark this as expected.",
       metric: { ids, amount: firstCost.amount },
     });
   }
