@@ -2,7 +2,7 @@
 
 /*
  * Design tokens — "ledger" look: warm paper, dark ink, hairline rules, one
- * deep green accent. Figures are set large in tabular numerals.
+ * DPD red accent. Figures are set large in tabular numerals.
  */
 @theme {
   --color-paper: #f6f5f1;
@@ -14,10 +14,10 @@
   --color-line: #e2dfd7;
   --color-line-strong: #cfcbc0;
 
-  --color-accent: #0e5a4e;
-  --color-accent-strong: #0a463d;
-  --color-accent-soft: #e4efeb;
-  --color-accent-bar: #2f7f71;
+  --color-accent: #dc0032;
+  --color-accent-strong: #b00028;
+  --color-accent-soft: #fbe6eb;
+  --color-accent-bar: #e8455f;
 
   --color-good: #1c6e45;
   --color-good-soft: #e6f3ec;
