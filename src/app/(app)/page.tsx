@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AddMenu } from "@/components/add-menu";
-import { AttentionPanel } from "@/components/attention-panel";
 import { DailyColumns, type DailyPoint } from "@/components/daily-columns";
 import { SyncButtons } from "@/components/sync-buttons";
 import { Badge, Notice, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
@@ -11,7 +10,7 @@ import { loadPeriodData } from "@/lib/data/period";
 import { loadSyncOverview } from "@/lib/data/status";
 import { addDays, eachDay, formatMonth, formatUkDate, formatUkDateLong, formatUkDayMonth, monthOf, monthRange } from "@/lib/dates";
 import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
-import { FIGURE_STATUS, SEVERITY } from "@/lib/labels";
+import { FIGURE_STATUS } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -24,18 +23,9 @@ export default async function DashboardPage() {
   const trendStart = addDays(today, -13);
   const loadFrom = trendStart < monthStart ? trendStart : monthStart;
 
-  const [data, sync, alertsResult, reviewsResult, flaggedResult] = await Promise.all([
+  const [data, sync] = await Promise.all([
     loadPeriodData(supabase, { accountId, from: loadFrom, to: today, franchiseId }),
     loadSyncOverview(supabase, accountId),
-    (() => {
-      let q = supabase.from("anomalies").select("id, title, severity, subject_date, status, franchise_id", { count: "exact" })
-        // Only things that need a decision: "info" notes stay on the Alerts page. The few most important are shown.
-        .in("status", ["open", "investigating"]).neq("severity", "info").order("severity", { ascending: false }).order("subject_date", { ascending: false }).limit(3);
-      if (franchiseId) q = q.eq("franchise_id", franchiseId);
-      return q;
-    })(),
-    supabase.from("review_items").select("id, title", { count: "exact" }).eq("status", "open").order("created_at", { ascending: false }).limit(3),
-    supabase.from("imported_files").select("id", { count: "exact", head: true }).eq("status", "needs_review"),
   ]);
 
   // "Today" shows the latest day that has a DPD report, clearly dated, so the
@@ -56,17 +46,6 @@ export default async function DashboardPage() {
     return { date, label: formatUkDate(date).slice(0, 5), value: Math.max(0, value), valueLabel: formatGBP(value), hasData: days.some((d) => d.hasReport) };
   });
 
-  const alerts = alertsResult.data ?? [];
-  const alertCount = alertsResult.count ?? 0;
-  const reviewCount = reviewsResult.count ?? 0;
-  const flaggedFiles = flaggedResult.count ?? 0;
-  // The DPD connection counts when it has not run, or its last run needs attention.
-  // Data counts as stale when the last good sync was two or more days ago: the sync runs every evening, so one missed night is
-  // already visible, and two means the figures are really out of date. (Compared by date, not by the clock.)
-  const staleDpd = !sync.dpd.running && sync.dpd.tone === "good" && sync.dpd.lastSuccessAt != null && sync.dpd.lastSuccessAt.slice(0, 10) <= addDays(today, -2);
-  const dpdNeedsAttention = sync.dpd.tone === "warn" || sync.dpd.tone === "bad" || staleDpd;
-  const dpdHeadline = staleDpd ? "DPD has not synchronised for two days." : sync.dpd.headline;
-  const attention = alertCount + reviewCount + flaggedFiles + (dpdNeedsAttention ? 1 : 0);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => (routeIncome ? f.incomeFromDpd : f.driverCosts)));
   const rankedDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings));
@@ -93,21 +72,6 @@ export default async function DashboardPage() {
         <Notice tone="info" title="Welcome. Start by adding your first franchise." className="mb-6">
           Add your FD number in <Link href="/settings" className="font-medium text-accent underline">Settings</Link>, then add your drivers and upload or sync your first DPD report.
         </Notice>
-      ) : null}
-
-      {/* Only shown when something needs a look; the all-clear message lives on the Alerts page (the bell). */}
-      {attention > 0 ? (
-        <Section>
-          <AttentionPanel
-            total={attention}
-            dpd={dpdNeedsAttention ? { tone: sync.dpd.tone, headline: dpdHeadline } : null}
-            flaggedFiles={flaggedFiles}
-            reviewCount={reviewCount}
-            reviewTitle={reviewsResult.data?.[0]?.title}
-            alerts={alerts}
-            alertCount={alertCount}
-          />
-        </Section>
       ) : null}
 
       {/* Today */}
