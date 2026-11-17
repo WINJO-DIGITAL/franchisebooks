@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, ChevronRight } from "lucide-react";
+import { AddMenu } from "@/components/add-menu";
 import { DailyColumns, type DailyPoint } from "@/components/daily-columns";
 import { SyncButtons } from "@/components/sync-buttons";
 import { Badge, Notice, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
@@ -63,7 +64,14 @@ export default async function DashboardPage() {
   const attention = alertCount + reviewCount + flaggedFiles + (dpdNeedsAttention ? 1 : 0);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => (routeIncome ? f.incomeFromDpd : f.driverCosts)));
-  const topDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings)).slice(0, 8);
+  const rankedDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings));
+  const topDrivers = rankedDrivers.slice(0, 5);
+  // Route numbers per driver this month, shown with a slash between them so they never read as one large number.
+  const routesByDriver = new Map<string, Set<string>>();
+  for (const e of data.earnings.filter((e) => e.date >= monthStart && e.route)) {
+    const k = `${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`;
+    routesByDriver.set(k, (routesByDriver.get(k) ?? new Set()).add(e.route!));
+  }
   const noFranchises = ctx.franchises.length === 0;
   const noData = data.earnings.length === 0 && data.costs.length === 0;
 
@@ -72,15 +80,7 @@ export default async function DashboardPage() {
       <PageHeader
         title="Dashboard"
         description={`${formatUkDateLong(today)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
-        actions={
-          ctx.canWrite ? (
-            <>
-              <LinkButton href="/adjustments/new">Add Pay Adjustment</LinkButton>
-              <LinkButton href="/adjustments/cover" variant="secondary">Record Driver Cover</LinkButton>
-              <LinkButton href="/expenses?add=1" variant="secondary">Add Expense</LinkButton>
-            </>
-          ) : null
-        }
+        actions={ctx.canWrite ? <AddMenu /> : null}
       />
 
       {noFranchises ? (
@@ -317,6 +317,9 @@ export default async function DashboardPage() {
                   <tr key={`${d.franchiseId}-${d.key}`}>
                     <td className="font-medium">
                       {d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <span>{d.name} <Badge tone="warn">Not registered</Badge></span>}
+                      {routesByDriver.get(`${d.franchiseId}|${d.key}`)?.size ? (
+                        <span className="block text-xs font-normal text-muted">Route {[...routesByDriver.get(`${d.franchiseId}|${d.key}`)!].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true })).join(" / ")}</span>
+                      ) : null}
                     </td>
                     <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
                     <td className="r num hidden sm:table-cell">{d.avgStopsPerDayX10 == null ? "—" : (d.avgStopsPerDayX10 / 10).toFixed(1)}</td>
@@ -331,19 +334,35 @@ export default async function DashboardPage() {
               </tbody>
             </table>
           </TableWrap>
+          {rankedDrivers.length > topDrivers.length ? (
+            <p className="mt-3 text-center">
+              <Link href="/drivers" className="text-sm font-medium text-accent hover:underline">See all {rankedDrivers.length} drivers</Link>
+            </p>
+          ) : null}
         </Section>
       ) : null}
 
-      {/* Synchronisation */}
-      <Section title="Synchronisation" actions={<LinkButton href="/data" variant="quiet" size="sm">Data &amp; Integrations</LinkButton>}>
-        <div className="grid gap-3 md:grid-cols-2">
-          {/* Dropbox is optional: only mention it once it is connected or needs attention. */}
-          {[sync.dpd, ...(sync.dropbox.tone === "info" && !sync.dropbox.running ? [] : [sync.dropbox])].map((s) => (
-            <Notice key={s.key} tone={s.tone} title={s.headline}>{s.detail}</Notice>
-          ))}
-        </div>
-        {ctx.canWrite ? <div className="mt-3"><SyncButtons dpdRunning={sync.dpd.running} dropboxRunning={sync.dropbox.running} dropboxConnected={sync.dropbox.tone !== "info" || sync.dropbox.running} /></div> : null}
-      </Section>
+      {/* Synchronisation: one quiet line when all is well; a warning only when something needs a look. */}
+      {(() => {
+        const statuses = [sync.dpd, ...(sync.dropbox.tone === "info" && !sync.dropbox.running ? [] : [sync.dropbox])];
+        const problems = statuses.filter((x) => x.tone === "warn" || x.tone === "bad");
+        const calm = statuses.filter((x) => x.tone !== "warn" && x.tone !== "bad");
+        return (
+          <Section title="Synchronisation" actions={<LinkButton href="/data" variant="quiet" size="sm">Data &amp; Integrations</LinkButton>}>
+            {problems.length > 0 ? (
+              <div className="mb-3 grid gap-3 md:grid-cols-2">
+                {problems.map((x) => <Notice key={x.key} tone={x.tone} title={x.headline}>{x.detail}</Notice>)}
+              </div>
+            ) : null}
+            <Panel className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted">
+                {calm.length > 0 ? calm.map((x) => `${x.headline.replace(/\.$/, "")}${x.running ? "" : x.detail ? ` · ${x.detail.replace(/\.$/, "")}` : ""}`).join(" · ") : "Syncs run automatically each evening."}
+              </p>
+              {ctx.canWrite ? <SyncButtons dpdRunning={sync.dpd.running} dropboxRunning={sync.dropbox.running} dropboxConnected={sync.dropbox.tone !== "info" || sync.dropbox.running} /> : null}
+            </Panel>
+          </Section>
+        );
+      })()}
     </>
   );
 }
