@@ -121,6 +121,22 @@ describe("earnings CSV", () => {
     expect(doc.earnings).toHaveLength(1);
     expect(doc.confidence).toBeLessThan(AUTO_IMPORT_THRESHOLD);
   });
+
+  it("adds together separate jobs for the same driver, route and day, so nothing is lost", async () => {
+    // Real DPD portal data has a second run for the same driver, route and date, with different figures.
+    const csv = "Date,Driver,Route,Parcels,Stops,Gross\n16/10/2026,Daniel Example,564,251,123,248.46\n16/10/2026,Daniel Example,564,182,15,83.35\n16/10/2026,Daniel Example,565,10,5,20.00\n";
+    const doc = await parse("export.csv", Buffer.from(csv));
+    expect(doc.earnings).toHaveLength(2);
+    const combined = doc.earnings.find((e) => e.route === "564")!;
+    expect(combined.stops).toBe(138);
+    expect(combined.parcels).toBe(433);
+    expect(combined.gross).toBe(p(331.81));
+    expect(doc.earnings.find((e) => e.route === "565")!.gross).toBe(p(20));
+    expect(doc.earnings.reduce((n, e) => n + e.gross, 0)).toBe(p(248.46 + 83.35 + 20));
+    expect(doc.confidence).toBeGreaterThanOrEqual(AUTO_IMPORT_THRESHOLD);
+    expect(doc.issues.some((i) => i.level === "info" && /added together/.test(i.message))).toBe(true);
+    expect(doc.issues.some((i) => i.level === "error")).toBe(false);
+  });
 });
 
 describe("fuel report", () => {

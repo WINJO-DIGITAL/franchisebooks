@@ -291,7 +291,7 @@ function parseEarningsTable(
   }
 
   let totalsVerified: boolean | null = null;
-  const seen = new Set<string>();
+  const seenRows = new Map<string, ParsedEarningsRow>();
 
   for (const { row, line } of rows) {
     const nonEmpty = row.filter((c) => c.trim() !== "").length;
@@ -401,12 +401,28 @@ function parseEarningsTable(
     }
 
     const key = `${parsed.driverRef ?? parsed.driverName.toLowerCase()}|${parsed.date}|${parsed.route ?? ""}`;
-    if (seen.has(key)) {
-      issues.push({ level: "error", row: line, message: `Line ${line}: ${driverName} appears more than once for ${parsed.date}${parsed.route ? ` on route ${parsed.route}` : ""}.` });
-      confidence.limit(0.6);
+    const earlier = seenRows.get(key);
+    if (earlier) {
+      const identical = earlier.gross === parsed.gross && earlier.stops === parsed.stops && earlier.parcels === parsed.parcels
+        && earlier.deductions === parsed.deductions && earlier.additional === parsed.additional;
+      if (identical) {
+        // The same figures twice look like a row listed twice by mistake: keep one and ask for a check.
+        issues.push({ level: "error", row: line, message: `Line ${line}: ${driverName} appears twice with identical figures for ${parsed.date}${parsed.route ? ` on route ${parsed.route}` : ""}; the second was ignored.` });
+        confidence.limit(0.6);
+        continue;
+      }
+      // Different figures for the same driver, route and day are separate jobs (for example a second run).
+      // The ledger holds one row per driver, route and day, so they are added together; nothing is lost.
+      earlier.gross += parsed.gross;
+      earlier.deductions += parsed.deductions;
+      earlier.additional += parsed.additional;
+      earlier.parcels = earlier.parcels == null || parsed.parcels == null ? null : earlier.parcels + parsed.parcels;
+      earlier.stops = earlier.stops == null || parsed.stops == null ? null : earlier.stops + parsed.stops;
+      earlier.net = earlier.net == null || parsed.net == null ? null : earlier.net + parsed.net;
+      issues.push({ level: "info", row: line, message: `Line ${line}: ${driverName} has more than one entry for ${parsed.date}${parsed.route ? ` on route ${parsed.route}` : ""}; the figures were added together.` });
       continue;
     }
-    seen.add(key);
+    seenRows.set(key, parsed);
     out.push(parsed);
   }
   return { rows: out, totalsVerified };

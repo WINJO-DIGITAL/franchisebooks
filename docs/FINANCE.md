@@ -31,6 +31,15 @@ All figures shown anywhere in the app (dashboard, driver pages, reports, exports
 * Driver cover moves *pay* between drivers with two linked adjustments that sum to the same total, so franchise driver costs are unchanged. The owner chooses whether that day's fuel/expenses stay with the original driver, follow the covering driver, or go to the franchise. Cancelling the cover reverses its adjustments.
 * Combined (all-franchise) profit is only shown when every franchise with costs has revenue entered; otherwise it would silently understate revenue.
 
+## VAT
+
+The business is VAT registered, so every figure in the app is **net of VAT**: VAT charged to DPD on income, and VAT paid on costs, are neither income nor cost.
+
+* **Income:** the DPD Payments figures are net. DPD's self-billed invoice adds 20% VAT on top. Checked on the FD42102 invoice for 12/10/2026 to 08/11/2026: net £7,303.36, VAT £1,460.67, total £8,764.03.
+* **Charges:** DPD's Transaction Charges are imported excluding VAT (the portal shows "£11.47 (excl. £2.29 VAT)").
+* **Not yet in income:** the invoice also carries a *Fuel Supplement* (£71.27 that period) and a *C&D App* line (£9.23). They are not in the daily Payments rows, so income is a little under the invoice net. Everything else on the invoice ties to the daily figures exactly: weekday, Saturday and Sunday stops and pay, and excess parcels.
+* **Same-day entries:** DPD can list two entries for one driver, route and day (for example a second run). They are added together, since the ledger holds one row per driver, route and day. A row that repeats with identical figures is treated as a likely double-listing and held for checking.
+
 ## Driver wages (day rates)
 
 * Each driver has a **day rate** (what they are paid per day worked), set on the driver's page. Rates are append-only: a change is a new row with an *applies from* date, so wages already worked never move.
