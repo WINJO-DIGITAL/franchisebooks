@@ -49,7 +49,7 @@ export async function loadSyncOverview(db: Db, accountId: string): Promise<SyncO
     dpd = {
       key: "dpd", name: "DPD portal", tone: "warn", running: false, lastSuccessAt: null,
       headline: hasPortalMap ? "DPD has not been synchronised yet." : "DPD portal connection is not set up yet.",
-      detail: hasPortalMap ? "Press Sync DPD to fetch the latest reports." : "Until it is, upload reports by hand or connect Dropbox.",
+      detail: hasPortalMap ? "It runs automatically every evening. Sync DPD queues a run for the next evening sync." : "Until it is, upload reports by hand.",
     };
   } else if (latest.status === "succeeded") {
     dpd = { key: "dpd", name: "DPD portal", tone: "good", headline: "DPD synchronised successfully.", detail: `Last sync ${formatRelative(latest.finished_at)}.`, lastSuccessAt: latest.finished_at, running: false };

@@ -25,6 +25,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
     const data = await loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId });
     const summary = summarisePeriod(data);
     const t = summary.combined;
+    const routeIncome = t.earningsMeaning === "route_income";
     const rows = summary.franchises.filter((f) => f.franchiseId).flatMap((f) => f.drivers.map((d) => ({ ...d, franchise: franchiseName.get(f.franchiseId!) ?? "" })));
     return (
       <>
@@ -40,15 +41,54 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
         </div>
         <Section>
           <Panel>
+            {routeIncome ? (
+              <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+                <Stat size="lg" label="Income" value={formatGBP(t.incomeFromDpd)} sub="From DPD payments" />
+                <Stat label="Wages" value={t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`} sub={t.wagesComplete ? "Day rate × days worked" : `${t.driversMissingRate} ${t.driversMissingRate === 1 ? "driver has" : "drivers have"} no day rate`} />
+                <Stat label="Drivers working" value={String(t.driverCount)} />
+                <Stat label="Stops" value={t.stops.toLocaleString("en-GB")} sub={`${t.parcels.toLocaleString("en-GB")} parcels`} />
+              </div>
+            ) : (
             <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
               <Stat size="lg" label="Driver pay" value={formatGBP(t.driverCosts)} sub="After adjustments" />
               <Stat label="DPD earnings" value={formatGBP(t.driverOriginalEarnings)} sub="As imported" />
               <Stat label="Additional payments" value={formatGBP(t.driverAdditionalPayments)} />
               <Stat label="Deductions" value={formatGBP(t.driverDeductions)} />
             </div>
+            )}
           </Panel>
         </Section>
-        {rows.length === 0 ? <EmptyState title="No earnings for this month" /> : (
+        {rows.length === 0 ? <EmptyState title="No earnings for this month" /> : routeIncome ? (
+          <TableWrap>
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th className="r">Days</th><th className="r">Stops</th>
+                  <th className="r">Income</th><th className="r">Income / stop</th><th className="r">Wage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...rows].filter((d) => d.daysWorked > 0).sort((a, b) => b.originalEarnings - a.originalEarnings).map((d) => (
+                  <tr key={`${d.franchiseId}-${d.key}`}>
+                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
+                    {showFranchise ? <td>{d.franchise}</td> : null}
+                    <td className="r num">{d.daysWorked}</td>
+                    <td className="r num">{d.stops.toLocaleString("en-GB")}</td>
+                    <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
+                    <td className="r num">{formatGBP(d.earningsPerStop)}</td>
+                    <td className="r num">{d.wageComplete && d.wage != null ? formatGBP(d.wage) : <span className="text-muted">No rate</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total</td>{showFranchise ? <td /> : null}<td /><td className="r num">{t.stops.toLocaleString("en-GB")}</td>
+                  <td className="r num">{formatGBP(t.incomeFromDpd)}</td><td /><td className="r num">{t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </TableWrap>
+        ) : (
           <TableWrap>
             <table className="ledger">
               <thead>
@@ -100,6 +140,12 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
   const fileByKey = new Map(data.earnings.map((e) => [`${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`, e]));
   const totalOriginal = sumPence(days.map((d) => d.originalEarnings));
   const totalAdjust = sumPence(days.map((d) => d.adjustmentsNet));
+  const routeIncome = data.earningsMeaning === "route_income";
+  const routesByKey = new Map<string, Set<string>>();
+  for (const e of data.earnings) {
+    const key = `${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`;
+    if (e.route) routesByKey.set(key, (routesByKey.get(key) ?? new Set()).add(e.route));
+  }
 
   return (
     <>
@@ -118,12 +164,21 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
 
       <Section>
         <Panel>
+          {routeIncome ? (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+              <Stat size="lg" label="Income" value={formatGBP(totalOriginal)} sub="From DPD payments" />
+              <Stat label="Drivers working" value={String(days.filter((d) => d.hasReport).length)} />
+              <Stat label="Stops" value={days.reduce((n, d) => n + (d.stops ?? 0), 0).toLocaleString("en-GB")} />
+              <Stat label="Parcels" value={days.reduce((n, d) => n + (d.parcels ?? 0), 0).toLocaleString("en-GB")} />
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
             <Stat size="lg" label="Driver pay" value={formatGBP(totalOriginal + totalAdjust)} sub="After adjustments" />
             <Stat label="DPD earnings" value={formatGBP(totalOriginal)} sub="As imported" />
             <Stat label="Adjustments" value={totalAdjust === 0 ? "None" : formatGBP(totalAdjust, { signed: true })} />
             <Stat label="Stops" value={days.reduce((n, d) => n + (d.stops ?? 0), 0).toLocaleString("en-GB")} sub={`${days.reduce((n, d) => n + (d.parcels ?? 0), 0).toLocaleString("en-GB")} parcels`} />
           </div>
+          )}
         </Panel>
       </Section>
 
@@ -131,6 +186,39 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
         <EmptyState title={`No earnings for ${formatUkDate(date)}`} action={<LinkButton href="/data" variant="secondary">Go to Data &amp; Integrations</LinkButton>}>
           No DPD report has been imported for this day. Sync DPD, or upload the report by hand.
         </EmptyState>
+      ) : routeIncome ? (
+        <TableWrap>
+          <table className="ledger">
+            <thead>
+              <tr>
+                <th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th>Route</th><th className="r">Stops</th><th className="r">Parcels</th><th className="r">Income</th><th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {days.filter((d) => d.hasReport).map((d) => {
+                const key = `${d.franchiseId}|${d.key}`;
+                const source = fileByKey.get(key);
+                return (
+                  <tr key={`${d.franchiseId}-${d.key}`}>
+                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
+                    {showFranchise ? <td>{franchiseName.get(d.franchiseId) ?? ""}</td> : null}
+                    <td className="num">{[...(routesByKey.get(key) ?? [])].join(", ") || "—"}</td>
+                    <td className="r num">{d.stops ?? "—"}</td>
+                    <td className="r num">{d.parcels ?? "—"}</td>
+                    <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
+                    <td className="text-sm">{source ? <a href={`/api/files/${source.importedFileId}`} className="text-accent hover:underline">{SOURCE_LABEL[source.source] ?? "Document"}</a> : <span className="text-muted">—</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>Total</td>{showFranchise ? <td /> : null}<td /><td className="r num">{days.reduce((n, d) => n + (d.stops ?? 0), 0)}</td><td className="r num">{days.reduce((n, d) => n + (d.parcels ?? 0), 0)}</td>
+                <td className="r num">{formatGBP(totalOriginal)}</td><td />
+              </tr>
+            </tfoot>
+          </table>
+        </TableWrap>
       ) : (
         <TableWrap>
           <table className="ledger">

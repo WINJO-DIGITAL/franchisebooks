@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   const trendStart = addDays(today, -13);
   const loadFrom = trendStart < monthStart ? trendStart : monthStart;
 
-  const [data, sync, alertsResult, reviewsResult] = await Promise.all([
+  const [data, sync, alertsResult, reviewsResult, flaggedResult] = await Promise.all([
     loadPeriodData(supabase, { accountId, from: loadFrom, to: today, franchiseId }),
     loadSyncOverview(supabase, accountId),
     (() => {
@@ -33,6 +33,7 @@ export default async function DashboardPage() {
       return q;
     })(),
     supabase.from("review_items").select("id, title", { count: "exact" }).eq("status", "open").order("created_at", { ascending: false }).limit(3),
+    supabase.from("imported_files").select("id", { count: "exact", head: true }).eq("status", "needs_review"),
   ]);
 
   // "Today" shows the latest day that has a DPD report, clearly dated, so the
@@ -43,21 +44,26 @@ export default async function DashboardPage() {
   const daySummary = summarisePeriod({ ...data, from: latestDay, to: latestDay, revenue: data.revenue.filter((r) => r.periodStart === r.periodEnd) }).combined;
   const monthSummary = summarisePeriod({ ...data, from: monthStart, to: today });
   const m = monthSummary.combined;
+  // In "route_income" mode the imported DPD payments are income to the business, and wages come from day rates.
+  const routeIncome = m.earningsMeaning === "route_income";
 
   const driverDays = buildDriverDays(data.earnings, data.adjustments, data.driverNames);
   const trend: DailyPoint[] = eachDay(trendStart, today).map((date) => {
     const days = driverDays.filter((d) => d.date === date);
-    const value = sumPence(days.map((d) => d.finalEarnings));
+    const value = sumPence(days.map((d) => (routeIncome ? d.originalEarnings : d.finalEarnings)));
     return { date, label: formatUkDate(date).slice(0, 5), value: Math.max(0, value), valueLabel: formatGBP(value), hasData: days.some((d) => d.hasReport) };
   });
 
   const alerts = alertsResult.data ?? [];
   const alertCount = alertsResult.count ?? 0;
   const reviewCount = reviewsResult.count ?? 0;
-  const attention = alertCount + reviewCount;
+  const flaggedFiles = flaggedResult.count ?? 0;
+  // The DPD connection counts when it has not run, or its last run needs attention.
+  const dpdNeedsAttention = sync.dpd.tone === "warn" || sync.dpd.tone === "bad";
+  const attention = alertCount + reviewCount + flaggedFiles + (dpdNeedsAttention ? 1 : 0);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
-  const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => f.driverCosts));
-  const topDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => b.finalEarnings - a.finalEarnings).slice(0, 8);
+  const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => (routeIncome ? f.incomeFromDpd : f.driverCosts)));
+  const topDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings)).slice(0, 8);
   const noFranchises = ctx.franchises.length === 0;
   const noData = data.earnings.length === 0 && data.costs.length === 0;
 
@@ -102,6 +108,24 @@ export default async function DashboardPage() {
               </h2>
             </div>
             <ul>
+              {dpdNeedsAttention ? (
+                <li className="border-b border-line last:border-0">
+                  <Link href="/data" className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50 sm:px-5">
+                    <Badge tone={sync.dpd.tone === "bad" ? "bad" : "warn"}>DPD</Badge>
+                    <span className="flex-1 text-[0.9375rem]">{sync.dpd.headline}</span>
+                    <ChevronRight className="size-4 text-muted" aria-hidden />
+                  </Link>
+                </li>
+              ) : null}
+              {flaggedFiles > 0 ? (
+                <li className="border-b border-line last:border-0">
+                  <Link href="/data#attention" className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50 sm:px-5">
+                    <Badge tone="warn">Import</Badge>
+                    <span className="flex-1 text-[0.9375rem]">{flaggedFiles === 1 ? "1 imported file needs checking" : `${flaggedFiles} imported files need checking`}</span>
+                    <ChevronRight className="size-4 text-muted" aria-hidden />
+                  </Link>
+                </li>
+              ) : null}
               {reviewCount > 0 ? (
                 <li className="border-b border-line last:border-0">
                   <Link href="/data#attention" className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50 sm:px-5">
@@ -140,21 +164,60 @@ export default async function DashboardPage() {
         description={dayIsToday ? undefined : reportDates.length === 0 ? "No DPD reports have been imported yet." : "Today's DPD report has not arrived yet, so these are the most recent figures."}
       >
         <Panel>
+          {routeIncome ? (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+              <Stat size="lg" label="Income" value={formatGBP(daySummary.incomeFromDpd)} sub="From DPD payments" />
+              <Stat label="Drivers working" value={String(daySummary.driverCount)} />
+              <Stat label="Stops" value={daySummary.stops.toLocaleString("en-GB")} />
+              <Stat label="Parcels" value={daySummary.parcels.toLocaleString("en-GB")} />
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
             <Stat size="lg" label="Earned by drivers" value={formatGBP(daySummary.driverOriginalEarnings)} sub="From DPD reports" />
             <Stat label="Driver pay" value={formatGBP(daySummary.driverCosts)} sub={daySummary.driverAdjustmentsNet === 0 ? "No adjustments" : `Includes ${formatGBP(daySummary.driverAdjustmentsNet, { signed: true })} adjustments`} />
             <Stat label="Fuel" value={formatGBP(daySummary.fuel)} />
             <Stat label="Other expenses" value={formatGBP(daySummary.otherExpenses)} />
           </div>
-          <p className="mt-4 border-t border-line pt-3 text-sm text-muted">
-            {daySummary.driverCount} {daySummary.driverCount === 1 ? "driver" : "drivers"} · {daySummary.stops.toLocaleString("en-GB")} stops · {daySummary.parcels.toLocaleString("en-GB")} parcels
-          </p>
+          )}
+          {routeIncome ? null : (
+            <p className="mt-4 border-t border-line pt-3 text-sm text-muted">
+              {daySummary.driverCount} {daySummary.driverCount === 1 ? "driver" : "drivers"} · {daySummary.stops.toLocaleString("en-GB")} stops · {daySummary.parcels.toLocaleString("en-GB")} parcels
+            </p>
+          )}
         </Panel>
       </Section>
 
       {/* This month */}
       <Section title={formatMonth(month)} description="Month to date" actions={<LinkButton href="/reports" variant="secondary" size="sm">Generate Monthly Report</LinkButton>}>
         <Panel>
+          {routeIncome ? (
+            <>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+                <Stat label="Income" size="lg" value={m.revenueStatus === "unavailable" ? "—" : formatGBP(m.revenueTotal)} sub="From DPD payments" />
+                <Stat
+                  label="Wages"
+                  value={m.wagesComplete ? formatGBP(m.wages) : `${formatGBP(m.wages)}+`}
+                  sub={m.wagesComplete ? "Day rate × days worked" : <Link href="/drivers" className="text-accent underline">Set day rates for {m.driversMissingRate} {m.driversMissingRate === 1 ? "driver" : "drivers"}</Link>}
+                />
+                <Stat
+                  label="Charges"
+                  value={formatGBP(m.fuel + m.otherExpenses)}
+                  sub={m.unallocatedCosts > 0 ? <Link href="/expenses?show=unallocated" className="text-accent underline">{formatGBP(m.unallocatedCosts)} not yet assigned</Link> : "DPD charges and expenses"}
+                />
+                <Stat
+                  label="Profit"
+                  value={m.operatingProfit == null ? "—" : formatGBP(m.operatingProfit)}
+                  tone={m.operatingProfit == null ? undefined : m.operatingProfit < 0 ? "bad" : "good"}
+                  sub={m.operatingProfit == null ? "Shown once every driver has a day rate" : m.marginPercent != null ? `${m.marginPercent}% margin` : undefined}
+                />
+              </div>
+              {m.profitBeforeWages != null ? (
+                <p className="mt-4 border-t border-line pt-3 text-sm text-muted">
+                  Income less charges, before wages: <span className="num font-medium text-ink">{formatGBP(m.profitBeforeWages)}</span>
+                </p>
+              ) : null}
+            </>
+          ) : (
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-5">
             <Stat
               label="Revenue"
@@ -173,9 +236,10 @@ export default async function DashboardPage() {
               sub={m.operatingProfit == null ? "Shown once revenue is entered for every franchise" : m.marginPercent != null ? `${m.marginPercent}% margin` : undefined}
             />
           </div>
+          )}
           {!noData ? (
             <div className="mt-6 border-t border-line pt-4">
-              <DailyColumns points={trend} caption="Driver pay per day, last 14 days" />
+              <DailyColumns points={trend} caption={routeIncome ? "Income per day, last 14 days" : "Driver pay per day, last 14 days"} />
             </div>
           ) : null}
         </Panel>
@@ -191,9 +255,9 @@ export default async function DashboardPage() {
                   <th>Franchise</th>
                   <th className="r">Drivers</th>
                   <th className="r">Stops</th>
-                  <th className="min-w-56">Driver pay</th>
-                  <th className="r">Fuel</th>
-                  <th className="r">Other</th>
+                  <th className="min-w-56">{routeIncome ? "Income" : "Driver pay"}</th>
+                  {routeIncome ? <th className="r">Wages</th> : <th className="r">Fuel</th>}
+                  <th className="r">{routeIncome ? "Charges" : "Other"}</th>
                   <th className="r">Profit</th>
                 </tr>
               </thead>
@@ -206,15 +270,19 @@ export default async function DashboardPage() {
                     <td>
                       <div className="flex items-center gap-3">
                         <div className="h-2 flex-1 rounded-full bg-accent-soft" aria-hidden>
-                          <div className="h-2 rounded-full bg-accent-bar" style={{ width: `${Math.max(2, (Math.max(0, f.driverCosts) / maxFranchisePay) * 100)}%` }} />
+                          <div className="h-2 rounded-full bg-accent-bar" style={{ width: `${Math.max(2, (Math.max(0, routeIncome ? f.incomeFromDpd : f.driverCosts) / maxFranchisePay) * 100)}%` }} />
                         </div>
-                        <span className="num w-24 text-right">{formatGBP(f.driverCosts)}</span>
+                        <span className="num w-24 text-right">{formatGBP(routeIncome ? f.incomeFromDpd : f.driverCosts)}</span>
                       </div>
                     </td>
-                    <td className="r num">{formatGBP(f.fuel)}</td>
-                    <td className="r num">{formatGBP(f.otherExpenses)}</td>
+                    {routeIncome ? (
+                      <td className="r num">{f.wagesComplete ? formatGBP(f.wages) : <span className="text-muted">{formatGBP(f.wages)}+</span>}</td>
+                    ) : (
+                      <td className="r num">{formatGBP(f.fuel)}</td>
+                    )}
+                    <td className="r num">{routeIncome ? formatGBP(f.fuel + f.otherExpenses) : formatGBP(f.otherExpenses)}</td>
                     <td className="r num">
-                      {f.operatingProfit == null ? <span className="text-muted">No revenue yet</span> : (
+                      {f.operatingProfit == null ? <span className="text-muted">{routeIncome ? "Set day rates" : "No revenue yet"}</span> : (
                         <span className={f.operatingProfit < 0 ? "text-bad" : ""}>
                           {formatGBP(f.operatingProfit)}{f.profitStatus === "estimated" ? " (est.)" : ""}
                         </span>
@@ -238,10 +306,10 @@ export default async function DashboardPage() {
                   <th>Driver</th>
                   <th className="r">Days</th>
                   <th className="r">Stops / day</th>
-                  <th className="r">Per stop</th>
-                  <th className="r">DPD earnings</th>
-                  <th className="r">Adjustments</th>
-                  <th className="r">Pay</th>
+                  <th className="r">{routeIncome ? "Income / stop" : "Per stop"}</th>
+                  <th className="r">{routeIncome ? "Income" : "DPD earnings"}</th>
+                  {routeIncome ? null : <th className="r">Adjustments</th>}
+                  <th className="r">{routeIncome ? "Wage" : "Pay"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -254,8 +322,10 @@ export default async function DashboardPage() {
                     <td className="r num">{d.avgStopsPerDayX10 == null ? "—" : (d.avgStopsPerDayX10 / 10).toFixed(1)}</td>
                     <td className="r num">{formatGBP(d.earningsPerStop)}</td>
                     <td className="r num">{formatGBP(d.originalEarnings)}</td>
-                    <td className="r num">{d.adjustmentsNet === 0 ? "—" : formatGBP(d.adjustmentsNet, { signed: true })}</td>
-                    <td className="r num font-semibold">{formatGBP(d.finalEarnings)}</td>
+                    {routeIncome ? null : <td className="r num">{d.adjustmentsNet === 0 ? "—" : formatGBP(d.adjustmentsNet, { signed: true })}</td>}
+                    <td className="r num font-semibold">
+                      {routeIncome ? (d.wageComplete && d.wage != null ? formatGBP(d.wage) : <span className="font-normal text-muted">No rate</span>) : formatGBP(d.finalEarnings)}
+                    </td>
                   </tr>
                 ))}
               </tbody>

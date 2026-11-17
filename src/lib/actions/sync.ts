@@ -38,7 +38,7 @@ export async function syncDpdNow(_prev: ActionState, _formData: FormData): Promi
     if (queued === 0) return ok("A DPD sync is already running. This page will show the result when it finishes.");
     return poke.ok
       ? ok(`DPD sync started for ${targets.length} franchise${targets.length === 1 ? "" : "s"}. This usually takes a few minutes.`)
-      : ok(`DPD sync queued for ${targets.length} franchise${targets.length === 1 ? "" : "s"}. It will start within a minute or so.`);
+      : ok(`DPD sync queued for ${targets.length} franchise${targets.length === 1 ? "" : "s"}. It runs at the next evening sync.`);
   } catch (error) {
     return unexpectedFailure(error, "The sync could not be started.");
   }
