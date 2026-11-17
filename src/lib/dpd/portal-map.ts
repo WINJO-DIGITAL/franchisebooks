@@ -69,7 +69,14 @@ const collect = z.discriminatedUnion("mode", [
   /** Fetch every link on the page whose name matches (e.g. one PDF per driver). */
   z.object({ mode: z.literal("links"), namePattern: z.string().min(1), max: z.number().int().positive().max(100).default(40) }),
   /** Read an on-page table (converted to CSV for the import pipeline). tables "all" joins every table on the page that shares the first table's headings. */
-  z.object({ mode: z.literal("table"), tableName: z.string().optional(), tables: z.enum(["first", "all"]).default("first"), transform: tableTransformSchema.optional() }),
+  z.object({
+    mode: z.literal("table"),
+    tableName: z.string().optional(),
+    tables: z.enum(["first", "all"]).default("first"),
+    /** With tables "all": only join tables whose heading cells, joined with "|", match this regular expression. Other tables on the page are ignored. */
+    tableHeader: z.string().optional(),
+    transform: tableTransformSchema.optional(),
+  }),
 ]);
 
 export const reportSchema = z.object({

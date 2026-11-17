@@ -30,6 +30,9 @@ async function main() {
   const periodTexts: string[] = JSON.parse(readFileSync(arg("periods", "/tmp/claude-0/dpd-data/period-texts.json") ?? "", "utf8"));
   const periods = periodTexts.map((t) => parsePeriodText(t)).filter((p): p is { start: string; end: string } => p !== null);
   mkdirSync(out, { recursive: true });
+  // --retry <export.json>: only re-read the periods that failed in an earlier export.
+  const retryFrom = arg("retry", "") ?? "";
+  const retry = retryFrom ? new Set<string>(JSON.parse(readFileSync(retryFrom, "utf8")).failures.map((f: string) => f.split(":")[0])) : null;
 
   const session = await PortalSession.open(credentials, map);
   const results: Record<string, unknown>[] = [];
@@ -42,6 +45,7 @@ async function main() {
         const date = addDays(period.start, 1);
         for (const report of map.reports as PortalReport[]) {
           const label = `${fd} ${report.id} ${period.start}`;
+          if (retry && !retry.has(label)) continue;
           try {
             await session.openFranchise(fd, date);
             const documents = await session.collectReport(report, fd, date);

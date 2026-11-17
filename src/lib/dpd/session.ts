@@ -323,10 +323,19 @@ export class PortalSession {
       tables.nth(index).locator("tr").evaluateAll((trs) =>
         trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((cell) => (cell as HTMLElement).innerText.replace(/\s+/g, " ").trim())),
       );
-    let rows = await readTable(0);
+    const headerPattern = report.collect.tableHeader ? new RegExp(report.collect.tableHeader, "i") : null;
+    const wanted: string[][][] = [];
     if (report.collect.tables === "all") {
-      for (let i = 1; i < tableCount; i++) rows = rows.concat(await readTable(i));
+      for (let i = 0; i < tableCount; i++) {
+        const tableRows = await readTable(i);
+        const heading = (tableRows.find((r) => r.length >= 3) ?? []).join("|");
+        if (!headerPattern || headerPattern.test(heading)) wanted.push(tableRows);
+      }
+      if (wanted.length === 0) throw new PortalError("layout", `${report.id}:table`, `No table on the “${report.label}” page matched the expected headings. The portal layout may have changed.`);
+    } else {
+      wanted.push(await readTable(0));
     }
+    let rows = wanted.flat();
     try {
       rows = transformTable(rows, report.collect.transform, values);
     } catch (error) {
