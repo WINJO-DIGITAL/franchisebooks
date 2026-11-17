@@ -190,6 +190,9 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
   ]);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const unallocated: AllocationInfo = { allocation: { scope: "unallocated" }, method: null, note: null };
+  // A charge DPD itself raises against a franchise (management fee, lease, van hire) belongs to that franchise as a whole,
+  // so it needs no assigning to a driver. A person can still assign it to a driver later.
+  const dpdFranchiseCharge: AllocationInfo = { allocation: { scope: "franchise" }, method: "dpd_franchise_charge", note: "Charged by DPD to the franchise" };
 
   const costs: CostDetail[] = [];
   for (const r of fuelRows) {
@@ -204,7 +207,7 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
     });
   }
   for (const r of expenseRows) {
-    const info = allocations.expense.get(r.id) ?? unallocated;
+    const info = allocations.expense.get(r.id) ?? (r.source === "dpd_portal" && r.franchise_id ? dpdFranchiseCharge : unallocated);
     const category = categoryById.get(r.category_id);
     costs.push({
       id: r.id, kind: "expense", franchiseId: r.franchise_id, date: r.expense_date, amount: fromDb(r.amount),

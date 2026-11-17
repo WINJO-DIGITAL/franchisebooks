@@ -383,13 +383,15 @@ export async function storeParsed(db: AdminClient, input: StoreInput): Promise<S
       const byName = byVehicle.driverId ? null : matchDriver({ ref: null, name: row.driverName, franchiseId, date: row.date }, roster.drivers);
       const driverId = byVehicle.driverId ?? byName?.driverId ?? null;
       if (!driverId) result.unallocated += 1;
+      const rowFranchise = franchiseId ?? soleFranchiseOf(roster, driverId, row.date) ?? "";
+      // The franchise is part of the identity: two franchises can be charged the same amount for the same thing on the same day.
       const identity = row.reference
-        ? `ref|${row.reference.toLowerCase()}|${row.date}|${row.amount}`
-        : sha256Hex([row.date, row.amount, row.supplier ?? "", row.description, row.registration ?? ""].join("|")).slice(0, 32);
+        ? `ref|${row.reference.toLowerCase()}|${row.date}|${row.amount}|${rowFranchise}`
+        : sha256Hex([rowFranchise, row.date, row.amount, row.supplier ?? "", row.description, row.registration ?? ""].join("|")).slice(0, 32);
       const n = (occurrences.get(identity) ?? 0) + 1;
       occurrences.set(identity, n);
       return {
-        franchise_id: franchiseId ?? soleFranchiseOf(roster, driverId, row.date) ?? "",
+        franchise_id: rowFranchise,
         category_id: category.id,
         expense_date: row.date,
         description: row.description,
