@@ -24,6 +24,7 @@
     "worker": "tsx --conditions=react-server worker/index.ts",
     "worker:once": "tsx --conditions=react-server worker/run-once.ts",
     "dpd:discover": "tsx --conditions=react-server scripts/dpd-discover.ts",
+    "dpd:try-map": "tsx --conditions=react-server scripts/dpd-try-map.ts",
     "seed:demo": "tsx --conditions=react-server scripts/seed-demo.ts",
     "create-owner": "tsx --conditions=react-server scripts/create-owner.ts",
     "smoke": "tsx scripts/smoke.ts"

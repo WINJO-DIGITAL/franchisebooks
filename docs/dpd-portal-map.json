@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "login": {
+    "postPatterns": ["^https://myportal\\.drivers\\.dpd\\.co\\.uk/esg/user/?(\\?.*)?$"]
+  },
+  "franchise": { "mode": "none" },
+  "delayMs": 1500,
+  "reports": [
+    {
+      "id": "payments",
+      "label": "Payments",
+      "kind": "earnings",
+      "navigate": [
+        { "action": "goto", "path": "/manage-account#/payments" },
+        { "action": "select", "label": "Routes", "option": "{fd}" }
+      ],
+      "date": { "mode": "period_select" },
+      "collect": {
+        "mode": "table",
+        "tables": "first",
+        "transform": {
+          "rename": {
+            "Total Parcels": "Parcels",
+            "Parcels": "Parcel pay (£)",
+            "Stop": "Stop pay (£)",
+            "Total": "Gross earnings"
+          },
+          "dropRows": ["^Download All$"],
+          "split": [
+            { "column": "Driver", "pattern": "^(DR\\d+)\\s+(.+)$", "into": ["Driver ID", "Driver"] }
+          ]
+        }
+      }
+    },
+    {
+      "id": "charges",
+      "label": "Transaction Charges",
+      "kind": "expenses",
+      "navigate": [
+        { "action": "goto", "path": "/manage-account#/charges" },
+        { "action": "select", "label": "Routes", "option": "{fd}" }
+      ],
+      "date": { "mode": "period_select" },
+      "collect": {
+        "mode": "table",
+        "tables": "all",
+        "transform": {
+          "headers": ["Category", "Description", "Spacer", "Amount", "Spacer 2"],
+          "clean": [{ "column": "Amount", "pattern": "\\s*\\(.*\\)\\s*$", "replace": "" }],
+          "add": [{ "header": "Date", "value": "{periodStart:dd/MM/yyyy}" }]
+        }
+      }
+    }
+  ]
+}

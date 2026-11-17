@@ -7,8 +7,10 @@ import type { Browser, BrowserContext, Download, Locator, Page } from "playwrigh
 import type { ISODate } from "@/lib/dates";
 import { scrubSecrets } from "@/lib/logger";
 import { PortalError } from "./errors";
-import { ReadOnlyGuard, safeClick } from "./guard";
-import { fillTemplate, formatDateToken, type PortalMap, type PortalReport, type PortalStep, type PortalTarget } from "./portal-map";
+import { ReadOnlyGuard, safeClick, WRITE_ACTION_PATTERN } from "./guard";
+import { findPeriodIndex, parsePeriodText, yearCandidates } from "./period";
+import { fillTemplate, formatDateToken, type PortalMap, type PortalReport, type PortalStep, type PortalTarget, type TemplateValues } from "./portal-map";
+import { transformTable } from "./table";
 
 export interface PortalCredentials {
   url: string;
@@ -106,7 +108,7 @@ export class PortalSession {
     await this.page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => undefined);
   }
 
-  private locate(target: PortalTarget, values: { fd: string; date: ISODate }): { locator: Locator; name: string } {
+  private locate(target: PortalTarget, values: TemplateValues): { locator: Locator; name: string } {
     const name = fillTemplate(target.name, values);
     return { locator: this.page.getByRole(target.role, { name: target.exact ? name : new RegExp(escapeRegExp(name), "i"), exact: target.exact }), name };
   }
@@ -168,11 +170,47 @@ export class PortalSession {
     this.signedIn = true;
   }
 
-  async runSteps(steps: PortalStep[], values: { fd: string; date: ISODate }, stepPrefix: string): Promise<void> {
+  /**
+   * Chooses an option in a labelled drop-down. This only sets a filter on the page (the portal's own
+   * data request is a GET, which the read-only guard allows). Returns false when no option matches.
+   */
+  private async chooseOption(label: string, matches: (optionText: string) => boolean, stepName: string): Promise<boolean> {
+    if (WRITE_ACTION_PATTERN.test(label)) {
+      throw new PortalError("blocked", stepName, `The drop-down “${label}” looks like a control that changes data, so it was not touched.`);
+    }
+    const select = this.page.getByLabel(new RegExp(label, "i")).first();
+    // The portal draws its filters a few seconds after the page loads.
+    await select.waitFor({ state: "visible", timeout: 20_000 }).catch(() => undefined);
+    if (!(await select.count())) {
+      throw new PortalError("layout", stepName, `The “${label}” filter was not found on the page. The portal layout may have changed.`);
+    }
+    // The options are filled in after the filter appears, so wait for the one we want (up to about 15 seconds).
+    let index = -1;
+    for (let attempt = 0; attempt < 15; attempt++) {
+      const options = (await select.locator("option").allTextContents()).map((text) => text.replace(/\s+/g, " ").trim());
+      index = options.findIndex(matches);
+      if (index >= 0) break;
+      await this.page.waitForTimeout(1000);
+    }
+    if (index < 0) return false;
+    await this.pace();
+    await select.selectOption({ index });
+    await this.settle();
+    await this.page.waitForTimeout(1500); // the table redraws after the data arrives
+    return true;
+  }
+
+  async runSteps(steps: PortalStep[], values: TemplateValues, stepPrefix: string): Promise<void> {
     for (const [index, step] of steps.entries()) {
       const stepName = `${stepPrefix}:${index + 1}`;
       if (step.action === "goto") {
         await this.goto(fillTemplate(step.path, values), stepName);
+      } else if (step.action === "select") {
+        const wanted = fillTemplate(step.option, values).toLowerCase();
+        const chosen = await this.chooseOption(step.label, (text) => text.toLowerCase().includes(wanted), stepName);
+        if (!chosen) {
+          throw new PortalError("layout", stepName, `“${fillTemplate(step.option, values)}” is not in the “${step.label}” filter, so nothing was downloaded for it. Check the franchise's FD number.`);
+        }
       } else {
         const { locator, name } = this.locate(step.target, values);
         await this.pace();
@@ -192,9 +230,24 @@ export class PortalSession {
     }
   }
 
-  private async selectDate(report: PortalReport, values: { fd: string; date: ISODate }): Promise<void> {
+  private async selectDate(report: PortalReport, values: TemplateValues): Promise<void> {
     const selection = report.date;
     if (selection.mode === "none") return;
+    if (selection.mode === "period_select") {
+      const stepName = `${report.id}:period`;
+      for (const year of yearCandidates(values.date)) {
+        const hasYear = await this.chooseOption(selection.yearLabel, (text) => text === year, stepName);
+        if (!hasYear) continue;
+        const periodSelect = this.page.getByLabel(new RegExp(selection.periodLabel, "i")).first();
+        const texts = (await periodSelect.locator("option").allTextContents()).map((text) => text.replace(/\s+/g, " ").trim());
+        const at = findPeriodIndex(texts, values.date);
+        if (at < 0) continue;
+        values.period = parsePeriodText(texts[at]!);
+        await this.chooseOption(selection.periodLabel, (text) => text === texts[at], stepName);
+        return;
+      }
+      throw new PortalError("layout", stepName, `No reporting period containing ${values.date} was found on the “${report.label}” page. The period may not exist yet.`);
+    }
     if (selection.mode === "url_param") {
       const url = new URL(this.page.url());
       url.searchParams.set(selection.param, formatDateToken(values.date, selection.format));
@@ -219,7 +272,7 @@ export class PortalSession {
 
   /** Navigates to one report for one franchise and date, and collects its document(s). */
   async collectReport(report: PortalReport, fd: string, date: ISODate): Promise<CollectedDocument[]> {
-    const values = { fd, date };
+    const values: TemplateValues = { fd, date, period: null };
     await this.runSteps(report.navigate, values, `${report.id}:navigate`);
     await this.selectDate(report, values);
     const stem = `${report.id}_${fd.replace(/[^A-Za-z0-9]+/g, "-")}_${date}`;
@@ -257,15 +310,28 @@ export class PortalSession {
     }
 
     // On-page table → CSV. The franchise and date are written into the file so the parser can read them back.
-    const table = report.collect.tableName
-      ? this.page.getByRole("table", { name: new RegExp(escapeRegExp(report.collect.tableName), "i") }).first()
-      : this.page.getByRole("table").first();
-    if (!(await table.count())) {
+    const tables = report.collect.tableName
+      ? this.page.getByRole("table", { name: new RegExp(escapeRegExp(report.collect.tableName), "i") })
+      : this.page.getByRole("table");
+    // The portal draws its tables after the page loads.
+    await tables.first().waitFor({ state: "attached", timeout: 20_000 }).catch(() => undefined);
+    const tableCount = await tables.count();
+    if (tableCount === 0) {
       throw new PortalError("layout", `${report.id}:table`, `The table on the “${report.label}” page was not found. The portal layout may have changed.`);
     }
-    const rows = await table.locator("tr").evaluateAll((trs) =>
-      trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((cell) => (cell as HTMLElement).innerText.replace(/\s+/g, " ").trim())),
-    );
+    const readTable = (index: number) =>
+      tables.nth(index).locator("tr").evaluateAll((trs) =>
+        trs.map((tr) => Array.from(tr.querySelectorAll("th,td")).map((cell) => (cell as HTMLElement).innerText.replace(/\s+/g, " ").trim())),
+      );
+    let rows = await readTable(0);
+    if (report.collect.tables === "all") {
+      for (let i = 1; i < tableCount; i++) rows = rows.concat(await readTable(i));
+    }
+    try {
+      rows = transformTable(rows, report.collect.transform, values);
+    } catch (error) {
+      throw new PortalError("layout", `${report.id}:table`, `The table on the “${report.label}” page could not be read in the expected shape. The portal layout may have changed.`, (error as Error).message);
+    }
     const csvCell = (text: string) => (/[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text);
     const [yyyy, mm, dd] = date.split("-");
     const lines = [`Franchise: ${fd},Report date: ${dd}/${mm}/${yyyy}`, ...rows.filter((r) => r.length > 0).map((r) => r.map(csvCell).join(","))];

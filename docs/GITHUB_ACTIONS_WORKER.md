@@ -65,6 +65,33 @@ Variables (not secret):
 | `SYNC_WINDOW_START`, `SYNC_WINDOW_END` | Optional, default `2030` and `2129` |
 | `ACTIONS_MONTHLY_LIMIT_MINUTES` | Optional, default `2000` |
 
+## The portal map (what the sync reads)
+
+The sync only runs once a **portal map** is saved. The map for the real portal is
+in [`docs/dpd-portal-map.json`](dpd-portal-map.json). It reads two reports for each
+franchise, using the franchise's FD number to pick the route in the portal's
+"Routes" filter and the reporting period that contains the date:
+
+| Report | Portal page | Becomes |
+| --- | --- | --- |
+| Payments | Your Account → Payments (one row per driver per day: stops, parcels, pay, route) | Daily earnings |
+| Transaction Charges | Your Account → Charges (fixed and variable costs for the period) | Expenses |
+
+To switch it on:
+
+1. In the app, add each franchise with its **FD number exactly as the portal shows it** (for example `FD42102`).
+2. **Data & Integrations → DPD portal setup**: paste the contents of `docs/dpd-portal-map.json` and save.
+3. Try it first, saving nothing (needs the DPD variables in `.env.local` or the environment):
+   `npm run dpd:try-map -- --fd FD42102,FD46578 --date 2026-11-16`
+   It prints, for each report, how many rows the importer read, the total, and the date range.
+
+What the map does not read: **Invoices** (self-billed invoices, DPD invoices and remittance advice are PDFs the app has no importer for; franchise revenue is still entered by hand), the per-period **Fuel Supplement** payment, driver ratings, and the Overview page.
+
+Each night's Payments read covers the whole four-week period containing the date, so
+it re-reads days already imported. Imports are idempotent, so those are skipped. To
+fill in an earlier period, run the workflow by hand with *report date* set to any day
+inside that period.
+
 ## Running it by hand
 
 **Actions → DPD nightly sync → Run workflow.** It always runs now (no time check).

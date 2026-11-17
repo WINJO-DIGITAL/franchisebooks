@@ -1,5 +1,21 @@
 # DPD partner portal — capability inventory
 
+**Status: partly verified (17 November 2026).** The portal is the DPD owner-driver
+(ODF) portal at `myportal.drivers.dpd.co.uk`. Observed with the franchise's own
+login, read-only. The table below was written before that and is still unverified
+except where this section says otherwise.
+
+| Section | Observed |
+| --- | --- |
+| Your Account → Payments | Per-day, per-driver rows for a four-week period: date, stops, total parcels, excess parcels, stop pay, parcel pay, total, route, mileage, driver. Filters: Routes (FD numbers), Year, Period (13 a year). History back to 2021. A per-period fuel supplement line. Row downloads. **Imported.** |
+| Your Account → Charges | Fixed and variable cost lines per period, amounts shown excluding VAT. Same filters. **Imported as expenses.** |
+| Your Account → Invoices | Monthly self-billed invoice, DPD invoice and remittance advice (PDF downloads). **Not imported** (no importer). |
+| Your Drivers | Driver list with number, status, depot and rating. **Not imported.** |
+| Overview, Messages, Help, DPD Media | Compliments and feedback; messages; policy PDFs; videos. Not used. |
+| Fuel card, vehicles, routes (as separate pages) | **Not found** in this portal. |
+
+Original, unverified notes follow.
+
 **Status: not yet verified.** No authorised credentials were available when
 this was written, so nothing below has been observed. This file records what
 needs to be established; it deliberately does not guess. Running
