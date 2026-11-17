@@ -7,8 +7,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ISODate } from "@/lib/dates";
 import type {
-  AdjustmentRow, AdjustmentType, CostAllocation, CostRow, CoverRow, EarningRow, PeriodInput, RevenueAllocationBasis, RevenueRow,
+  AdjustmentRow, AdjustmentType, CostAllocation, CostRow, CoverRow, EarningRow, EarningsMeaning, PeriodInput, RevenueAllocationBasis, RevenueRow,
 } from "@/lib/finance/calc";
+import type { DayRate } from "@/lib/finance/wages";
 import { fromDb, fromDbNullable } from "@/lib/money";
 import type { Database } from "@/lib/supabase/database.types";
 import { fetchAll, must } from "./fetch-all";
@@ -280,9 +281,20 @@ export async function loadRevenueBasis(db: Db, accountId: string): Promise<Reven
   return (data?.revenue_allocation_basis as RevenueAllocationBasis | undefined) ?? "none";
 }
 
+export async function loadEarningsMeaning(db: Db, accountId: string): Promise<EarningsMeaning> {
+  const { data } = await db.from("app_settings").select("earnings_meaning").eq("account_id", accountId).maybeSingle();
+  return data?.earnings_meaning === "route_income" ? "route_income" : "driver_pay";
+}
+
+/** Every day rate the account has set, newest last. Wages pick the rate in force on each day worked. */
+export async function loadDayRates(db: Db, accountId: string): Promise<DayRate[]> {
+  const rows = await fetchAll(() => db.from("driver_day_rates").select("driver_id, day_rate, effective_from").eq("account_id", accountId).order("effective_from").order("id"));
+  return rows.map((r) => ({ driverId: r.driver_id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from }));
+}
+
 /** Everything the finance engine needs for a period, in one call. */
 export async function loadPeriodData(db: Db, filter: PeriodFilter): Promise<PeriodData> {
-  const [earnings, adjustments, costs, covers, revenue, driverNames, basis] = await Promise.all([
+  const [earnings, adjustments, costs, covers, revenue, driverNames, basis, earningsMeaning, dayRates] = await Promise.all([
     loadEarnings(db, filter),
     loadAdjustments(db, filter),
     loadCosts(db, filter),
@@ -290,6 +302,8 @@ export async function loadPeriodData(db: Db, filter: PeriodFilter): Promise<Peri
     loadRevenue(db, filter),
     loadDriverNames(db, filter.accountId),
     loadRevenueBasis(db, filter.accountId),
+    loadEarningsMeaning(db, filter.accountId),
+    loadDayRates(db, filter.accountId),
   ]);
-  return { from: filter.from, to: filter.to, earnings, adjustments, costs, covers, revenue, driverNames, revenueAllocationBasis: basis };
+  return { from: filter.from, to: filter.to, earnings, adjustments, costs, covers, revenue, driverNames, revenueAllocationBasis: basis, earningsMeaning, dayRates };
 }

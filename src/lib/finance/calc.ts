@@ -21,6 +21,7 @@
 
 import type { ISODate } from "@/lib/dates";
 import { allocateProportionally, percentOf, perUnit, sumPence, type Pence } from "@/lib/money";
+import { wageForDriver, type DayRate } from "./wages";
 
 // ── Inputs ──────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,17 @@ export interface PeriodInput {
   /** Display names for registered drivers. */
   driverNames: Map<string, string>;
   revenueAllocationBasis: RevenueAllocationBasis;
+  /**
+   * What the imported DPD figures mean. "driver_pay" (the original behaviour): they are what drivers
+   * are paid, a cost. "route_income": they are what DPD pays the franchise for each route and day,
+   * so they count as income, and driver wages come from day rates.
+   */
+  earningsMeaning?: EarningsMeaning;
+  /** Day rates, used to work out wages when earningsMeaning is "route_income". */
+  dayRates?: DayRate[];
 }
+
+export type EarningsMeaning = "driver_pay" | "route_income";
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
 
@@ -150,6 +161,10 @@ export interface DriverSummary {
   avgEarningsPerDay: Pence | null;
   avgStopsPerDayX10: number | null;
   avgParcelsPerDayX10: number | null;
+  /** Wage for the period: day rate × days worked, plus manual adjustments. Equals finalEarnings in "driver_pay" mode. */
+  wage: Pence | null;
+  /** False when a worked day has no day rate in force, so the wage is incomplete. */
+  wageComplete: boolean;
 }
 
 export interface CategoryTotal {
@@ -182,6 +197,17 @@ export interface FranchiseSummary {
   profitStatus: FigureStatus;
   /** Profit margin as a percentage with one decimal place. */
   marginPercent: number | null;
+  earningsMeaning: EarningsMeaning;
+  /** DPD route income counted as revenue ("route_income" mode only; 0 otherwise). */
+  incomeFromDpd: Pence;
+  /** Driver wages (day rates) plus manual adjustments. Equals driverCosts. */
+  wages: Pence;
+  /** False when some worked day has no day rate, so wages (and profit) are incomplete. */
+  wagesComplete: boolean;
+  /** Number of drivers with worked days but no complete day rate. */
+  driversMissingRate: number;
+  /** Revenue less fuel and other expenses, before driver wages. Null when revenue is unavailable. */
+  profitBeforeWages: Pence | null;
   parcels: number;
   stops: number;
   driverCount: number;
@@ -420,20 +446,38 @@ function summariseFranchise(
     }
   }
 
-  const revenueConfirmed = sumPence(revenue.filter((r) => r.status === "confirmed").map((r) => r.amount));
+  const routeIncome = input.earningsMeaning === "route_income";
+  // In "route_income" mode the imported DPD figures are income to the franchise, counted as confirmed revenue.
+  const dpdIncome = routeIncome ? sumPence([...drivers.values()].map((d) => d.original)) : 0;
+  const revenueConfirmed = sumPence(revenue.filter((r) => r.status === "confirmed").map((r) => r.amount)) + dpdIncome;
   const revenueEstimated = sumPence(revenue.filter((r) => r.status === "estimated").map((r) => r.amount));
   const revenueTotal = revenueConfirmed + revenueEstimated;
-  const revenueStatus = statusOfRevenue(revenue);
+  const revenueStatus = routeIncome ? combineStatus([statusOfRevenue(revenue), dpdIncome > 0 ? "confirmed" : "unavailable"]) : statusOfRevenue(revenue);
 
   // Driver-level figures
   const accs = [...drivers.values()];
-  const allocations = allocateRevenue(revenueTotal, revenueStatus, accs, input.revenueAllocationBasis);
+  // In route_income mode each driver's own DPD income is what they brought in; otherwise revenue is shared by the chosen basis.
+  const allocations = routeIncome ? accs.map((a) => a.original) : allocateRevenue(revenueTotal, revenueStatus, accs, input.revenueAllocationBasis);
 
   const driverSummaries: DriverSummary[] = accs.map((acc, index) => {
     const adj = totalAdjustments(acc.adjustments);
     const finalEarnings = adjustedPay(acc.original, adj);
     const days = acc.dates.size;
     const allocatedRevenue = allocations ? (allocations[index] ?? 0) : null;
+    let wage: Pence | null = finalEarnings;
+    let wageComplete = true;
+    if (routeIncome) {
+      if (days === 0) {
+        wage = adj.net;
+      } else if (acc.driverId && input.dayRates) {
+        const w = wageForDriver(acc.driverId, [...acc.dates], input.dayRates);
+        wage = w.wage + adj.net;
+        wageComplete = w.complete;
+      } else {
+        wage = null;
+        wageComplete = false;
+      }
+    }
     return {
       key: acc.key,
       driverId: acc.driverId,
@@ -453,8 +497,9 @@ function summariseFranchise(
       fuel: acc.fuel,
       otherExpenses: acc.other,
       allocatedRevenue,
-      contribution: allocatedRevenue == null ? null : allocatedRevenue - finalEarnings - acc.fuel - acc.other,
-      contributionStatus: allocatedRevenue == null ? "unavailable" : "estimated",
+      contribution:
+        allocatedRevenue == null ? null : routeIncome ? (wage == null || !wageComplete ? null : allocatedRevenue - wage - acc.fuel - acc.other) : allocatedRevenue - finalEarnings - acc.fuel - acc.other,
+      contributionStatus: allocatedRevenue == null ? "unavailable" : routeIncome ? (wageComplete ? "confirmed" : "unavailable") : "estimated",
       earningsPerParcel: acc.parcelsIncomplete ? null : perUnit(acc.original, acc.parcels),
       earningsPerStop: acc.stopsIncomplete ? null : perUnit(acc.original, acc.stops),
       parcelsPerStopX100:
@@ -462,6 +507,8 @@ function summariseFranchise(
       avgEarningsPerDay: perUnit(acc.original, days),
       avgStopsPerDayX10: days === 0 || acc.stopsIncomplete ? null : Math.round((acc.stops * 10) / days),
       avgParcelsPerDayX10: days === 0 || acc.parcelsIncomplete ? null : Math.round((acc.parcels * 10) / days),
+      wage,
+      wageComplete,
     };
   });
   driverSummaries.sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
@@ -470,9 +517,13 @@ function summariseFranchise(
   const driverAdditional = sumPence(driverSummaries.map((d) => d.additionalPayments));
   const driverDeductions = sumPence(driverSummaries.map((d) => d.deductions));
   const driverAdjNet = sumPence(driverSummaries.map((d) => d.adjustmentsNet));
-  const driverCosts = driverOriginal + driverAdjNet;
+  const driversMissingRate = routeIncome ? driverSummaries.filter((d) => d.daysWorked > 0 && !d.wageComplete).length : 0;
+  const wagesComplete = driversMissingRate === 0;
+  const driverCosts = routeIncome ? sumPence(driverSummaries.map((d) => d.wage ?? 0)) : driverOriginal + driverAdjNet;
   const operatingCosts = driverCosts + fuelTotal + otherTotal;
-  const operatingProfit = revenueStatus === "unavailable" ? null : revenueTotal - operatingCosts;
+  // Profit is only stated when every figure behind it is known: never guessed from partial wages.
+  const operatingProfit = revenueStatus === "unavailable" || (routeIncome && !wagesComplete) ? null : revenueTotal - operatingCosts;
+  const profitBeforeWages = routeIncome && revenueStatus !== "unavailable" ? revenueTotal - fuelTotal - otherTotal : null;
 
   return {
     franchiseId,
@@ -492,6 +543,12 @@ function summariseFranchise(
     operatingProfit,
     profitStatus: operatingProfit == null ? "unavailable" : revenueStatus,
     marginPercent: operatingProfit == null || revenueTotal === 0 ? null : percentOf(operatingProfit, revenueTotal),
+    earningsMeaning: routeIncome ? "route_income" : "driver_pay",
+    incomeFromDpd: dpdIncome,
+    wages: driverCosts,
+    wagesComplete,
+    driversMissingRate,
+    profitBeforeWages,
     parcels: driverSummaries.reduce((n, d) => n + d.parcels, 0),
     stops: driverSummaries.reduce((n, d) => n + d.stops, 0),
     driverCount: driverSummaries.filter((d) => d.daysWorked > 0).length,
@@ -540,7 +597,9 @@ export function combineFranchises(franchises: FranchiseSummary[]): FranchiseSumm
   const missingRevenue = franchises.some(
     (f) => f.franchiseId != null && f.revenueStatus === "unavailable" && f.operatingCosts !== 0,
   );
-  const operatingProfit = revenueStatus === "unavailable" || missingRevenue ? null : revenueTotal - operatingCosts;
+  const routeIncome = franchises.length > 0 && franchises.every((f) => f.earningsMeaning === "route_income");
+  const wagesComplete = franchises.every((f) => f.wagesComplete);
+  const operatingProfit = revenueStatus === "unavailable" || missingRevenue || (routeIncome && !wagesComplete) ? null : revenueTotal - operatingCosts;
 
   const categories = new Map<string, CategoryTotal>();
   for (const f of franchises) {
@@ -576,6 +635,12 @@ export function combineFranchises(franchises: FranchiseSummary[]): FranchiseSumm
     operatingProfit,
     profitStatus: operatingProfit == null ? "unavailable" : revenueStatus,
     marginPercent: operatingProfit == null || revenueTotal === 0 ? null : percentOf(operatingProfit, revenueTotal),
+    earningsMeaning: routeIncome ? "route_income" : "driver_pay",
+    incomeFromDpd: sum((f) => f.incomeFromDpd),
+    wages: sum((f) => f.wages),
+    wagesComplete,
+    driversMissingRate: franchises.reduce((n, f) => n + f.driversMissingRate, 0),
+    profitBeforeWages: routeIncome && revenueStatus !== "unavailable" && !missingRevenue ? revenueTotal - sum((f) => f.fuel) - sum((f) => f.otherExpenses) : null,
     parcels: franchises.reduce((n, f) => n + f.parcels, 0),
     stops: franchises.reduce((n, f) => n + f.stops, 0),
     driverCount: franchises.reduce((n, f) => n + f.driverCount, 0),

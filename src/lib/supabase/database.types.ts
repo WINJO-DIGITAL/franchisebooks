@@ -53,14 +53,14 @@ isOneToOne: false
                   ]
                 },"app_settings": {
                   Row: {
-                    "account_id": string,"anomaly_config": NonNullable<Json>,"auto_monthly_reports": boolean,"revenue_allocation_basis": string,"sync_enabled": boolean,"sync_time_local": string,"sync_timezone": string,"updated_at": string,"updated_by": string | null
+                    "account_id": string,"anomaly_config": NonNullable<Json>,"auto_monthly_reports": boolean,"earnings_meaning": string,"revenue_allocation_basis": string,"sync_enabled": boolean,"sync_time_local": string,"sync_timezone": string,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"anomaly_config"?: NonNullable<Json>,"auto_monthly_reports"?: boolean,"revenue_allocation_basis"?: string,"sync_enabled"?: boolean,"sync_time_local"?: string,"sync_timezone"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "account_id": string,"anomaly_config"?: NonNullable<Json>,"auto_monthly_reports"?: boolean,"earnings_meaning"?: string,"revenue_allocation_basis"?: string,"sync_enabled"?: boolean,"sync_time_local"?: string,"sync_timezone"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"anomaly_config"?: NonNullable<Json>,"auto_monthly_reports"?: boolean,"revenue_allocation_basis"?: string,"sync_enabled"?: boolean,"sync_time_local"?: string,"sync_timezone"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "account_id"?: string,"anomaly_config"?: NonNullable<Json>,"auto_monthly_reports"?: boolean,"earnings_meaning"?: string,"revenue_allocation_basis"?: string,"sync_enabled"?: boolean,"sync_time_local"?: string,"sync_timezone"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
