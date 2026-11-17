@@ -61,10 +61,11 @@ export default async function DashboardPage() {
   const reviewCount = reviewsResult.count ?? 0;
   const flaggedFiles = flaggedResult.count ?? 0;
   // The DPD connection counts when it has not run, or its last run needs attention.
-  // Data counts as stale when the last good sync is more than a day and a half old (the sync runs every evening).
-  const staleDpd = !sync.dpd.running && sync.dpd.tone === "good" && sync.dpd.lastSuccessAt != null && Date.now() - new Date(sync.dpd.lastSuccessAt).getTime() > 36 * 3600 * 1000;
+  // Data counts as stale when the last good sync was two or more days ago: the sync runs every evening, so one missed night is
+  // already visible, and two means the figures are really out of date. (Compared by date, not by the clock.)
+  const staleDpd = !sync.dpd.running && sync.dpd.tone === "good" && sync.dpd.lastSuccessAt != null && sync.dpd.lastSuccessAt.slice(0, 10) <= addDays(today, -2);
   const dpdNeedsAttention = sync.dpd.tone === "warn" || sync.dpd.tone === "bad" || staleDpd;
-  const dpdHeadline = staleDpd ? "DPD has not synchronised for over a day and a half." : sync.dpd.headline;
+  const dpdHeadline = staleDpd ? "DPD has not synchronised for two days." : sync.dpd.headline;
   const attention = alertCount + reviewCount + flaggedFiles + (dpdNeedsAttention ? 1 : 0);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => (routeIncome ? f.incomeFromDpd : f.driverCosts)));
