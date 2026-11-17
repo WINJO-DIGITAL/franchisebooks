@@ -16,14 +16,15 @@ export function Badge({ tone = "neutral", children, className }: { tone?: Tone; 
   return <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap", toneClass[tone], className)}>{children}</span>;
 }
 
-export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
+/** `inline` keeps the actions on the title's row, top right, even on a phone (for a single compact control such as an Add menu). */
+export function PageHeader({ title, description, actions, inline = false }: { title: string; description?: ReactNode; actions?: ReactNode; inline?: boolean }) {
   return (
-    <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+    <header className={cn("mb-6 flex gap-4 sm:mb-8", inline ? "items-start justify-between" : "flex-col sm:flex-row sm:items-end sm:justify-between")}>
       <div className="min-w-0">
         <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-[1.75rem]">{title}</h1>
         {description ? <p className="mt-1 max-w-2xl text-[0.9375rem] text-muted">{description}</p> : null}
       </div>
-      {actions ? <div className="no-print flex flex-wrap gap-2">{actions}</div> : null}
+      {actions ? <div className={cn("no-print flex flex-wrap gap-2", inline && "shrink-0")}>{actions}</div> : null}
     </header>
   );
 }

@@ -85,6 +85,7 @@ export default async function DashboardPage() {
         title="Dashboard"
         description={`${formatUkDateLong(today)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
         actions={ctx.canWrite ? <AddMenu /> : null}
+        inline
       />
 
       {noFranchises ? (

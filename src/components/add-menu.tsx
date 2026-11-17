@@ -19,7 +19,7 @@ export function AddMenu() {
         Add
         <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden />
       </summary>
-      <div className="absolute right-0 z-20 mt-2 w-72 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-lg">
+      <div className="absolute right-0 z-20 mt-2 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-line-strong bg-surface shadow-lg">
         {items.map((item) => (
           <Link key={item.href} href={item.href} className="block border-b border-line px-4 py-3 last:border-0 hover:bg-sunken">
             <span className="block font-medium">{item.label}</span>
