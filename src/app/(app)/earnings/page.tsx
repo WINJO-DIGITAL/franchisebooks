@@ -63,27 +63,27 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
             <table className="ledger">
               <thead>
                 <tr>
-                  <th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th className="r">Days</th><th className="r">Stops</th>
-                  <th className="r">Income</th><th className="r">Income / stop</th><th className="r">Wage</th>
+                  <th>Driver</th>{showFranchise ? <th className="hidden sm:table-cell">Franchise</th> : null}<th className="r hidden sm:table-cell">Days</th><th className="r hidden sm:table-cell">Stops</th>
+                  <th className="r">Income</th><th className="r hidden sm:table-cell">Income / stop</th><th className="r">Wage</th>
                 </tr>
               </thead>
               <tbody>
                 {[...rows].filter((d) => d.daysWorked > 0).sort((a, b) => b.originalEarnings - a.originalEarnings).map((d) => (
                   <tr key={`${d.franchiseId}-${d.key}`}>
                     <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
-                    {showFranchise ? <td>{d.franchise}</td> : null}
-                    <td className="r num">{d.daysWorked}</td>
-                    <td className="r num">{d.stops.toLocaleString("en-GB")}</td>
+                    {showFranchise ? <td className="hidden sm:table-cell">{d.franchise}</td> : null}
+                    <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
+                    <td className="r num hidden sm:table-cell">{d.stops.toLocaleString("en-GB")}</td>
                     <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
-                    <td className="r num">{formatGBP(d.earningsPerStop)}</td>
+                    <td className="r num hidden sm:table-cell">{formatGBP(d.earningsPerStop)}</td>
                     <td className="r num">{d.wageComplete && d.wage != null ? formatGBP(d.wage) : <span className="text-muted">No rate</span>}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr>
-                  <td>Total</td>{showFranchise ? <td /> : null}<td /><td className="r num">{t.stops.toLocaleString("en-GB")}</td>
-                  <td className="r num">{formatGBP(t.incomeFromDpd)}</td><td /><td className="r num">{t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`}</td>
+                  <td>Total</td>{showFranchise ? <td className="hidden sm:table-cell" /> : null}<td className="hidden sm:table-cell" /><td className="r num hidden sm:table-cell">{t.stops.toLocaleString("en-GB")}</td>
+                  <td className="r num">{formatGBP(t.incomeFromDpd)}</td><td className="hidden sm:table-cell" /><td className="r num">{t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`}</td>
                 </tr>
               </tfoot>
             </table>
@@ -191,7 +191,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
           <table className="ledger">
             <thead>
               <tr>
-                <th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th>Route</th><th className="r">Stops</th><th className="r">Parcels</th><th className="r">Income</th><th>Source</th>
+                <th>Driver</th>{showFranchise ? <th className="hidden sm:table-cell">Franchise</th> : null}<th>Route</th><th className="r hidden sm:table-cell">Stops</th><th className="r hidden sm:table-cell">Parcels</th><th className="r">Income</th><th className="hidden sm:table-cell">Source</th>
               </tr>
             </thead>
             <tbody>
@@ -201,20 +201,20 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                 return (
                   <tr key={`${d.franchiseId}-${d.key}`}>
                     <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
-                    {showFranchise ? <td>{franchiseName.get(d.franchiseId) ?? ""}</td> : null}
+                    {showFranchise ? <td className="hidden sm:table-cell">{franchiseName.get(d.franchiseId) ?? ""}</td> : null}
                     <td className="num">{[...(routesByKey.get(key) ?? [])].join(", ") || "—"}</td>
-                    <td className="r num">{d.stops ?? "—"}</td>
-                    <td className="r num">{d.parcels ?? "—"}</td>
+                    <td className="r num hidden sm:table-cell">{d.stops ?? "—"}</td>
+                    <td className="r num hidden sm:table-cell">{d.parcels ?? "—"}</td>
                     <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
-                    <td className="text-sm">{source ? <a href={`/api/files/${source.importedFileId}`} className="text-accent hover:underline">{SOURCE_LABEL[source.source] ?? "Document"}</a> : <span className="text-muted">—</span>}</td>
+                    <td className="text-sm hidden sm:table-cell">{source ? <a href={`/api/files/${source.importedFileId}`} className="text-accent hover:underline">{SOURCE_LABEL[source.source] ?? "Document"}</a> : <span className="text-muted">—</span>}</td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
               <tr>
-                <td>Total</td>{showFranchise ? <td /> : null}<td /><td className="r num">{days.reduce((n, d) => n + (d.stops ?? 0), 0)}</td><td className="r num">{days.reduce((n, d) => n + (d.parcels ?? 0), 0)}</td>
-                <td className="r num">{formatGBP(totalOriginal)}</td><td />
+                <td>Total</td>{showFranchise ? <td className="hidden sm:table-cell" /> : null}<td /><td className="r num hidden sm:table-cell">{days.reduce((n, d) => n + (d.stops ?? 0), 0)}</td><td className="r num hidden sm:table-cell">{days.reduce((n, d) => n + (d.parcels ?? 0), 0)}</td>
+                <td className="r num">{formatGBP(totalOriginal)}</td><td className="hidden sm:table-cell" />
               </tr>
             </tfoot>
           </table>

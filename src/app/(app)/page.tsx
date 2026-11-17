@@ -253,11 +253,11 @@ export default async function DashboardPage() {
               <thead>
                 <tr>
                   <th>Franchise</th>
-                  <th className="r">Drivers</th>
-                  <th className="r">Stops</th>
-                  <th className="min-w-56">{routeIncome ? "Income" : "Driver pay"}</th>
-                  {routeIncome ? <th className="r">Wages</th> : <th className="r">Fuel</th>}
-                  <th className="r">{routeIncome ? "Charges" : "Other"}</th>
+                  <th className="r hidden sm:table-cell">Drivers</th>
+                  <th className="r hidden sm:table-cell">Stops</th>
+                  <th className="sm:min-w-56">{routeIncome ? "Income" : "Driver pay"}</th>
+                  {routeIncome ? <th className="r hidden sm:table-cell">Wages</th> : <th className="r hidden sm:table-cell">Fuel</th>}
+                  <th className="r hidden sm:table-cell">{routeIncome ? "Charges" : "Other"}</th>
                   <th className="r">Profit</th>
                 </tr>
               </thead>
@@ -265,22 +265,22 @@ export default async function DashboardPage() {
                 {monthSummary.franchises.filter((f) => f.franchiseId).map((f) => (
                   <tr key={f.franchiseId}>
                     <td className="font-medium">{franchiseName.get(f.franchiseId!) ?? "Franchise"}</td>
-                    <td className="r num">{f.driverCount}</td>
-                    <td className="r num">{f.stops.toLocaleString("en-GB")}</td>
+                    <td className="r num hidden sm:table-cell">{f.driverCount}</td>
+                    <td className="r num hidden sm:table-cell">{f.stops.toLocaleString("en-GB")}</td>
                     <td>
                       <div className="flex items-center gap-3">
-                        <div className="h-2 flex-1 rounded-full bg-accent-soft" aria-hidden>
+                        <div className="hidden h-2 flex-1 rounded-full bg-accent-soft sm:block" aria-hidden>
                           <div className="h-2 rounded-full bg-accent-bar" style={{ width: `${Math.max(2, (Math.max(0, routeIncome ? f.incomeFromDpd : f.driverCosts) / maxFranchisePay) * 100)}%` }} />
                         </div>
                         <span className="num w-24 text-right">{formatGBP(routeIncome ? f.incomeFromDpd : f.driverCosts)}</span>
                       </div>
                     </td>
                     {routeIncome ? (
-                      <td className="r num">{f.wagesComplete ? formatGBP(f.wages) : <span className="text-muted">{formatGBP(f.wages)}+</span>}</td>
+                      <td className="r num hidden sm:table-cell">{f.wagesComplete ? formatGBP(f.wages) : <span className="text-muted">{formatGBP(f.wages)}+</span>}</td>
                     ) : (
-                      <td className="r num">{formatGBP(f.fuel)}</td>
+                      <td className="r num hidden sm:table-cell">{formatGBP(f.fuel)}</td>
                     )}
-                    <td className="r num">{routeIncome ? formatGBP(f.fuel + f.otherExpenses) : formatGBP(f.otherExpenses)}</td>
+                    <td className="r num hidden sm:table-cell">{routeIncome ? formatGBP(f.fuel + f.otherExpenses) : formatGBP(f.otherExpenses)}</td>
                     <td className="r num">
                       {f.operatingProfit == null ? <span className="text-muted">{routeIncome ? "Set day rates" : "No revenue yet"}</span> : (
                         <span className={f.operatingProfit < 0 ? "text-bad" : ""}>
@@ -304,9 +304,9 @@ export default async function DashboardPage() {
               <thead>
                 <tr>
                   <th>Driver</th>
-                  <th className="r">Days</th>
-                  <th className="r">Stops / day</th>
-                  <th className="r">{routeIncome ? "Income / stop" : "Per stop"}</th>
+                  <th className="r hidden sm:table-cell">Days</th>
+                  <th className="r hidden sm:table-cell">Stops / day</th>
+                  <th className="r hidden sm:table-cell">{routeIncome ? "Income / stop" : "Per stop"}</th>
                   <th className="r">{routeIncome ? "Income" : "DPD earnings"}</th>
                   {routeIncome ? null : <th className="r">Adjustments</th>}
                   <th className="r">{routeIncome ? "Wage" : "Pay"}</th>
@@ -318,9 +318,9 @@ export default async function DashboardPage() {
                     <td className="font-medium">
                       {d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <span>{d.name} <Badge tone="warn">Not registered</Badge></span>}
                     </td>
-                    <td className="r num">{d.daysWorked}</td>
-                    <td className="r num">{d.avgStopsPerDayX10 == null ? "—" : (d.avgStopsPerDayX10 / 10).toFixed(1)}</td>
-                    <td className="r num">{formatGBP(d.earningsPerStop)}</td>
+                    <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
+                    <td className="r num hidden sm:table-cell">{d.avgStopsPerDayX10 == null ? "—" : (d.avgStopsPerDayX10 / 10).toFixed(1)}</td>
+                    <td className="r num hidden sm:table-cell">{formatGBP(d.earningsPerStop)}</td>
                     <td className="r num">{formatGBP(d.originalEarnings)}</td>
                     {routeIncome ? null : <td className="r num">{d.adjustmentsNet === 0 ? "—" : formatGBP(d.adjustmentsNet, { signed: true })}</td>}
                     <td className="r num font-semibold">
@@ -337,7 +337,8 @@ export default async function DashboardPage() {
       {/* Synchronisation */}
       <Section title="Synchronisation" actions={<LinkButton href="/data" variant="quiet" size="sm">Data &amp; Integrations</LinkButton>}>
         <div className="grid gap-3 md:grid-cols-2">
-          {[sync.dpd, sync.dropbox].map((s) => (
+          {/* Dropbox is optional: only mention it once it is connected or needs attention. */}
+          {[sync.dpd, ...(sync.dropbox.tone === "info" && !sync.dropbox.running ? [] : [sync.dropbox])].map((s) => (
             <Notice key={s.key} tone={s.tone} title={s.headline}>{s.detail}</Notice>
           ))}
         </div>

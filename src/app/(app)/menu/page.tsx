@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, FileText, Fuel, LogOut, RefreshCw, Settings, Bell } from "lucide-react";
+import { ChevronRight, FileText, LogOut, RefreshCw, Settings, SlidersHorizontal, Bell } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { getContext } from "@/lib/context";
 import { PageHeader } from "@/components/ui/bits";
@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/bits";
 export const metadata: Metadata = { title: "More" };
 
 const items = [
-  { href: "/expenses", label: "Fuel & Expenses", icon: Fuel },
+  { href: "/adjustments", label: "Adjustments", icon: SlidersHorizontal },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/data", label: "Data & Integrations", icon: RefreshCw },

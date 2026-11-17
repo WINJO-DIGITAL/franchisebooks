@@ -55,7 +55,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
 
       <Section title="Pay adjustments">
         {list.length === 0 ? (
-          <EmptyState title={`No adjustments in ${formatMonth(month)}`} action={ctx.canWrite ? <LinkButton href="/adjustments/new">Add Pay Adjustment</LinkButton> : undefined} />
+          <EmptyState title={`No adjustments in ${formatMonth(month)}`} />
         ) : (
           <TableWrap>
             <table className="ledger">

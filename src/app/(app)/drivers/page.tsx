@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LinkDriverForm } from "@/components/drivers/forms";
 import { Badge, EmptyState, Notice, PageHeader, Section, TableWrap } from "@/components/ui/bits";
-import { LinkButton } from "@/components/ui/button";
+import { buttonClass, LinkButton } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
 import { loadPeriodData } from "@/lib/data/period";
@@ -12,8 +12,8 @@ import { formatGBP } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Drivers" };
 
-export default async function DriversPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
-  const { show } = await searchParams;
+export default async function DriversPage({ searchParams }: { searchParams: Promise<{ show?: string; q?: string; sort?: string }> }) {
+  const { show, q: searchText, sort: sortParam } = await searchParams;
   const ctx = await getContext();
   const month = monthOf(ctx.today);
   const { start } = monthRange(month);
@@ -31,6 +31,19 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
 
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const summary = summarisePeriod(data).combined;
+  const routeIncome = summary.earningsMeaning === "route_income";
+  // Per driver this month: income (DPD payments), wage (day rate × days) and days worked, across all franchises.
+  const byDriver = new Map<string, { income: number; wage: number; wageComplete: boolean; days: number }>();
+  for (const d of summary.drivers) {
+    if (!d.driverId) continue;
+    const e = byDriver.get(d.driverId) ?? { income: 0, wage: 0, wageComplete: true, days: 0 };
+    byDriver.set(d.driverId, { income: e.income + d.originalEarnings, wage: e.wage + (d.wage ?? 0), wageComplete: e.wageComplete && d.wageComplete, days: e.days + d.daysWorked });
+  }
+  const currentRate = (driverId: string) => {
+    let best: { from: string; rate: number } | null = null;
+    for (const r of data.dayRates ?? []) if (r.driverId === driverId && r.effectiveFrom <= ctx.today && (!best || r.effectiveFrom > best.from)) best = { from: r.effectiveFrom, rate: r.dayRate };
+    return best?.rate ?? null;
+  };
   const payByDriver = new Map<string, { pay: number; days: number }>();
   for (const d of summary.drivers) {
     if (!d.driverId) continue;
@@ -40,11 +53,21 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const current = (driverId: string) => assignments.filter((a) => a.driver_id === driverId && a.start_date <= ctx.today && (!a.end_date || a.end_date >= ctx.today));
 
   const showInactive = show === "all";
-  const visible = drivers.filter((d) => {
-    if (!showInactive && !d.is_active) return false;
-    if (!ctx.franchiseId) return true;
-    return assignments.some((a) => a.driver_id === d.id && a.franchise_id === ctx.franchiseId);
-  });
+  const search = (searchText ?? "").trim().toLowerCase();
+  const sort = sortParam === "income" || sortParam === "days" ? sortParam : "name";
+  const visible = drivers
+    .filter((d) => {
+      if (!showInactive && !d.is_active) return false;
+      if (search && !d.display_name.toLowerCase().includes(search)) return false;
+      if (!ctx.franchiseId) return true;
+      return assignments.some((a) => a.driver_id === d.id && a.franchise_id === ctx.franchiseId);
+    })
+    .sort((a, b) => {
+      if (sort === "income") return (byDriver.get(b.id)?.income ?? 0) - (byDriver.get(a.id)?.income ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
+      if (sort === "days") return (byDriver.get(b.id)?.days ?? 0) - (byDriver.get(a.id)?.days ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
+      return a.display_name.localeCompare(b.display_name, "en-GB");
+    });
+  const workedThisMonth = visible.filter((d) => (byDriver.get(d.id)?.days ?? 0) > 0).length;
   const inactiveCount = drivers.filter((d) => !d.is_active).length;
 
   const unregistered = new Map<string, { franchiseId: string; driverKey: string; name: string; days: number; latest: string }>();
@@ -59,7 +82,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Drivers"
-        description={`${visible.filter((d) => d.is_active).length} active${ctx.franchise ? ` on ${franchiseLabel(ctx.franchise)}` : ""}`}
+        description={`${workedThisMonth} worked in ${formatMonth(month).split(" ")[0]} · ${visible.filter((d) => d.is_active).length} on the books${ctx.franchise ? ` on ${franchiseLabel(ctx.franchise)}` : ""}`}
         actions={ctx.canWrite ? <LinkButton href="/drivers/new">Add driver</LinkButton> : null}
       />
 
@@ -90,6 +113,61 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
         <EmptyState title="No drivers yet" action={ctx.canWrite ? <LinkButton href="/drivers/new">Add your first driver</LinkButton> : undefined}>
           Add your drivers so that earnings, adjustments and expenses can be attributed to the right person.
         </EmptyState>
+      ) : routeIncome ? (
+        <>
+          <form method="get" className="mb-4 flex flex-wrap items-center gap-2">
+            {showInactive ? <input type="hidden" name="show" value="all" /> : null}
+            <label className="sr-only" htmlFor="driver-search">Search drivers</label>
+            <input id="driver-search" name="q" defaultValue={searchText ?? ""} placeholder="Search by name" className="h-10 min-w-0 flex-1 rounded-lg border border-line-strong bg-surface px-3 text-base" />
+            <label className="sr-only" htmlFor="driver-sort">Sort by</label>
+            <select id="driver-sort" name="sort" defaultValue={sort} className="h-10 rounded-lg border border-line-strong bg-surface px-2 text-sm">
+              <option value="name">Name</option>
+              <option value="income">Income this month</option>
+              <option value="days">Days worked this month</option>
+            </select>
+            <button type="submit" className={buttonClass("secondary", "sm")}>Apply</button>
+          </form>
+          <TableWrap>
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>Driver</th>
+                  <th className="hidden sm:table-cell">Franchise</th>
+                  <th className="hidden sm:table-cell">Route</th>
+                  <th className="r">Days</th>
+                  <th className="r">Income</th>
+                  <th className="r hidden sm:table-cell">Day rate</th>
+                  <th className="r">Wage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((d) => {
+                  const now = current(d.id);
+                  const figures = byDriver.get(d.id);
+                  const rate = currentRate(d.id);
+                  const where = now.length ? now.map((a) => [franchiseName.get(a.franchise_id) ?? "—", a.route].filter(Boolean).join(" · route ")).join(", ") : "";
+                  return (
+                    <tr key={d.id}>
+                      <td>
+                        <Link href={`/drivers/${d.id}`} className="font-medium hover:underline">{d.display_name}</Link>
+                        {!d.is_active ? <Badge className="ml-2">Inactive</Badge> : null}
+                        {where ? <span className="mt-0.5 block text-sm text-muted sm:hidden">{where}</span> : null}
+                      </td>
+                      <td className="hidden sm:table-cell">{now.length ? now.map((a) => franchiseName.get(a.franchise_id) ?? "—").join(", ") : <span className="text-muted">Not assigned</span>}</td>
+                      <td className="num hidden sm:table-cell">{now.map((a) => a.route).filter(Boolean).join(", ") || <span className="text-muted">—</span>}</td>
+                      <td className="r num">{figures?.days ?? 0}</td>
+                      <td className="r num font-medium">{figures ? formatGBP(figures.income) : <span className="text-muted">—</span>}</td>
+                      <td className="r num hidden sm:table-cell">{rate == null ? <span className="text-muted">Not set</span> : formatGBP(rate)}</td>
+                      <td className="r num">
+                        {!figures || figures.days === 0 ? <span className="text-muted">—</span> : figures.wageComplete ? formatGBP(figures.wage) : <Link href={`/drivers/${d.id}`} className="text-accent underline">No rate</Link>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </TableWrap>
+        </>
       ) : (
         <TableWrap>
           <table className="ledger">

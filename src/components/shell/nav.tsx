@@ -5,16 +5,18 @@ import { usePathname } from "next/navigation";
 import { FileText, Fuel, LayoutDashboard, Menu, PoundSterling, RefreshCw, Settings, SlidersHorizontal, Users } from "lucide-react";
 import { cn } from "@/components/ui/cn";
 
-export const NAV_ITEMS = [
+type NavItem = { href: string; label: string; short?: string; icon: typeof LayoutDashboard };
+
+export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/drivers", label: "Drivers", icon: Users },
   { href: "/earnings", label: "Earnings", icon: PoundSterling },
-  { href: "/expenses", label: "Fuel & Expenses", icon: Fuel },
+  { href: "/expenses", label: "Fuel & Expenses", short: "Costs", icon: Fuel },
   { href: "/adjustments", label: "Adjustments", icon: SlidersHorizontal },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/data", label: "Data & Integrations", icon: RefreshCw },
   { href: "/settings", label: "Settings", icon: Settings },
-] as const;
+];
 
 function isActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === "/" || pathname.startsWith("/alerts") : pathname === href || pathname.startsWith(`${href}/`);
@@ -48,7 +50,8 @@ export function SidebarNav({ attention }: { attention: number }) {
   );
 }
 
-const MOBILE_PRIMARY = ["/", "/drivers", "/earnings", "/adjustments"];
+// Adjustments are used rarely; costs are checked often, so costs get the tab and Adjustments sit under More.
+const MOBILE_PRIMARY = ["/", "/drivers", "/earnings", "/expenses"];
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -58,12 +61,12 @@ export function BottomNav() {
     cn("flex flex-1 flex-col items-center gap-1 px-1 pb-2 pt-2.5 text-[0.6875rem] font-medium", active ? "text-accent" : "text-muted");
   return (
     <nav aria-label="Main" className="no-print fixed inset-x-0 bottom-0 z-30 flex border-t border-line bg-surface pb-[env(safe-area-inset-bottom)] lg:hidden">
-      {primary.map(({ href, label, icon: Icon }) => {
+      {primary.map(({ href, label, short, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
-          <Link key={href} href={href} aria-current={active ? "page" : undefined} className={itemClass(active)}>
+          <Link key={href} href={href} aria-current={active ? "page" : undefined} aria-label={label} className={itemClass(active)}>
             <Icon className="size-5" aria-hidden />
-            {label}
+            {short ?? label}
           </Link>
         );
       })}
