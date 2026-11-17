@@ -21,10 +21,10 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --schema public > src/lib/supabase/database.types.ts",
-    "worker": "tsx worker/index.ts",
-    "dpd:discover": "tsx scripts/dpd-discover.ts",
-    "seed:demo": "tsx scripts/seed-demo.ts",
-    "create-owner": "tsx scripts/create-owner.ts"
+    "worker": "tsx --conditions=react-server worker/index.ts",
+    "dpd:discover": "tsx --conditions=react-server scripts/dpd-discover.ts",
+    "seed:demo": "tsx --conditions=react-server scripts/seed-demo.ts",
+    "create-owner": "tsx --conditions=react-server scripts/create-owner.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

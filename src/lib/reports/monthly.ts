@@ -1,0 +1,148 @@
+/**
+ * Builds the data for a monthly report. The same structure feeds the on-screen
+ * report, the PDF and the CSV exports, so they can never disagree.
+ */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAll } from "@/lib/data/fetch-all";
+import { loadPeriodData, type AdjustmentDetail } from "@/lib/data/period";
+import { addMonths, monthRange, type ISODate, type YearMonth } from "@/lib/dates";
+import {
+  combineFranchises, comparePerformance, summarisePeriod,
+  type CategoryTotal, type DriverSummary, type FranchiseSummary, type PerformanceComparison,
+} from "@/lib/finance/calc";
+import type { Database } from "@/lib/supabase/database.types";
+
+type Db = SupabaseClient<Database>;
+
+export interface ReportDriver extends DriverSummary {
+  franchiseLabel: string;
+  comparison: PerformanceComparison;
+}
+
+export interface ReportAdjustment {
+  id: string;
+  date: ISODate;
+  driverName: string;
+  franchiseLabel: string;
+  type: string;
+  amount: number;
+  reason: string;
+  isReversal: boolean;
+  isReversed: boolean;
+  fromCover: boolean;
+}
+
+export interface ReportAlert {
+  id: string;
+  date: ISODate;
+  type: string;
+  title: string;
+  status: string;
+  actual: string | null;
+  expected: string | null;
+}
+
+export interface MonthlyReport {
+  accountName: string;
+  month: YearMonth;
+  from: ISODate;
+  to: ISODate;
+  /** Null for the consolidated all-franchise report. */
+  franchiseId: string | null;
+  scopeLabel: string;
+  generatedAt: string;
+  totals: FranchiseSummary;
+  franchises: (FranchiseSummary & { label: string })[];
+  drivers: ReportDriver[];
+  categories: CategoryTotal[];
+  adjustments: ReportAdjustment[];
+  unusual: ReportAlert[];
+  missingData: ReportAlert[];
+  unresolvedImports: { id: string; title: string; createdAt: string }[];
+  coverCount: number;
+  revenueAllocationBasis: string;
+}
+
+const MISSING_TYPES = new Set(["missing_driver_report", "missing_franchise_report", "missing_fuel", "unregistered_driver", "source_conflict"]);
+
+export async function buildMonthlyReport(db: Db, input: { accountId: string; month: YearMonth; franchiseId: string | null }): Promise<MonthlyReport> {
+  const { accountId, month, franchiseId } = input;
+  const { start, end } = monthRange(month);
+  const baselineFrom = monthRange(addMonths(month, -3)).start;
+  const baselineTo = monthRange(addMonths(month, -1)).end;
+
+  const [account, franchises, data, baselineData, anomalies, reviews] = await Promise.all([
+    db.from("accounts").select("name").eq("id", accountId).maybeSingle(),
+    fetchAll(() => db.from("franchises").select("id, fd_number, name").eq("account_id", accountId).order("fd_number")),
+    loadPeriodData(db, { accountId, from: start, to: end, franchiseId }),
+    loadPeriodData(db, { accountId, from: baselineFrom, to: baselineTo, franchiseId }),
+    fetchAll(() => {
+      let q = db.from("anomalies").select("id, subject_date, anomaly_type, title, status, actual_value, expected_value, franchise_id")
+        .eq("account_id", accountId).gte("subject_date", start).lte("subject_date", end).order("subject_date").order("id");
+      if (franchiseId) q = q.eq("franchise_id", franchiseId);
+      return q;
+    }),
+    fetchAll(() => {
+      let q = db.from("review_items").select("id, title, created_at, franchise_id").eq("account_id", accountId).eq("status", "open").order("created_at").order("id");
+      if (franchiseId) q = q.eq("franchise_id", franchiseId);
+      return q;
+    }),
+  ]);
+
+  const label = new Map(franchises.map((f) => [f.id, f.name ? `${f.fd_number} · ${f.name}` : f.fd_number]));
+  const summary = summarisePeriod(data);
+  const baseline = summarisePeriod(baselineData);
+  const scoped = franchiseId ? summary.franchises.filter((f) => f.franchiseId === franchiseId) : summary.franchises;
+  const totals = franchiseId ? (scoped[0] ?? combineFranchises([])) : summary.combined;
+  if (franchiseId && !scoped[0]) totals.franchiseId = franchiseId;
+
+  const baselineByKey = new Map(baseline.franchises.flatMap((f) => f.drivers.map((d) => [`${f.franchiseId}|${d.key}`, d] as const)));
+  const drivers: ReportDriver[] = scoped
+    .filter((f) => f.franchiseId)
+    .flatMap((f) => f.drivers.map((d) => ({
+      ...d,
+      franchiseLabel: label.get(f.franchiseId!) ?? "",
+      comparison: comparePerformance(d, baselineByKey.get(`${f.franchiseId}|${d.key}`) ?? null),
+    })))
+    .sort((a, b) => a.franchiseLabel.localeCompare(b.franchiseLabel) || a.name.localeCompare(b.name, "en-GB"));
+
+  const reversed = new Set(data.adjustments.filter((a) => a.reversesId).map((a) => a.reversesId as string));
+  const adjustments: ReportAdjustment[] = (data.adjustments as AdjustmentDetail[])
+    .map((a) => ({
+      id: a.id, date: a.date, driverName: data.driverNames.get(a.driverId) ?? "Unknown driver", franchiseLabel: label.get(a.franchiseId) ?? "",
+      type: a.type, amount: a.amount, reason: a.reason, isReversal: a.reversesId != null, isReversed: reversed.has(a.id), fromCover: a.coverRecordId != null,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.driverName.localeCompare(b.driverName));
+
+  const toAlert = (a: (typeof anomalies)[number]): ReportAlert => ({
+    id: a.id, date: a.subject_date, type: a.anomaly_type, title: a.title, status: a.status, actual: a.actual_value, expected: a.expected_value,
+  });
+  const relevant = anomalies.filter((a) => a.status !== "ignored");
+
+  return {
+    accountName: account.data?.name ?? "",
+    month,
+    from: start,
+    to: end,
+    franchiseId,
+    scopeLabel: franchiseId ? (label.get(franchiseId) ?? "Franchise") : "All franchises (consolidated)",
+    generatedAt: new Date().toISOString(),
+    totals,
+    franchises: scoped.filter((f) => f.franchiseId).map((f) => ({ ...f, label: label.get(f.franchiseId!) ?? "" })),
+    drivers,
+    categories: totals.categories,
+    adjustments,
+    unusual: relevant.filter((a) => !MISSING_TYPES.has(a.anomaly_type)).map(toAlert),
+    missingData: relevant.filter((a) => MISSING_TYPES.has(a.anomaly_type) && a.status !== "resolved").map(toAlert),
+    unresolvedImports: reviews.map((r) => ({ id: r.id, title: r.title, createdAt: r.created_at })),
+    coverCount: data.covers.filter((c) => c.status === "active").length,
+    revenueAllocationBasis: data.revenueAllocationBasis,
+  };
+}
+
+export function changeText(change: number | null): string {
+  if (change == null) return "No history";
+  if (change === 0) return "Same as usual";
+  return `${change > 0 ? "+" : "-"}${Math.abs(change)}%`;
+}

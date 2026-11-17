@@ -1,0 +1,193 @@
+/**
+ * DPD portal jobs, run by the background worker.
+ *
+ *   dpd_sync       one franchise, one report date: sign in, collect each
+ *                  report described by the portal map, and pass every
+ *                  document to the shared import pipeline.
+ *   dpd_discovery  walk the portal read-only and produce the capability
+ *                  inventory.
+ *
+ * A failure on one report never stops the others: it is recorded with a
+ * diagnostic screenshot and the job finishes as "partial".
+ */
+
+import "server-only";
+import { formatUkDate, londonToday } from "@/lib/dates";
+import { env } from "@/lib/env";
+import { importDocument, type ImportOutcome } from "@/lib/ingest/pipeline";
+import type { Job, JobOutcome } from "@/lib/jobs/queue";
+import { describeError, logger } from "@/lib/logger";
+import type { AdminClient } from "@/lib/supabase/admin";
+import type { JsonObject } from "@/lib/supabase/json";
+import { discoverPortal, inventoryMarkdown } from "./discovery";
+import { PortalError } from "./errors";
+import { portalMapSchema, type PortalMap } from "./portal-map";
+import { PortalSession, type PortalCredentials } from "./session";
+
+/** Keeps one signed-in session open across consecutive jobs so several franchises need only one sign-in. */
+export class PortalSessionPool {
+  private session: PortalSession | null = null;
+  private key = "";
+
+  async acquire(credentials: PortalCredentials, map: PortalMap): Promise<PortalSession> {
+    const key = `${credentials.url}|${credentials.username}|${JSON.stringify(map.login)}`;
+    if (this.session && this.key === key && this.session.signedIn) return this.session;
+    await this.release();
+    const session = await PortalSession.open(credentials, map);
+    try {
+      await session.login();
+    } catch (error) {
+      await session.close();
+      throw error;
+    }
+    this.session = session;
+    this.key = key;
+    return session;
+  }
+
+  /** Drops the session after a failure so the next job starts from a clean sign-in. */
+  async release(): Promise<void> {
+    const session = this.session;
+    this.session = null;
+    this.key = "";
+    if (session) await session.close();
+  }
+}
+
+export async function loadPortalMap(db: AdminClient, accountId: string): Promise<PortalMap | null> {
+  const { data } = await db.from("integration_connections").select("config").eq("account_id", accountId).eq("provider", "dpd").maybeSingle();
+  const raw = (data?.config as { portalMap?: unknown } | null)?.portalMap;
+  if (!raw) return null;
+  const parsed = portalMapSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new PortalError("config", "portal-map", "The DPD portal setup is not valid. Ask your developer to check it.", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
+  }
+  return parsed.data;
+}
+
+async function logSync(db: AdminClient, job: Job, level: "info" | "warning" | "error", event: string, message: string, detail: Record<string, unknown> = {}) {
+  await db.from("sync_logs").insert({
+    account_id: job.account_id, integration: "dpd", import_job_id: job.id, franchise_id: job.franchise_id, level, event, message, detail: detail as JsonObject,
+  });
+}
+
+async function touchConnection(db: AdminClient, accountId: string, patch: { success?: boolean; error?: string | null }) {
+  const now = new Date().toISOString();
+  await db.from("integration_connections").upsert(
+    {
+      account_id: accountId, provider: "dpd", status: patch.error ? "error" : "connected", last_sync_at: now,
+      ...(patch.success ? { last_success_at: now } : {}), last_error: patch.error ?? null,
+    },
+    { onConflict: "account_id,provider" },
+  );
+}
+
+function credentialsOrThrow(): PortalCredentials {
+  const dpd = env.dpd();
+  if (!dpd) {
+    throw new PortalError("config", "credentials", "The DPD portal login details have not been set on the background worker yet.", "DPD_PORTAL_URL / DPD_USERNAME / DPD_PASSWORD missing");
+  }
+  return dpd;
+}
+
+export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessionPool): Promise<JobOutcome> {
+  if (!job.franchise_id) throw new PortalError("config", "job", "This sync was not linked to a franchise.");
+  const date = job.report_date ?? londonToday();
+  const { data: franchise } = await db.from("franchises").select("id, fd_number").eq("id", job.franchise_id).eq("account_id", job.account_id).maybeSingle();
+  if (!franchise) throw new PortalError("config", "job", "The franchise for this sync no longer exists.");
+
+  const map = await loadPortalMap(db, job.account_id);
+  if (!map) {
+    throw new PortalError("config", "portal-map", "The DPD portal has not been set up for automatic sync yet. Run “Explore the DPD portal” first, then ask your developer to complete the setup. Until then, upload reports by hand or use Dropbox.");
+  }
+  const credentials = credentialsOrThrow();
+
+  let session: PortalSession;
+  try {
+    session = await pool.acquire(credentials, map);
+    await session.openFranchise(franchise.fd_number, date);
+  } catch (error) {
+    await pool.release();
+    throw error;
+  }
+
+  const outcomes: ImportOutcome[] = [];
+  const failures: { report: string; message: string }[] = [];
+
+  for (const report of map.reports) {
+    try {
+      // Each report starts from the franchise's landing page.
+      await session.openFranchise(franchise.fd_number, date);
+      const documents = await session.collectReport(report, franchise.fd_number, date);
+      for (const document of documents) {
+        outcomes.push(await importDocument(db, {
+          accountId: job.account_id, source: "dpd_portal", sourceRef: document.sourceRef, filename: document.filename,
+          mimeType: document.mimeType, bytes: document.bytes, franchiseHintId: franchise.id, importJobId: job.id,
+        }));
+      }
+    } catch (error) {
+      const portalError = error instanceof PortalError ? error : null;
+      const plain = portalError?.plainEnglish ?? `The “${report.label}” report could not be collected.`;
+      failures.push({ report: report.label, message: plain });
+
+      // Diagnostics: a screenshot of where it went wrong, kept in private storage.
+      let screenshotPath: string | null = null;
+      const shot = await session.screenshot();
+      if (shot) {
+        screenshotPath = `${job.account_id}/${job.id}/${report.id}.png`;
+        const upload = await db.storage.from("diagnostics").upload(screenshotPath, shot, { contentType: "image/png", upsert: true });
+        if (upload.error) screenshotPath = null;
+      }
+      await logSync(db, job, "error", "report_failed", `${franchise.fd_number}: ${plain}`, {
+        report: report.id, step: portalError?.step ?? "unknown", error: describeError(error), screenshotPath,
+      });
+      logger.warn({ jobId: job.id, report: report.id, step: portalError?.step }, "DPD report collection failed");
+      if (portalError && (portalError.kind === "auth" || portalError.kind === "blocked")) {
+        await pool.release();
+        throw error;
+      }
+    }
+  }
+
+  const inserted = outcomes.reduce((n, o) => n + o.inserted, 0);
+  const needsReview = outcomes.filter((o) => o.status === "needs_review" || o.status === "failed").length;
+  const blockedWrites = session.guard.blocked.length;
+  const result = { reportDate: date, documents: outcomes.length, inserted, needsReview, failures, blockedRequests: blockedWrites };
+
+  if (outcomes.length === 0 && failures.length > 0) {
+    await touchConnection(db, job.account_id, { error: failures[0]!.message });
+    // Nothing at all could be collected: treat as a failure so it is retried.
+    throw new PortalError("layout", "sync", failures[0]!.message, failures.map((f) => `${f.report}: ${f.message}`).join(" | "));
+  }
+
+  const parts = [`${inserted} new record${inserted === 1 ? "" : "s"} imported`];
+  if (needsReview > 0) parts.push(`${needsReview} report${needsReview === 1 ? "" : "s"} need checking`);
+  if (failures.length > 0) parts.push(`${failures.length} report${failures.length === 1 ? "" : "s"} could not be collected`);
+  const clean = failures.length === 0 && needsReview === 0;
+  const message = `${franchise.fd_number}, ${formatUkDate(date)}: ${clean ? "DPD synchronised successfully. " : ""}${parts.join(", ")}.`;
+
+  await touchConnection(db, job.account_id, { success: true });
+  await logSync(db, job, clean ? "info" : "warning", "sync_finished", message, result);
+  return { status: clean ? "succeeded" : "partial", message, result };
+}
+
+export async function runDpdDiscoveryJob(db: AdminClient, job: Job): Promise<JobOutcome> {
+  const credentials = credentialsOrThrow();
+  const existing = await loadPortalMap(db, job.account_id).catch(() => null);
+  // Discovery only needs the login part of a map; everything else is what it is finding out.
+  const map: PortalMap = existing ?? portalMapSchema.parse({ version: 1, franchise: { mode: "none" }, reports: [{ id: "placeholder", label: "placeholder", kind: "earnings", navigate: [], collect: { mode: "table" } }] });
+
+  const session = await PortalSession.open(credentials, map);
+  try {
+    await session.login();
+    const discovery = await discoverPortal(session, { maxPages: Number((job.payload as { maxPages?: number } | null)?.maxPages ?? 60) });
+    const markdown = inventoryMarkdown(discovery);
+    const path = `${job.account_id}/${job.id}/portal-inventory.md`;
+    await db.storage.from("diagnostics").upload(path, new TextEncoder().encode(markdown), { contentType: "text/markdown", upsert: true });
+    const message = `Portal explored: ${discovery.pages.length} page type${discovery.pages.length === 1 ? "" : "s"} recorded${discovery.truncated ? " (page limit reached)" : ""}. Nothing in the portal was changed.`;
+    await logSync(db, job, "info", "discovery_finished", message, { pages: discovery.pages.length, inventoryPath: path });
+    return { status: "succeeded", message, result: { inventoryPath: path, discovery: discovery as unknown as JsonObject, markdown } };
+  } finally {
+    await session.close();
+  }
+}
