@@ -9,7 +9,7 @@ const toneClass: Record<Tone, string> = {
   warn: "bg-warn-soft text-warn",
   bad: "bg-bad-soft text-bad",
   info: "bg-info-soft text-info",
-  accent: "bg-accent-soft text-accent",
+  accent: "bg-accent-soft text-accent-strong",
 };
 
 export function Badge({ tone = "neutral", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {

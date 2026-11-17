@@ -35,7 +35,7 @@ export function SidebarNav({ attention }: { attention: number }) {
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-[0.9375rem] font-medium",
-              active ? "bg-accent-soft text-accent" : "text-ink-soft hover:bg-sunken",
+              active ? "bg-accent-soft text-accent-strong" : "text-ink-soft hover:bg-sunken",
             )}
           >
             <Icon className="size-[18px] shrink-0" aria-hidden />
@@ -64,9 +64,10 @@ export function BottomNav() {
       {primary.map(({ href, label, short, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
-          <Link key={href} href={href} aria-current={active ? "page" : undefined} aria-label={label} className={itemClass(active)}>
+          <Link key={href} href={href} aria-current={active ? "page" : undefined} className={itemClass(active)}>
             <Icon className="size-5" aria-hidden />
-            {short ?? label}
+            {/* The visible word is short ("Costs"); the full name is added for screen readers, so the two never disagree. */}
+            {short ? <>{short}<span className="sr-only"> ({label})</span></> : label}
           </Link>
         );
       })}

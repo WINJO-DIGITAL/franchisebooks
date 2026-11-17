@@ -40,12 +40,13 @@ export function AlertsBell({ count }: { count: number }) {
         router.push(back.startsWith("/") && !back.startsWith("/alerts") ? back : "/");
       }}
       className={`relative ml-auto flex h-10 shrink-0 items-center gap-2 rounded-lg px-2 text-sm font-medium hover:bg-sunken sm:px-3 ${onAlerts ? "bg-sunken text-ink" : "text-ink-soft"}`}
-      aria-label={onAlerts ? "Close alerts and go back" : count > 0 ? `${count} things need attention` : "Alerts"}
       aria-current={onAlerts ? "page" : undefined}
     >
       <Bell className="size-[18px]" aria-hidden />
-      <span className="hidden sm:inline">Alerts</span>
-      {count > 0 ? <span className="num rounded-full bg-bad px-1.5 text-xs font-semibold text-white">{count}</span> : null}
+      {/* No aria-label: the name comes from the content, so what is shown is always part of what is announced. */}
+      <span className="max-sm:sr-only">Alerts</span>
+      {count > 0 ? <span className="num rounded-full bg-bad px-1.5 text-xs font-semibold text-white">{count}<span className="sr-only"> need attention</span></span> : null}
+      {onAlerts ? <span className="sr-only"> (press again to go back)</span> : null}
     </Link>
   );
 }

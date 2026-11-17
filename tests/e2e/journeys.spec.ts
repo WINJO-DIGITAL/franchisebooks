@@ -12,10 +12,11 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByRole("heading", { name: "Synchronisation" })).toBeVisible();
     // Revenue was entered as an estimate, so profit must be labelled as an estimate.
     await expect(page.getByText("Estimated").first()).toBeVisible();
-    // Quick actions
-    await expect(page.getByRole("link", { name: "Add Pay Adjustment" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Record Driver Cover" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Add Expense" })).toBeVisible();
+    // Quick actions live in one Add menu.
+    await page.getByText("Add", { exact: true }).first().click();
+    await expect(page.getByRole("link", { name: /Pay adjustment/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Driver cover/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /^Expense/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Sync DPD/ })).toBeVisible();
     // All eight sections are reachable from the sidebar.
     for (const name of ["Dashboard", "Drivers", "Earnings", "Fuel & Expenses", "Adjustments", "Reports", "Data & Integrations", "Settings"]) {
