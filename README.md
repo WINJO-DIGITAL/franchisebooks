@@ -72,6 +72,7 @@ Stop everything with `npm run db:stop`. Start again from nothing with
 | Read this | When |
 | --- | --- |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Putting it live: Vercel, worker, Supabase, cron, Dropbox, DPD |
+| [`docs/GITHUB_ACTIONS_WORKER.md`](docs/GITHUB_ACTIONS_WORKER.md) | The nightly DPD sync on GitHub Actions: setup, UK time, retries, free minutes |
 | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Something has gone wrong (sync failed, Dropbox disconnected, DPD changed) |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How the pieces fit together |
 | [`docs/FINANCE.md`](docs/FINANCE.md) | How every number is worked out |

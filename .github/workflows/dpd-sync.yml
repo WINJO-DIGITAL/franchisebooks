@@ -1,0 +1,140 @@
+name: DPD nightly sync
+
+# Runs the DPD portal sync once a day, around 20:30 UK time, on a GitHub-hosted
+# runner. Nothing runs between syncs, so there is no server to pay for.
+#
+# GitHub cron is UTC-only. It is scheduled at 19:32 and 20:32 UTC; exactly one of
+# those is 20:32 UK time (BST or GMT). The first step lets that one through and
+# stops the other within seconds. See docs/GITHUB_ACTIONS_WORKER.md.
+#
+# NOTE: GitHub only runs scheduled workflows from the repository's default
+# branch, so this file has to be on it for the schedule to start.
+
+on:
+  schedule:
+    - cron: "32 19 * * *"
+    - cron: "32 20 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Queue a sync for every active franchise now, whatever the time"
+        type: boolean
+        default: true
+      report_date:
+        description: "Report date for a forced sync (YYYY-MM-DD). Blank means today, UK time"
+        type: string
+        default: ""
+      discovery:
+        description: "Explore the DPD portal (read-only) instead of syncing"
+        type: boolean
+        default: false
+
+# One run at a time. A late run waits for the one before it instead of overlapping.
+concurrency:
+  group: dpd-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # Evening window in UK time (HHMM). Keep in step with the time set in Settings.
+      WINDOW_START: ${{ vars.SYNC_WINDOW_START || '2030' }}
+      WINDOW_END: ${{ vars.SYNC_WINDOW_END || '2129' }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Check the UK time window
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Started by hand: running now."
+            exit 0
+          fi
+          echo "UK time now: $(TZ=Europe/London date '+%H:%M %Z')"
+          run=$(.github/scripts/in-window.sh)
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          if [ "$run" = "true" ]; then echo "Inside the evening window: running."; else echo "Outside the evening window: nothing to do."; fi
+
+      - name: Set up Node
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm ci --no-audit --no-fund
+
+      - name: Restore the browser download
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install headless Chromium
+        if: steps.gate.outputs.run == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the sync
+        if: steps.gate.outputs.run == 'true'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          DPD_PORTAL_URL: ${{ secrets.DPD_PORTAL_URL }}
+          DPD_USERNAME: ${{ secrets.DPD_USERNAME }}
+          DPD_PASSWORD: ${{ secrets.DPD_PASSWORD }}
+          DPD_LOGIN_SECRET: ${{ secrets.DPD_LOGIN_SECRET }}
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+          INPUT_FORCE: ${{ inputs.force }}
+          INPUT_DATE: ${{ inputs.report_date }}
+          INPUT_DISCOVERY: ${{ inputs.discovery }}
+        run: |
+          args=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "$INPUT_DISCOVERY" = "true" ]; then args="--discovery"
+            elif [ "$INPUT_FORCE" = "true" ]; then args="--force"; fi
+            if [ -n "$INPUT_DATE" ]; then args="$args --date $INPUT_DATE"; fi
+          fi
+          npm run worker:once -- $args
+
+      - name: Check this month's Actions minutes
+        if: always() && steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LIMIT_MINUTES: ${{ vars.ACTIONS_MONTHLY_LIMIT_MINUTES || '2000' }}
+        run: |
+          # Estimate: each run's wall-clock time, rounded up to whole minutes, summed for this month.
+          # Linux runners count 1:1. Public repositories are not billed; this still shows the usage.
+          month_start=$(date -u +%Y-%m-01)
+          used=$(gh api --paginate -X GET "repos/${GITHUB_REPOSITORY}/actions/runs" -f created=">=${month_start}" -f per_page=100 \
+            --jq '.workflow_runs[] | select(.run_started_at != null) | (((.updated_at|fromdateiso8601) - (.run_started_at|fromdateiso8601)) / 60 | ceil)' \
+            | awk '{ s += $1 } END { print s + 0 }')
+          day=$(date -u +%-d)
+          days_in_month=$(date -u -d "${month_start} +1 month -1 day" +%-d)
+          projected=$(awk -v u="$used" -v d="$day" -v n="$days_in_month" 'BEGIN { printf "%d", (u / d) * n }')
+          {
+            echo "## Actions minutes this month (estimate)"
+            echo ""
+            echo "| Used so far | Projected for the month | Free allowance |"
+            echo "| --- | --- | --- |"
+            echo "| ${used} min | ${projected} min | ${LIMIT_MINUTES} min |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Used ${used} min so far; projected ${projected} min of ${LIMIT_MINUTES}."
+          if [ "$used" -ge $((LIMIT_MINUTES * 9 / 10)) ]; then
+            echo "::error::Over 90% of the monthly Actions minutes are used (${used} of ${LIMIT_MINUTES}). The sync may stop. See docs/GITHUB_ACTIONS_WORKER.md."
+          elif [ "$projected" -ge $((LIMIT_MINUTES * 8 / 10)) ]; then
+            echo "::warning::On course to use ${projected} of ${LIMIT_MINUTES} free Actions minutes this month."
+          fi

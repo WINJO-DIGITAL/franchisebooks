@@ -10,7 +10,7 @@ code. Anything marked **(you)** needs a login or a decision only you can make.
 | --- | --- | --- |
 | Web app | Vercel | Pro plan if you want the 5-minute scheduler (see step 5) |
 | Database, sign-in, files | Supabase (production project) | Free plan allows two projects; if both are used, pause one or upgrade |
-| Background worker (DPD portal) | Fly.io, Railway, Render or any Docker host | A small always-on machine with at least 1 GB of memory |
+| Background worker (DPD portal) | GitHub Actions, once a night (see [`GITHUB_ACTIONS_WORKER.md`](GITHUB_ACTIONS_WORKER.md)) | Free within GitHub's included minutes. Fly.io, Railway, Render or any Docker host also work if you outgrow it: a small always-on machine with at least 1 GB of memory |
 | Backups | Supabase daily backups | Included on the Pro plan |
 
 You will need these values at various points. Generate the secrets on your
