@@ -52,11 +52,22 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await row.getByRole("button", { name: "Reverse" }).click();
     await page.getByLabel("Why is it being reversed?").fill("E2E clean-up");
     await page.getByRole("button", { name: "Reverse adjustment" }).click();
-    await expect(page.getByRole("row", { name: /E2E clean-up/ })).toContainText("−£37.50");
+    await expect(page.getByRole("row", { name: /E2E clean-up/ }).filter({ hasText: "Additional payment" }).first()).toContainText("−£37.50");
     await expect(page.getByRole("row", { name: /E2E: covered an extra route/ }).first()).toContainText("Reversed");
   });
 
   test("records driver cover and keeps the original DPD figures", async ({ page }) => {
+    // A cover left over from an interrupted earlier run would be (rightly) refused as a duplicate; cancel it first.
+    await page.goto("/adjustments");
+    for (let i = 0; i < 5; i++) {
+      const leftover = page.getByRole("row").filter({ has: page.getByRole("button", { name: "Cancel" }) }).first();
+      if (!(await leftover.isVisible().catch(() => false))) break;
+      await leftover.getByRole("button", { name: "Cancel" }).click();
+      await page.getByLabel("Why is it being cancelled?").fill("E2E tidy-up");
+      await page.getByRole("button", { name: "Cancel cover record" }).click();
+      await page.waitForLoadState("networkidle");
+      await page.goto("/adjustments");
+    }
     await page.goto("/adjustments/cover");
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel("Whose work was covered?").selectOption({ label: "Alex Example" });
@@ -79,7 +90,9 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await cover.getByRole("button", { name: "Cancel" }).click();
     await page.getByLabel("Why is it being cancelled?").fill("E2E clean-up");
     await page.getByRole("button", { name: "Cancel cover record" }).click();
-    await expect(page.getByRole("row").filter({ hasText: "Cancelled" }).first()).toContainText("Blake Sample");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await page.goto("/adjustments");
+    await expect(page.getByRole("row").filter({ has: page.getByRole("button", { name: "Cancel" }) })).toHaveCount(0);
   });
 
   test("uploads an earnings PDF by hand, and refuses to import the same file twice", async ({ page }) => {
@@ -115,32 +128,34 @@ test.describe("owner journeys (synthetic demo data)", () => {
     // Reject it so the demo data stays tidy.
     const item = page.locator("li", { hasText: `e2e-corrupt-${date}.pdf` }).first();
     await item.getByRole("button", { name: "Reject" }).click();
-    await expect(page.getByText(/Rejected\. Nothing from this document was imported/)).toBeVisible();
+    await expect(page.getByText(/Rejected\. Nothing from this document was imported/).first()).toBeVisible();
   });
 
   test("adds an expense by hand and assigns it to a driver", async ({ page }) => {
+    const label = `E2E two front tyres ${Date.now()}`;
     await page.goto("/expenses");
     await page.getByRole("button", { name: "Add Expense" }).click();
-    await page.getByLabel("What was it for?").fill("E2E two front tyres");
+    await page.getByLabel("What was it for?").fill(label);
     await page.getByLabel("How much?").fill("186.40");
     await page.getByLabel("Category").selectOption({ label: "Tyres" });
     await page.getByRole("radio", { name: "Decide later" }).check();
     await page.getByRole("button", { name: "Save expense" }).click();
     await page.getByRole("link", { name: "Unallocated" }).click();
-    const row = page.getByRole("row", { name: /E2E two front tyres/ });
+    const row = page.getByRole("row", { name: new RegExp(label) });
     await expect(row).toContainText("£186.40");
     await expect(row).toContainText("Unallocated");
     await row.getByRole("button", { name: "Assign" }).click();
     await page.getByLabel("Which driver?").selectOption({ label: "Alex Example" });
     await page.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.goto("/expenses");
-    await expect(page.getByRole("row", { name: /E2E two front tyres/ })).toContainText("Alex Example");
+    await expect(page.getByRole("row", { name: new RegExp(label) })).toContainText("Alex Example");
     // Clean up: remove from totals with a reason.
-    await page.getByRole("row", { name: /E2E two front tyres/ }).getByRole("button", { name: "Remove" }).click();
+    await page.getByRole("row", { name: new RegExp(label) }).getByRole("button", { name: "Remove" }).click();
     const dialog = page.getByRole("dialog", { name: "Remove this cost from the totals" });
     await dialog.getByLabel(/Why\?/).fill("E2E clean-up");
     await dialog.getByRole("button", { name: "Remove" }).click();
-    await expect(page.getByText("E2E two front tyres")).toHaveCount(0);
+    await expect(page.getByText(label)).toHaveCount(0);
   });
 
   test("generates a monthly PDF report and downloads it", async ({ page, request }) => {

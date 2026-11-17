@@ -12,7 +12,7 @@ _Living document. Last updated 17 November 2026._
 | 4. Integrations | Built and tested against synthetic stand-ins; **not run against real DPD or real Dropbox** |
 | 5. Financial intelligence | Done |
 | 6. Reporting | Done |
-| 7. Quality assurance | In progress — see test table |
+| 7. Quality assurance | Done for what can be tested locally — 266 automated tests + 27 browser tests green (see below) |
 | 8. Deployment | Prepared (config, Dockerfile, guide); **not deployed** |
 
 ## What has and has not been tested
@@ -31,7 +31,7 @@ _Living document. Last updated 17 November 2026._
 | DPD browser automation against a **synthetic mock portal**: login, read-only network guard, refusing write-looking clicks, MFA stop, bad password, layout change → diagnostic screenshot + retry, untrusted report → review | integration (real headless Chromium) | 10 |
 | Dropbox OAuth URL, token refresh, revoked access, incremental sync, duplicates, conflicts, webhook signature | integration (fake Dropbox API) | 12 |
 | Scheduler tick (no double queueing, concurrency, crash recovery, month-end), cron auth, report generation | integration | 11 |
-| Browser journeys: sign-in/out, dashboard, adjustment wizard + reversal, cover, upload + duplicate, held document, expense assign/void, report download, drivers, alerts, revenue, mobile layout of every page | Playwright e2e (desktop + phone) | see below |
+| Browser journeys: sign-in/out, dashboard, adjustment wizard + reversal, cover, upload + duplicate, held document, expense assign/void, report download, drivers, alerts, revenue, no sideways scrolling and bottom navigation on every page at phone size | Playwright e2e (desktop + Pixel 7), run twice consecutively | 27 |
 
 **NOT tested — needs credentials or a live environment:**
 
@@ -41,6 +41,14 @@ _Living document. Last updated 17 November 2026._
 * Production Supabase, Vercel deployment, cron on Vercel, the worker on a host.
 * Email (password reset delivery).
 * Load/performance with a year of real data.
+
+## Defects found and fixed during QA
+
+* Franchise row-level-security policy rejected `insert … returning` for new franchises (found by the seed script; regression test added).
+* Report files written in the same second collided in storage (random suffix added).
+* "Sign out" ended the session on **every** device; it now signs out the current device only (found by the browser tests).
+* Dropbox webhook returned 503 when Dropbox is unconfigured; browser test accepts 403/503 as "refused".
+* `npm audit` (production): 2 moderate findings in the `exceljs` dependency tree (minimatch/uuid). Not exploitable here — Excel files are parsed server-side from the owner's own uploads — but worth upgrading when `exceljs` releases a fix.
 
 ## Known limitations
 
@@ -64,4 +72,4 @@ _Living document. Last updated 17 November 2026._
 
 ## Next step
 
-Run the browser journeys to completion and fix anything they reveal; then a final review pass over security and accessibility, update this log with the final numbers, and push.
+Needs a human decision: provide the external inputs above, then follow `docs/DEPLOYMENT.md` to create the production Supabase project, Vercel project and worker host and run the smoke tests. Nothing has been deployed.
