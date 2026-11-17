@@ -135,6 +135,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"dpd_invoices": {
+                  Row: {
+                    "account_id": string,"created_at": string,"due_date": string | null,"franchise_id": string,"id": string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems": NonNullable<Json>,"reconciled": boolean,"vat_total": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"due_date"?: string | null,"franchise_id": string,"id"?: string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems"?: NonNullable<Json>,"reconciled": boolean,"vat_total": number
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"due_date"?: string | null,"franchise_id"?: string,"id"?: string,"invoice_date"?: string,"invoice_no"?: string,"invoice_total"?: number,"lines"?: NonNullable<Json>,"net_total"?: number,"period_end"?: string,"period_start"?: string,"problems"?: NonNullable<Json>,"reconciled"?: boolean,"vat_total"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dpd_invoices_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dpd_invoices_franchise_id_account_id_fkey"
+      columns: ["franchise_id","account_id"]
+isOneToOne: false
+      referencedRelation: "franchises"
+      referencedColumns: ["id","account_id"]
+    }
+                  ]
                 },"driver_aliases": {
                   Row: {
                     "account_id": string,"alias_display": string,"alias_normalised": string,"created_at": string,"driver_id": string,"id": string

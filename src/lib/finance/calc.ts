@@ -102,6 +102,18 @@ export interface RevenueRow {
 
 export type RevenueAllocationBasis = "none" | "stops" | "parcels" | "earnings";
 
+/** An extra amount DPD pays the franchise on its self-billed invoice (Fuel Supplement, C&D App ...). Income, never a cost. */
+export interface OtherPaymentRow {
+  id: string;
+  franchiseId: string;
+  /** Start of the invoice's billing period, so it lands in the period it belongs to. */
+  date: ISODate;
+  /** What it is, for example "Fuel Supplement". */
+  label: string;
+  amount: Pence;
+  invoiceNo: string;
+}
+
 export interface PeriodInput {
   from: ISODate;
   to: ISODate;
@@ -121,6 +133,8 @@ export interface PeriodInput {
   earningsMeaning?: EarningsMeaning;
   /** Day rates, used to work out wages when earningsMeaning is "route_income". */
   dayRates?: DayRate[];
+  /** Extra DPD payments from invoices; counted as income in "route_income" mode only. */
+  otherPayments?: OtherPaymentRow[];
 }
 
 export type EarningsMeaning = "driver_pay" | "route_income";
@@ -200,6 +214,8 @@ export interface FranchiseSummary {
   earningsMeaning: EarningsMeaning;
   /** DPD route income counted as revenue ("route_income" mode only; 0 otherwise). */
   incomeFromDpd: Pence;
+  /** Part of incomeFromDpd that is extra invoice lines (Fuel Supplement, C&D App ...), not stop pay. */
+  otherDpdPayments: Pence;
   /** Driver wages (day rates) plus manual adjustments. Equals driverCosts. */
   wages: Pence;
   /** False when some worked day has no day rate, so wages (and profit) are incomplete. */
@@ -342,6 +358,8 @@ export function summarisePeriod(input: PeriodInput): PeriodSummary {
   for (const a of adjustments) franchiseIds.add(a.franchiseId);
   for (const c of costs) franchiseIds.add(c.franchiseId);
   for (const r of revenue) franchiseIds.add(r.franchiseId);
+  const otherPayments = (input.otherPayments ?? []).filter((o) => inRange(o.date, from, to));
+  if (input.earningsMeaning === "route_income") for (const o of otherPayments) franchiseIds.add(o.franchiseId);
 
   const franchises: FranchiseSummary[] = [];
   for (const franchiseId of franchiseIds) {
@@ -353,6 +371,7 @@ export function summarisePeriod(input: PeriodInput): PeriodSummary {
         costs.filter((c) => c.franchiseId === franchiseId),
         revenue.filter((r) => r.franchiseId === franchiseId),
         input,
+        otherPayments.filter((o) => o.franchiseId === franchiseId),
       ),
     );
   }
@@ -368,6 +387,7 @@ function summariseFranchise(
   costs: CostRow[],
   revenue: RevenueRow[],
   input: PeriodInput,
+  otherPayments: OtherPaymentRow[] = [],
 ): FranchiseSummary {
   const drivers = new Map<string, DriverAccumulator>();
   const ensure = (driverId: string | null, driverKey: string, name: string): DriverAccumulator => {
@@ -448,7 +468,8 @@ function summariseFranchise(
 
   const routeIncome = input.earningsMeaning === "route_income";
   // In "route_income" mode the imported DPD figures are income to the franchise, counted as confirmed revenue.
-  const dpdIncome = routeIncome ? sumPence([...drivers.values()].map((d) => d.original)) : 0;
+  const otherDpd = routeIncome ? sumPence(otherPayments.map((o) => o.amount)) : 0;
+  const dpdIncome = routeIncome ? sumPence([...drivers.values()].map((d) => d.original)) + otherDpd : 0;
   const revenueConfirmed = sumPence(revenue.filter((r) => r.status === "confirmed").map((r) => r.amount)) + dpdIncome;
   const revenueEstimated = sumPence(revenue.filter((r) => r.status === "estimated").map((r) => r.amount));
   const revenueTotal = revenueConfirmed + revenueEstimated;
@@ -545,6 +566,7 @@ function summariseFranchise(
     marginPercent: operatingProfit == null || revenueTotal === 0 ? null : percentOf(operatingProfit, revenueTotal),
     earningsMeaning: routeIncome ? "route_income" : "driver_pay",
     incomeFromDpd: dpdIncome,
+    otherDpdPayments: otherDpd,
     wages: driverCosts,
     wagesComplete,
     driversMissingRate,
@@ -637,6 +659,7 @@ export function combineFranchises(franchises: FranchiseSummary[]): FranchiseSumm
     marginPercent: operatingProfit == null || revenueTotal === 0 ? null : percentOf(operatingProfit, revenueTotal),
     earningsMeaning: routeIncome ? "route_income" : "driver_pay",
     incomeFromDpd: sum((f) => f.incomeFromDpd),
+    otherDpdPayments: sum((f) => f.otherDpdPayments),
     wages: sum((f) => f.wages),
     wagesComplete,
     driversMissingRate: franchises.reduce((n, f) => n + f.driversMissingRate, 0),

@@ -8,7 +8,7 @@ import type { ISODate } from "@/lib/dates";
 import { scrubSecrets } from "@/lib/logger";
 import { PortalError } from "./errors";
 import { ReadOnlyGuard, safeClick, WRITE_ACTION_PATTERN } from "./guard";
-import { findPeriodIndex, parsePeriodText, yearCandidates } from "./period";
+import { findPeriodIndex, parsePeriodText, tableShowsPeriod, yearCandidates } from "./period";
 import { fillTemplate, formatDateToken, type PortalMap, type PortalReport, type PortalStep, type PortalTarget, type TemplateValues } from "./portal-map";
 import { transformTable } from "./table";
 
@@ -336,6 +336,10 @@ export class PortalSession {
       wanted.push(await readTable(0));
     }
     let rows = wanted.flat();
+    // A silent failure of the period drop-down leaves the page on a different period, and its rows would be filed under the wrong one.
+    if (values.period && !tableShowsPeriod(rows, values.period)) {
+      throw new PortalError("layout", `${report.id}:period`, `The “${report.label}” page did not change to the period ${values.period.start} to ${values.period.end}, so nothing was imported from it. It will be tried again.`);
+    }
     try {
       rows = transformTable(rows, report.collect.transform, values);
     } catch (error) {

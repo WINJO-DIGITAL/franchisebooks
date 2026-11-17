@@ -7,7 +7,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ISODate } from "@/lib/dates";
 import type {
-  AdjustmentRow, AdjustmentType, CostAllocation, CostRow, CoverRow, EarningRow, EarningsMeaning, PeriodInput, RevenueAllocationBasis, RevenueRow,
+  AdjustmentRow, AdjustmentType, CostAllocation, CostRow, CoverRow, EarningRow, EarningsMeaning, OtherPaymentRow, PeriodInput, RevenueAllocationBasis, RevenueRow,
 } from "@/lib/finance/calc";
 import type { DayRate } from "@/lib/finance/wages";
 import { fromDb, fromDbNullable } from "@/lib/money";
@@ -56,6 +56,7 @@ export interface PeriodData extends PeriodInput {
   earnings: EarningDetail[];
   adjustments: AdjustmentDetail[];
   costs: CostDetail[];
+  otherPayments: OtherPaymentDetail[];
 }
 
 export async function loadDriverNames(db: Db, accountId: string): Promise<Map<string, string>> {
@@ -295,9 +296,45 @@ export async function loadDayRates(db: Db, accountId: string): Promise<DayRate[]
   return rows.map((r) => ({ driverId: r.driver_id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from }));
 }
 
+/** The invoice lines that are NOT daily stop pay (those are already in the daily Payments), from trusted invoices only. */
+const DAILY_PAYMENT_LINE = /successful|collection|delivery\s+stops|\bstops\b|excess\s*parcels|\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b/i;
+
+export interface OtherPaymentDetail extends OtherPaymentRow {
+  invoiceDate: ISODate;
+  periodEnd: ISODate;
+}
+
+export async function loadOtherPayments(db: Db, filter: PeriodFilter): Promise<OtherPaymentDetail[]> {
+  const rows = await fetchAll(() => {
+    let q = db
+      .from("dpd_invoices")
+      .select("id, franchise_id, invoice_no, invoice_date, period_start, period_end, lines, reconciled")
+      .eq("account_id", filter.accountId)
+      .eq("reconciled", true)
+      .gte("period_start", filter.from)
+      .lte("period_start", filter.to)
+      .order("period_start")
+      .order("id");
+    if (filter.franchiseId) q = q.eq("franchise_id", filter.franchiseId);
+    return q;
+  });
+  const out: OtherPaymentDetail[] = [];
+  for (const r of rows) {
+    const lines = Array.isArray(r.lines) ? (r.lines as { description?: string; amount?: number }[]) : [];
+    lines.forEach((l, i) => {
+      if (!l.description || typeof l.amount !== "number" || DAILY_PAYMENT_LINE.test(l.description)) return;
+      out.push({
+        id: `${r.id}:${i}`, franchiseId: r.franchise_id, date: r.period_start, label: l.description.trim(), amount: l.amount,
+        invoiceNo: r.invoice_no, invoiceDate: r.invoice_date, periodEnd: r.period_end,
+      });
+    });
+  }
+  return out;
+}
+
 /** Everything the finance engine needs for a period, in one call. */
 export async function loadPeriodData(db: Db, filter: PeriodFilter): Promise<PeriodData> {
-  const [earnings, adjustments, costs, covers, revenue, driverNames, basis, earningsMeaning, dayRates] = await Promise.all([
+  const [earnings, adjustments, costs, covers, revenue, driverNames, basis, earningsMeaning, dayRates, otherPayments] = await Promise.all([
     loadEarnings(db, filter),
     loadAdjustments(db, filter),
     loadCosts(db, filter),
@@ -307,6 +344,7 @@ export async function loadPeriodData(db: Db, filter: PeriodFilter): Promise<Peri
     loadRevenueBasis(db, filter.accountId),
     loadEarningsMeaning(db, filter.accountId),
     loadDayRates(db, filter.accountId),
+    loadOtherPayments(db, filter),
   ]);
-  return { from: filter.from, to: filter.to, earnings, adjustments, costs, covers, revenue, driverNames, revenueAllocationBasis: basis, earningsMeaning, dayRates };
+  return { from: filter.from, to: filter.to, earnings, adjustments, costs, covers, revenue, driverNames, revenueAllocationBasis: basis, earningsMeaning, dayRates, otherPayments };
 }

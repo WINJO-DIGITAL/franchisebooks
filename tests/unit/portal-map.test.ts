@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { findPeriodIndex, parsePeriodText, yearCandidates } from "@/lib/dpd/period";
+import { findPeriodIndex, parsePeriodText, tableShowsPeriod, yearCandidates } from "@/lib/dpd/period";
 import { fillTemplate, portalMapSchema, tableTransformSchema } from "@/lib/dpd/portal-map";
 import { transformTable } from "@/lib/dpd/table";
 import { extractDocument } from "@/lib/ingest/extract";
@@ -32,6 +32,23 @@ describe("period text", () => {
 
   it("tries the date's own year first, then the neighbours (a December period can sit under the next year)", () => {
     expect(yearCandidates("2026-01-02")).toEqual(["2026", "2027", "2025"]);
+  });
+});
+
+describe("a page that did not change period", () => {
+  const header = ["Date", "Stops", "Parcels", "Gross", "Route", "Driver"];
+  const row = (date: string) => [date, "10", "20", "£100.00", "1", "A B"];
+  const period = { start: "2026-05-25", end: "2026-06-21" };
+
+  it("is refused when none of its dates fall inside the selected period (it is still showing the current period)", () => {
+    expect(tableShowsPeriod([header, row("16th November 2026"), row("14th November 2026")], period)).toBe(false);
+  });
+  it("is accepted when dates fall inside the period, even with late-posted rows dated before it", () => {
+    expect(tableShowsPeriod([header, row("26th May 2026"), row("12th May 2026")], period)).toBe(true);
+  });
+  it("is accepted when it has no dated rows (an empty period) or no date column", () => {
+    expect(tableShowsPeriod([header], period)).toBe(true);
+    expect(tableShowsPeriod([["Description", "Charge", "Notes"], ["Fee", "£1", ""]], period)).toBe(true);
   });
 });
 

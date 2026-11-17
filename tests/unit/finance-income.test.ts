@@ -93,4 +93,17 @@ describe("driver pay mode (the original behaviour)", () => {
     expect(summary.wagesComplete).toBe(true);
     expect(summary.operatingProfit).toBeNull();
   });
+
+  it("counts extra invoice payments (Fuel Supplement, C&D App) as income in the period they start in, never as costs", () => {
+    const pay = (o: object) => ({ id: "o", franchiseId: F1, date: "2026-11-09", label: "Fuel Supplement", amount: 5000, invoiceNo: "FI1", ...o });
+    const summary = summarisePeriod(base({
+      earnings: [earning({ date: "2026-11-02" })],
+      otherPayments: [pay({ id: "o1" }), pay({ id: "o2", label: "C&D App", amount: 923 }), pay({ id: "o3", date: "2026-10-12" })],
+      dayRates: [rate("d1", 12000)],
+    })).combined;
+    expect(summary.otherDpdPayments).toBe(5923);
+    expect(summary.incomeFromDpd).toBe(20000 + 5923);
+    expect(summary.operatingCosts).toBe(12000);
+    expect(summary.operatingProfit).toBe(20000 + 5923 - 12000);
+  });
 });
