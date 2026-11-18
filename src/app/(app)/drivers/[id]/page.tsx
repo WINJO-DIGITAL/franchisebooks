@@ -147,21 +147,21 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
           <TableWrap>
             <table className="ledger">
               <thead>
-                <tr><th>Date</th><th className="r">Stops</th><th className="r">Total parcels</th><th className="r">Excess parcels</th><th className="r">Stop pay</th><th className="r">Per stop</th><th className="r">Parcel pay</th><th className="r">Total</th><th>Route</th><th className="r">Mileage</th></tr>
+                <tr><th>Date</th><th className="r">Stops</th><th className="r hidden sm:table-cell">Total parcels</th><th className="r hidden md:table-cell">Excess parcels</th><th className="r hidden sm:table-cell">Stop pay</th><th className="r hidden md:table-cell">Per stop</th><th className="r hidden md:table-cell">Parcel pay</th><th className="r">Total</th><th className="hidden sm:table-cell">Route</th><th className="r hidden md:table-cell">Mileage</th></tr>
               </thead>
               <tbody>
                 {[...earnings].reverse().slice(0, 45).map((e) => (
                   <tr key={e.id}>
                     <td className="num whitespace-nowrap">{formatUkDateLong(e.date)}</td>
                     <td className="r num">{e.stops ?? "—"}</td>
-                    <td className="r num">{e.parcels ?? "—"}</td>
-                    <td className="r num">{e.excessParcels ?? "—"}</td>
-                    <td className="r num">{e.stopPay == null ? "—" : formatGBP(e.stopPay)}</td>
-                    <td className="r num">{e.stopPay != null && e.stops ? formatGBP(Math.round(e.stopPay / e.stops)) : "—"}</td>
-                    <td className="r num">{e.parcelPay == null ? "—" : formatGBP(e.parcelPay)}</td>
+                    <td className="r num hidden sm:table-cell">{e.parcels ?? "—"}</td>
+                    <td className="r num hidden md:table-cell">{e.excessParcels ?? "—"}</td>
+                    <td className="r num hidden sm:table-cell">{e.stopPay == null ? "—" : formatGBP(e.stopPay)}</td>
+                    <td className="r num hidden md:table-cell">{e.stopPay != null && e.stops ? formatGBP(Math.round(e.stopPay / e.stops)) : "—"}</td>
+                    <td className="r num hidden md:table-cell">{e.parcelPay == null ? "—" : formatGBP(e.parcelPay)}</td>
                     <td className="r num font-medium">{formatGBP(e.gross)}</td>
-                    <td className="num">{e.route ?? "—"}</td>
-                    <td className="r num">{e.mileage ?? "—"}</td>
+                    <td className="num hidden sm:table-cell">{e.route ?? "—"}</td>
+                    <td className="r num hidden md:table-cell">{e.mileage ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
