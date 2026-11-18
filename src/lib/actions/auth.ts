@@ -7,6 +7,7 @@ import { z } from "zod";
 import { FRANCHISE_COOKIE } from "@/lib/context";
 import { env } from "@/lib/env";
 import { requireBillingAccess } from "@/lib/billing/gate";
+import { isDriverLogin } from "@/lib/driver/context";
 import { queueFirstSync } from "@/lib/dpd/first-sync";
 import { saveDpdLogin } from "@/lib/dpd/login";
 import { parseFdNumbers } from "@/lib/onboarding/franchises";
@@ -125,6 +126,7 @@ export async function completeOnboarding(_prev: ActionState, formData: FormData)
   await requireBillingAccess(supabase);
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/login");
+  if (await isDriverLogin(auth.user.id)) return fail("This login is for viewing a driver's pay, so it cannot set up a business.");
 
   const { data: accountId, error } = await supabase.rpc("bootstrap_account", {
     p_business_name: parsed.data.businessName,

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { londonToday } from "@/lib/dates";
 import { requireBillingAccess } from "@/lib/billing/gate";
+import { isDriverLogin } from "@/lib/driver/context";
 import { createClient } from "@/lib/supabase/server";
 
 export const FRANCHISE_COOKIE = "franchise";
@@ -34,7 +35,11 @@ export const getContext = cache(async () => {
     .select("id, account_id, full_name, role, all_franchises")
     .eq("id", auth.user.id)
     .maybeSingle();
-  if (!profile) redirect("/onboarding");
+  if (!profile) {
+    // A driver's login has no business profile: send them to their own page, not to set up a business.
+    if (await isDriverLogin(auth.user.id)) redirect("/my");
+    redirect("/onboarding");
+  }
   await requireBillingAccess(supabase);
 
   const [{ data: account }, { data: franchiseRows }, cookieStore] = await Promise.all([

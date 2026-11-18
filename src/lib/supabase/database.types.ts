@@ -211,6 +211,18 @@ isOneToOne: false
                     "account_id"?: string,"completed_at"?: string | null,"id"?: string,"note"?: string | null,"requested_at"?: string,"requested_by"?: string | null,"status"?: string
                   }
                   Relationships: []
+                },"driver_accounts": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"driver_id": string,"email": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"driver_id": string,"email": string,"user_id": string
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"driver_id"?: string,"email"?: string,"user_id"?: string
+                  }
+                  Relationships: []
                 },"dpd_logins": {
                   Row: {
                     "account_id": string,"created_at": string,"created_by": string | null,"id": string,"label": string,"last_error": string | null,"last_success_at": string | null,"username": string

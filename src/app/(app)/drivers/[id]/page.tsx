@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { InviteDriverForm, RemoveDriverLoginForm } from "@/components/drivers/driver-login";
 import { AddAssignmentForm, EditDriverForm, EndAssignmentForm, SetDayRateForm } from "@/components/drivers/forms";
 import { Badge, EmptyState, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
 import { LinkButton } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const rateRows = rateResult.data ?? [];
   const dayRates: DayRate[] = rateRows.map((r) => ({ driverId: id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from, basis: r.pay_basis === "stop" ? "stop" : "day" }));
   const assignments = assignmentsResult.data ?? [];
+  const { data: driverLink } = ctx.isOwner ? await ctx.supabase.from("driver_accounts").select("email").eq("driver_id", id).maybeSingle() : { data: null };
   const config = resolveAnomalyConfig(settings.data?.anomaly_config);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const names = new Map([[id, driver.display_name]]);
@@ -141,6 +143,21 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
           <EmptyState title="No pay rate set yet">Set what this driver is paid per day worked or per stop. Wages cannot be worked out until a rate is set.</EmptyState>
         )}
       </Section>
+
+      {ctx.isOwner ? (
+        <Section title="Driver login" description="Let this driver sign in and see only their own days and pay. They never see the franchise's income, expenses or other drivers.">
+          <Panel>
+            {driverLink ? (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm"><span className="font-medium">{driverLink.email}</span> <Badge tone="good">Has access</Badge></p>
+                <RemoveDriverLoginForm driverId={id} />
+              </div>
+            ) : (
+              <InviteDriverForm driverId={id} />
+            )}
+          </Panel>
+        </Section>
+      ) : null}
 
       <Section title="Daily payments" description="Each day as DPD shows it on the Payments page: stops, parcels, what they paid, route and mileage. Days imported before these details were read show a dash until the next sync fills them in.">
         {earnings.length === 0 ? <EmptyState title="No daily payments yet">They appear once a DPD report naming this driver has been imported.</EmptyState> : (

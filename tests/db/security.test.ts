@@ -17,6 +17,7 @@ const TABLES = [
   "earnings_adjustments", "driver_cover_records", "fuel_transactions", "expenses", "expense_categories", "expense_allocations",
   "imported_files", "import_jobs", "sync_logs", "anomalies", "monthly_reports", "audit_logs", "integration_connections",
   "integration_folders", "review_items", "revenue_entries", "app_settings", "user_franchise_access",
+  "driver_day_rates", "dpd_invoices", "dpd_logins", "sliding_scale_rates", "driver_accounts", "account_closure_requests", "user_billing",
 ];
 
 describe("authentication", () => {
@@ -180,5 +181,42 @@ describe("account setup", () => {
   it("lets the owner add extra categories but not duplicates", async () => {
     await asUser(a.ownerId, (run) => run("insert into public.expense_categories (account_id, name) values ($1, 'Uniform')", [a.accountId]));
     await expect(asUser(a.ownerId, (run) => run("insert into public.expense_categories (account_id, name) values ($1, 'uniform')", [a.accountId]))).rejects.toThrow(/duplicate/);
+  });
+});
+
+describe("driver logins", () => {
+  let driverUser: string;
+  beforeAll(async () => {
+    driverUser = await createAuthUser("driver");
+    await sql("insert into public.driver_accounts (user_id, account_id, driver_id, email) values ($1, $2, $3, 'driver@example.test')", [driverUser, a.accountId, a.driverIds[0]]);
+  });
+
+  it("lets a driver login read its own link and nothing from the business", async () => {
+    const link = await asUser(driverUser, (run) => run<{ user_id: string }>("select user_id from public.driver_accounts"));
+    expect(link).toHaveLength(1);
+    expect(link[0]!.user_id).toBe(driverUser);
+    for (const table of TABLES.filter((t) => t !== "driver_accounts")) {
+      const rows = await asUser(driverUser, (run) => run(`select * from public.${table} limit 5`));
+      expect(rows, table).toEqual([]);
+    }
+  });
+
+  it("cannot be set up as a business user, and a business user cannot be given a driver login", async () => {
+    await expect(sql("insert into public.user_profiles (id, account_id, full_name, role, all_franchises) values ($1, $2, 'Driver', 'owner', true)", [driverUser, a.accountId])).rejects.toThrow(/cannot also/);
+    await expect(sql("insert into public.driver_accounts (user_id, account_id, driver_id, email) values ($1, $2, $3, 'owner@example.test')", [a.ownerId, a.accountId, a.driverIds[1]])).rejects.toThrow(/cannot also/);
+  });
+
+  it("does not let anyone write driver links from the browser", async () => {
+    const stranger = await createAuthUser("would-be-driver");
+    await expect(asUser(stranger, (run) => run("insert into public.driver_accounts (user_id, account_id, driver_id, email) values ($1, $2, $3, 'x@example.test')", [stranger, a.accountId, a.driverIds[1]]))).rejects.toThrow(/permission denied/);
+    await expect(asUser(a.ownerId, (run) => run("delete from public.driver_accounts"))).rejects.toThrow(/permission denied/);
+  });
+
+  it("shows an owner their own business's driver links and no one else's", async () => {
+    const mine = await asUser(a.ownerId, (run) => run<{ account_id: string }>("select account_id from public.driver_accounts"));
+    expect(mine.length).toBeGreaterThanOrEqual(1);
+    for (const r of mine) expect(r.account_id).toBe(a.accountId);
+    const theirs = await asUser(b.ownerId, (run) => run("select * from public.driver_accounts"));
+    expect(theirs).toEqual([]);
   });
 });

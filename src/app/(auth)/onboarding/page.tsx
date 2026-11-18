@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireBillingAccess } from "@/lib/billing/gate";
+import { isDriverLogin } from "@/lib/driver/context";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "./onboarding-form";
 
@@ -12,6 +13,8 @@ export default async function OnboardingPage() {
   if (!data.user) redirect("/login");
   const { data: profile } = await supabase.from("user_profiles").select("id").eq("id", data.user.id).maybeSingle();
   if (profile) redirect("/");
+  // A driver login is never set up as a business.
+  if (await isDriverLogin(data.user.id)) redirect("/my");
   // A new customer pays first; set-up comes after.
   await requireBillingAccess(supabase);
   return (
