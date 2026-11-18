@@ -24,7 +24,7 @@ import { discoverPortal, inventoryMarkdown } from "./discovery";
 import { PortalError } from "./errors";
 import { portalMapSchema, type PortalMap } from "./portal-map";
 import { PortalSession, type PortalCredentials } from "./session";
-import { loadDpdLogin } from "./login";
+import { loadAllDpdLogins } from "./logins";
 import { ownPortalMap } from "./readiness";
 import { SHARED_PORTAL_MAP } from "./shared-map";
 
@@ -87,23 +87,28 @@ async function touchConnection(db: AdminClient, accountId: string, patch: { succ
   );
 }
 
-/** The portal address from the worker's settings, with this account's own saved login. */
-async function credentialsFor(db: AdminClient, accountId: string): Promise<PortalCredentials> {
+/**
+ * The portal address from the worker's settings, with the DPD login that sees this franchise. A franchise linked to a
+ * listed login uses that login; otherwise the account's first login (or its original single login) is used.
+ */
+async function credentialsFor(db: AdminClient, accountId: string, franchiseLoginId: string | null): Promise<PortalCredentials> {
   const url = env.dpdPortalUrl();
   if (!url) throw new PortalError("config", "credentials", "The DPD portal address has not been set on the background worker yet.", "DPD_PORTAL_URL missing");
-  const login = await loadDpdLogin(db, accountId);
-  if (!login) throw new PortalError("config", "credentials", "No DPD portal login has been saved for this account. Add it in Settings.");
+  const logins = await loadAllDpdLogins(db, accountId);
+  // A franchise with no link uses the original login, or the first listed one if there is no original.
+  const login = franchiseLoginId ? logins.get(franchiseLoginId) : (logins.get("original") ?? logins.values().next().value);
+  if (!login) throw new PortalError("config", "credentials", "No DPD portal login has been saved for this franchise. Add it in Settings.");
   return { url, username: login.username, password: login.password, loginSecret: env.dpdLoginSecret() };
 }
 
 export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessionPool): Promise<JobOutcome> {
   if (!job.franchise_id) throw new PortalError("config", "job", "This sync was not linked to a franchise.");
   const date = job.report_date ?? londonToday();
-  const { data: franchise } = await db.from("franchises").select("id, fd_number").eq("id", job.franchise_id).eq("account_id", job.account_id).maybeSingle();
+  const { data: franchise } = await db.from("franchises").select("id, fd_number, dpd_login_id").eq("id", job.franchise_id).eq("account_id", job.account_id).maybeSingle();
   if (!franchise) throw new PortalError("config", "job", "The franchise for this sync no longer exists.");
 
   const map = await loadPortalMap(db, job.account_id);
-  const credentials = await credentialsFor(db, job.account_id);
+  const credentials = await credentialsFor(db, job.account_id, franchise.dpd_login_id ?? null);
 
   let session: PortalSession;
   try {
@@ -194,7 +199,7 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
 }
 
 export async function runDpdDiscoveryJob(db: AdminClient, job: Job): Promise<JobOutcome> {
-  const credentials = await credentialsFor(db, job.account_id);
+  const credentials = await credentialsFor(db, job.account_id, null);
   // Discovery only needs the login part of a map; the shared map has it (an account's own invalid override falls back to it too).
   const map: PortalMap = await loadPortalMap(db, job.account_id).catch(() => SHARED_PORTAL_MAP);
 

@@ -199,6 +199,18 @@ isOneToOne: false
                     "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: []
+                },"dpd_logins": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"id": string,"label": string,"last_error": string | null,"last_success_at": string | null,"username": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"label": string,"last_error"?: string | null,"last_success_at"?: string | null,"username": string
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"label"?: string,"last_error"?: string | null,"last_success_at"?: string | null,"username"?: string
+                  }
+                  Relationships: []
                 },"sliding_scale_rates": {
                   Row: {
                     "account_id": string,"created_at": string,"created_by": string | null,"fuel_type": string,"id": string,"miles_from": number | null,"miles_to": number | null,"note": string | null,"rate": number,"stops_from": number,"stops_to": number | null,"vehicle_size": string | null,"vehicle_type": string
@@ -477,14 +489,14 @@ isOneToOne: false
                   ]
                 },"franchises": {
                   Row: {
-                    "account_id": string,"created_at": string,"depot": string | null,"fd_number": string,"id": string,"is_active": boolean,"name": string,"notes": string | null,"updated_at": string
+                    "account_id": string,"created_at": string,"depot": string | null,"dpd_login_id": string | null,"fd_number": string,"id": string,"is_active": boolean,"name": string,"notes": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"depot"?: string | null,"fd_number": string,"id"?: string,"is_active"?: boolean,"name"?: string,"notes"?: string | null,"updated_at"?: string
+                    "account_id": string,"created_at"?: string,"depot"?: string | null,"dpd_login_id"?: string | null,"fd_number": string,"id"?: string,"is_active"?: boolean,"name"?: string,"notes"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"depot"?: string | null,"fd_number"?: string,"id"?: string,"is_active"?: boolean,"name"?: string,"notes"?: string | null,"updated_at"?: string
+                    "account_id"?: string,"created_at"?: string,"depot"?: string | null,"dpd_login_id"?: string | null,"fd_number"?: string,"id"?: string,"is_active"?: boolean,"name"?: string,"notes"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -811,6 +823,12 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
+            "read_dpd_login_secret":
+{ Args: { "p_login_id": string }; Returns: string
+                           },
+            "save_dpd_login_secret":
+{ Args: { "p_login_id": string,"p_ciphertext": string }; Returns: undefined
+                           },
             "billing_allows_access":
 { Args: Record<string, never>; Returns: boolean
                            },

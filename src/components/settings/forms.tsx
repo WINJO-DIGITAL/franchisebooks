@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { addCategory, setCategoryActive, } from "@/lib/actions/expenses";
 import { saveDpdLoginAction } from "@/lib/actions/dpd-login";
+import { addDpdLoginAction, removeDpdLoginAction } from "@/lib/actions/dpd-logins";
 import { addFranchise, addRevenue, updateAlertSettings, updateBusinessName, updateFranchise, updateSchedule, voidRevenue } from "@/lib/actions/settings";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Field, Input, Select } from "@/components/ui/form";
+import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { ReasonDialog } from "@/components/ui/reason-dialog";
 
 interface Option {
@@ -167,6 +168,46 @@ export function CategoryToggle({ id, active }: { id: string; active: boolean }) 
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="active" value={String(!active)} />
       <SubmitButton variant="quiet" size="sm" pendingLabel="…">{active ? "Hide" : "Show"}</SubmitButton>
+    </ActionForm>
+  );
+}
+
+export function AddDpdLoginForm() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Add a DPD login</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Add a DPD login">
+        <ActionForm action={addDpdLoginAction} className="space-y-4" resetOnSuccess onSuccess={() => setOpen(false)}>
+          {(state) => (
+            <>
+              <p className="text-sm text-muted">Add one for each DPD login that sees your franchises. Each one is read every night.</p>
+              <Field label="Name for this login" hint="For example Depot A or Driver login 2." error={state.fieldErrors?.label}>
+                <Input name="label" required />
+              </Field>
+              <Field label="DPD portal username" error={state.fieldErrors?.username}>
+                <Input name="username" autoComplete="off" required />
+              </Field>
+              <Field label="DPD portal password" error={state.fieldErrors?.password}>
+                <Input name="password" type="password" autoComplete="new-password" required />
+              </Field>
+              <Field label="FD numbers this login can see" hint="Separate them with commas or put one on each line." error={state.fieldErrors?.fdNumbers}>
+                <Textarea name="fdNumbers" className="min-h-20 font-mono text-sm" spellCheck={false} required />
+              </Field>
+              <SubmitButton>Add login</SubmitButton>
+            </>
+          )}
+        </ActionForm>
+      </Dialog>
+    </>
+  );
+}
+
+export function RemoveDpdLoginButton({ id }: { id: string }) {
+  return (
+    <ActionForm action={removeDpdLoginAction}>
+      <input type="hidden" name="id" value={id} />
+      <SubmitButton variant="quiet" size="sm" pendingLabel="…">Remove</SubmitButton>
     </ActionForm>
   );
 }

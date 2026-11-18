@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { ManageBillingForm } from "@/components/billing/forms";
+import { AddDpdLoginForm, RemoveDpdLoginButton } from "@/components/settings/forms";
 import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, DpdLoginForm, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
 import { Badge, DefinitionList, Notice, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { DEFAULT_ANOMALY_CONFIG, resolveAnomalyConfig } from "@/lib/anomalies/detect";
 import { PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { hasDpdLogin } from "@/lib/dpd/login";
+import { listDpdLogins } from "@/lib/dpd/logins";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
 import { loadRevenue } from "@/lib/data/period";
@@ -21,13 +23,14 @@ export default async function SettingsPage() {
   const month = monthOf(ctx.today);
   const [settings, franchises, categories, revenue, audit] = await Promise.all([
     supabase.from("app_settings").select("sync_time_local, sync_timezone, sync_enabled, auto_monthly_reports, revenue_allocation_basis, anomaly_config").eq("account_id", accountId).maybeSingle(),
-    fetchAll(() => supabase.from("franchises").select("id, fd_number, name, depot, is_active").eq("account_id", accountId).order("fd_number")),
+    fetchAll(() => supabase.from("franchises").select("id, fd_number, name, depot, is_active, dpd_login_id").eq("account_id", accountId).order("fd_number")),
     fetchAll(() => supabase.from("expense_categories").select("id, name, kind, is_system, is_active").eq("account_id", accountId).order("sort_order").order("id")),
     loadRevenue(supabase, { accountId, from: monthRange(addMonths(month, -12)).start, to: ctx.today }),
     ctx.canWrite ? supabase.from("audit_logs").select("id, action, entity_table, created_at, after").order("id", { ascending: false }).limit(8) : Promise.resolve({ data: [] }),
   ]);
   const s = settings.data;
   const dpdSaved = ctx.isOwner ? await hasDpdLogin(createAdminClient(), accountId) : false;
+  const listedLogins = ctx.isOwner ? await listDpdLogins(createAdminClient(), accountId) : [];
   const { data: billing } = ctx.isOwner ? await supabase.from("user_billing").select("status, current_period_end, cancel_at_period_end, stripe_customer_id").eq("user_id", ctx.userId).maybeSingle() : { data: null };
   const config = resolveAnomalyConfig(s?.anomaly_config);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
@@ -90,6 +93,33 @@ export default async function SettingsPage() {
           )}
         </Panel>
       </Section>
+
+      {ctx.isOwner ? (
+        <Section title="DPD logins" description="Each DPD login the app reads, and the franchise numbers it sees. All of them are read every evening, one after another. Add one for each login you use.">
+          <Panel>
+            <div className="mb-4 flex justify-end"><AddDpdLoginForm /></div>
+            {listedLogins.length === 0 ? (
+              <p className="text-sm text-muted">Only your original DPD login is in use. Add more here if other logins see other franchises.</p>
+            ) : (
+              <TableWrap>
+                <table className="ledger">
+                  <thead><tr><th>Login</th><th>Franchises it reads</th><th>Last read</th><th /></tr></thead>
+                  <tbody>
+                    {listedLogins.map((l) => (
+                      <tr key={l.id}>
+                        <td><span className="font-medium">{l.label}</span><br /><span className="text-xs text-muted">{l.username}</span></td>
+                        <td>{franchises.filter((f) => f.dpd_login_id === l.id).map((f) => f.fd_number).join(", ") || <span className="text-muted">None yet</span>}</td>
+                        <td>{l.lastError ? <Badge tone="bad">Could not read</Badge> : l.lastSuccessAt ? <span className="text-sm">{formatUkDate(l.lastSuccessAt.slice(0, 10))}</span> : <span className="text-muted">Not read yet</span>}</td>
+                        <td className="r"><RemoveDpdLoginButton id={l.id} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableWrap>
+            )}
+          </Panel>
+        </Section>
+      ) : null}
 
       <Section title="DPD portal login" description="The login the app uses to sign in to the DPD portal for the nightly sync. It is stored encrypted, and only the owner can change it.">
         <Panel>
