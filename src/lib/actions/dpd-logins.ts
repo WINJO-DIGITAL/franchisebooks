@@ -3,17 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getContext } from "@/lib/context";
+import { londonToday } from "@/lib/dates";
 import { addDpdLogin, removeDpdLogin } from "@/lib/dpd/logins";
+import { enqueueJob } from "@/lib/jobs/queue";
+import { pokeWorker } from "@/lib/jobs/run";
 import { parseFdNumbers } from "@/lib/onboarding/franchises";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dbFailure, fail, ok, parseForm, type ActionState } from "./helpers";
 import { uuid } from "./schemas";
 
 const addSchema = z.object({
-  label: z.string().trim().min(1, "Give this login a name, for example Depot A.").max(80),
+  label: z.string().trim().max(80).optional(),
   username: z.string().trim().min(1, "Enter the DPD username.").max(200),
   password: z.string().min(1, "Enter the DPD password.").max(500),
-  fdNumbers: z.string().min(1, "List the FD numbers this login can see."),
+  fdNumbers: z.string().optional(),
 });
 
 /** Adds another DPD login and links the franchises it can see. Owner only. */
@@ -22,16 +25,33 @@ export async function addDpdLoginAction(_prev: ActionState, formData: FormData):
   if (!ctx.isOwner) return fail("Only the owner can add DPD logins.");
   const parsed = parseForm(addSchema, formData);
   if ("error" in parsed) return parsed.error;
-  const fds = parseFdNumbers(parsed.data.fdNumbers);
-  if (fds.errors.length > 0 || fds.fdNumbers.length === 0) {
-    return fail("Please check the FD numbers.", null, { fdNumbers: fds.errors[0] ?? "List at least one FD number." });
+  // FD numbers are optional: left blank, they are read from the DPD portal for this login.
+  const typedFds = (parsed.data.fdNumbers ?? "").trim();
+  const fds = typedFds === "" ? { fdNumbers: [] as string[], errors: [] as string[] } : parseFdNumbers(typedFds);
+  if (fds.errors.length > 0) {
+    return fail("Please check the FD numbers.", null, { fdNumbers: fds.errors[0]! });
   }
+  // The name is optional too: the username identifies the login when no name is given.
+  const label = parsed.data.label?.trim() || parsed.data.username;
   const admin = createAdminClient();
   let loginId: string;
   try {
-    loginId = await addDpdLogin(admin, ctx.accountId, ctx.userId, parsed.data.label, { username: parsed.data.username, password: parsed.data.password });
+    loginId = await addDpdLogin(admin, ctx.accountId, ctx.userId, label, { username: parsed.data.username, password: parsed.data.password });
   } catch (error) {
     return fail("The login could not be added.", error instanceof Error ? error.message : null, { username: "This username may already be listed." });
+  }
+
+  if (fds.fdNumbers.length === 0) {
+    // No FD numbers given: find them from the portal. One discovery job handles every login still waiting.
+    try {
+      await enqueueJob(admin, { accountId: ctx.accountId, type: "dpd_discovery", reportDate: londonToday(), trigger: "manual", requestedBy: ctx.userId, payload: { discoverFranchises: true } });
+      await pokeWorker();
+    } catch (error) {
+      return fail("The login was added, but we could not start looking up its franchises. Press Sync DPD in a few minutes, or add the FD numbers by hand.", error instanceof Error ? error.message : null);
+    }
+    revalidatePath("/settings");
+    revalidatePath("/data");
+    return ok("Login added. We are finding its franchises from DPD now; they appear here in a few minutes and their figures follow.");
   }
 
   // Link each FD number to this login: update a franchise that exists, add one that does not.

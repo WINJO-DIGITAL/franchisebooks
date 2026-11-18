@@ -187,9 +187,9 @@ export function AddDpdLoginForm() {
         <ActionForm action={addDpdLoginAction} className="space-y-4" resetOnSuccess onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
-              <p className="text-sm text-muted">Add one for each DPD login that sees your franchises. Each one is read every night.</p>
-              <Field label="Name for this login" hint="For example Depot A or Driver login 2." error={state.fieldErrors?.label}>
-                <Input name="label" required />
+              <p className="text-sm text-muted">Add one for each DPD login that sees your franchises. Each one is read every night, and its franchises are found for you.</p>
+              <Field label="Name for this login (optional)" hint="For example Depot A. If you leave it blank, the username is used." error={state.fieldErrors?.label}>
+                <Input name="label" />
               </Field>
               <Field label="DPD portal username" error={state.fieldErrors?.username}>
                 <Input name="username" autoComplete="off" required />
@@ -197,8 +197,8 @@ export function AddDpdLoginForm() {
               <Field label="DPD portal password" error={state.fieldErrors?.password}>
                 <Input name="password" type="password" autoComplete="new-password" required />
               </Field>
-              <Field label="FD numbers this login can see" hint="Separate them with commas or put one on each line." error={state.fieldErrors?.fdNumbers}>
-                <Textarea name="fdNumbers" className="min-h-20 font-mono text-sm" spellCheck={false} required />
+              <Field label="FD numbers this login can see (optional)" hint="Leave this blank and we will find them from DPD. Or list them, separated by commas or one on each line." error={state.fieldErrors?.fdNumbers}>
+                <Textarea name="fdNumbers" className="min-h-20 font-mono text-sm" spellCheck={false} />
               </Field>
               <SubmitButton>Add login</SubmitButton>
             </>

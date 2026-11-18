@@ -61,3 +61,16 @@ describe("first sync progress", () => {
     expect(p.phase).toBe("working");
   });
 });
+
+import { extractFdNumbers } from "@/lib/onboarding/franchises";
+
+describe("reading FD numbers from a portal drop-down", () => {
+  it("picks FD numbers from the option text and ignores placeholders", () => {
+    expect(extractFdNumbers(["Select a route", "FD42102", "FD46578 - North depot", "fd 10001", ""])).toEqual(["FD42102", "FD46578", "FD10001"]);
+  });
+
+  it("drops duplicates and returns nothing when there are no FD numbers", () => {
+    expect(extractFdNumbers(["FD42102", "FD42102 (again)"])).toEqual(["FD42102"]);
+    expect(extractFdNumbers(["All routes", "Choose"])).toEqual([]);
+  });
+});

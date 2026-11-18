@@ -30,3 +30,18 @@ export function parseFdNumbers(text: string): FdParseResult {
   if (fdNumbers.length > MAX_FRANCHISES_AT_SIGN_UP) errors.push(`Please add ${MAX_FRANCHISES_AT_SIGN_UP} franchises or fewer now. You can add more later in Settings.`);
   return { fdNumbers: errors.length > 0 ? [] : fdNumbers, errors };
 }
+
+/**
+ * Picks the FD numbers out of the text of a portal drop-down's options (for example "FD42102", "FD46578 - North depot",
+ * or the "Select a route" placeholder, which is ignored). Normalised, without duplicates, in the order shown.
+ */
+export function extractFdNumbers(optionTexts: string[]): string[] {
+  const found: string[] = [];
+  for (const text of optionTexts) {
+    for (const match of text.matchAll(/\bFD[\s_-]?(\d{3,8})\b/gi)) {
+      const fd = `FD${match[1]}`;
+      if (!found.includes(fd)) found.push(fd);
+    }
+  }
+  return found;
+}

@@ -110,8 +110,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                     {listedLogins.map((l) => (
                       <tr key={l.id}>
                         <td><span className="font-medium">{l.label}</span><br /><span className="text-xs text-muted">{l.username}</span></td>
-                        <td>{franchises.filter((f) => f.dpd_login_id === l.id).map((f) => f.fd_number).join(", ") || <span className="text-muted">None yet</span>}</td>
-                        <td>{l.lastError ? <Badge tone="bad">Could not read</Badge> : l.lastSuccessAt ? <span className="text-sm">{formatUkDate(l.lastSuccessAt.slice(0, 10))}</span> : <span className="text-muted">Not read yet</span>}</td>
+                        <td>{franchises.filter((f) => f.dpd_login_id === l.id).map((f) => f.fd_number).join(", ") || <span className="text-muted">{l.lastError ? "None found" : "Finding them from DPD…"}</span>}</td>
+                        <td>{l.lastError ? <span title={l.lastError}><Badge tone="bad">Could not read</Badge></span> : l.lastSuccessAt ? <span className="text-sm">{formatUkDate(l.lastSuccessAt.slice(0, 10))}</span> : <span className="text-muted">Not read yet</span>}</td>
                         <td className="r"><RemoveDpdLoginButton id={l.id} /></td>
                       </tr>
                     ))}

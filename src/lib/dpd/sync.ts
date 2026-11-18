@@ -16,7 +16,7 @@ import { formatUkDate, londonToday } from "@/lib/dates";
 import { env } from "@/lib/env";
 import { importDocument, type ImportOutcome } from "@/lib/ingest/pipeline";
 import { importSelfBilledInvoice, type InvoiceImportOutcome } from "@/lib/ingest/invoice-import";
-import type { Job, JobOutcome } from "@/lib/jobs/queue";
+import { enqueueJob, type Job, type JobOutcome } from "@/lib/jobs/queue";
 import { describeError, logger } from "@/lib/logger";
 import type { AdminClient } from "@/lib/supabase/admin";
 import type { JsonObject } from "@/lib/supabase/json";
@@ -25,7 +25,7 @@ import { PortalError } from "./errors";
 import { portalMapSchema, type PortalMap } from "./portal-map";
 import { PortalSession, type PortalCredentials } from "./session";
 import { ownerEmail, sendEmail } from "@/lib/notify/email";
-import { loadAllDpdLogins } from "./logins";
+import { listDpdLogins, loadAllDpdLogins, loadDpdLoginById, recordLoginOutcome } from "./logins";
 import { ownPortalMap } from "./readiness";
 import { SHARED_PORTAL_MAP } from "./shared-map";
 
@@ -210,7 +210,82 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   return { status: clean ? "succeeded" : "partial", message, result };
 }
 
+/**
+ * For each listed login that has no franchises yet, signs in with it, reads the FD numbers it can see, adds the new ones to the
+ * account and queues their first read. A login that fails is marked with the reason (shown in Settings) and the others still run.
+ * Read-only on the DPD side: it signs in and reads one drop-down.
+ */
+async function runLoginFranchiseDiscovery(db: AdminClient, job: Job): Promise<JobOutcome> {
+  const url = env.dpdPortalUrl();
+  if (!url) throw new PortalError("config", "credentials", "The DPD portal address has not been set on the background worker yet.", "DPD_PORTAL_URL missing");
+  const waitingLogins = async (excluded: Set<string>) => {
+    const logins = await listDpdLogins(db, job.account_id);
+    const { data: linked } = await db.from("franchises").select("dpd_login_id").eq("account_id", job.account_id).not("dpd_login_id", "is", null);
+    const linkedIds = new Set((linked ?? []).map((r) => r.dpd_login_id));
+    return logins.filter((l) => !linkedIds.has(l.id) && !excluded.has(l.id));
+  };
+  const attempted = new Set<string>();
+  let pending = await waitingLogins(attempted);
+  if (pending.length === 0) return { status: "succeeded", message: "No logins are waiting to have their franchises found." };
+
+  const map = await loadPortalMap(db, job.account_id).catch(() => SHARED_PORTAL_MAP);
+  const { data: existing } = await db.from("franchises").select("fd_number").eq("account_id", job.account_id);
+  const known = new Set((existing ?? []).map((f) => f.fd_number));
+  const newFranchiseIds: string[] = [];
+  let already = 0;
+  let succeeded = 0;
+  let firstError: unknown = null;
+
+  // A login added while this job is running would be missed (a second job cannot start), so look again before finishing.
+  for (let pass = 0; pass < 3 && pending.length > 0; pass++) {
+    for (const login of pending) {
+      attempted.add(login.id);
+      const secret = await loadDpdLoginById(db, login.id);
+      if (!secret) {
+        await recordLoginOutcome(db, login.id, { error: "The saved password could not be read. Remove this login and add it again." });
+        firstError ??= new PortalError("config", "credentials", "The saved password for a login could not be read. Remove the login and add it again.");
+        continue;
+      }
+      const session = await PortalSession.open({ url, username: secret.username, password: secret.password, loginSecret: env.dpdLoginSecret() }, map);
+      try {
+        await session.login();
+        const fds = await session.listFranchiseNumbers();
+        if (fds.length === 0) throw new PortalError("layout", "franchises:list", "This login signed in, but no franchise numbers were listed for it.");
+        for (const fd of fds) {
+          if (known.has(fd)) { already += 1; continue; }
+          const { data: created, error } = await db.from("franchises").insert({ account_id: job.account_id, fd_number: fd, name: "", dpd_login_id: login.id }).select("id").single();
+          if (error) throw new Error(`Could not add ${fd}: ${error.message}`);
+          known.add(fd);
+          newFranchiseIds.push(created.id);
+        }
+        await recordLoginOutcome(db, login.id, { success: true, error: null });
+        succeeded += 1;
+      } catch (error) {
+        await recordLoginOutcome(db, login.id, { error: error instanceof PortalError ? error.plainEnglish : "Something went wrong reading this login. It will be tried again." });
+        firstError ??= error;
+      } finally {
+        await session.close();
+      }
+    }
+    pending = await waitingLogins(attempted);
+  }
+
+  // The new franchises are read straight away, so their figures appear without waiting for tonight.
+  for (const franchiseId of newFranchiseIds) {
+    await enqueueJob(db, { accountId: job.account_id, type: "dpd_sync", franchiseId, reportDate: londonToday(), trigger: "manual", requestedBy: job.requested_by ?? undefined });
+  }
+  if (succeeded === 0 && firstError) throw firstError;
+  const parts = [`${newFranchiseIds.length} new franchise${newFranchiseIds.length === 1 ? "" : "s"} found`];
+  if (already > 0) parts.push(`${already} already on your account`);
+  const failed = attempted.size - succeeded;
+  if (failed > 0) parts.push(`${failed} login${failed === 1 ? "" : "s"} could not be read`);
+  const message = `${parts.join(", ")}.`;
+  await logSync(db, job, failed > 0 ? "warning" : "info", "franchises_found", message, { added: newFranchiseIds.length, already });
+  return { status: failed > 0 ? "partial" : "succeeded", message, result: { added: newFranchiseIds.length, already } };
+}
+
 export async function runDpdDiscoveryJob(db: AdminClient, job: Job): Promise<JobOutcome> {
+  if ((job.payload as { discoverFranchises?: boolean } | null)?.discoverFranchises) return runLoginFranchiseDiscovery(db, job);
   const credentials = await credentialsFor(db, job.account_id, null);
   // Discovery only needs the login part of a map; the shared map has it (an account's own invalid override falls back to it too).
   const map: PortalMap = await loadPortalMap(db, job.account_id).catch(() => SHARED_PORTAL_MAP);

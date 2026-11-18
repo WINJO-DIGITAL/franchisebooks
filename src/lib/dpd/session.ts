@@ -3,6 +3,7 @@
  * Used only by the background worker — never from the web app.
  */
 
+import { extractFdNumbers } from "@/lib/onboarding/franchises";
 import type { Browser, BrowserContext, Download, Locator, Page } from "playwright";
 import { londonToday, type ISODate } from "@/lib/dates";
 import { scrubSecrets } from "@/lib/logger";
@@ -218,6 +219,34 @@ export class PortalSession {
         await this.settle();
       }
     }
+  }
+
+  /**
+   * Reads the FD numbers the portal offers for the signed-in login: the options of the route filter on the first report's page
+   * (the same filter used to pick a franchise when reading it). Read-only: it opens the page and reads the drop-down, nothing more.
+   */
+  async listFranchiseNumbers(): Promise<string[]> {
+    const report = this.map.reports.find((r) => r.kind === "earnings") ?? this.map.reports[0];
+    const steps = report?.navigate ?? [];
+    const go = steps.find((s) => s.action === "goto");
+    const pick = steps.find((s) => s.action === "select");
+    if (!go || go.action !== "goto" || !pick || pick.action !== "select") {
+      throw new PortalError("config", "franchises:list", "The portal setup has no page with a route filter to read franchise numbers from.");
+    }
+    await this.goto(go.path, "franchises:open");
+    const select = this.page.getByLabel(new RegExp(pick.label, "i")).first();
+    await select.waitFor({ state: "visible", timeout: 20_000 }).catch(() => undefined);
+    if (!(await select.count())) {
+      throw new PortalError("layout", "franchises:list", `The “${pick.label}” filter was not found on the page, so the franchises could not be listed. The portal layout may have changed.`);
+    }
+    let found: string[] = [];
+    for (let attempt = 0; attempt < 15; attempt++) {
+      const options = (await select.locator("option").allTextContents()).map((text) => text.replace(/\s+/g, " ").trim());
+      found = extractFdNumbers(options);
+      if (found.length > 0) break;
+      await this.page.waitForTimeout(1000);
+    }
+    return found;
   }
 
   async openFranchise(fd: string, date: ISODate): Promise<void> {
