@@ -19,7 +19,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.locator('a[href="/expenses?add=1"]')).toBeVisible(); // the Add menu's Expense item, not the Expenses menu entry
     await expect(page.getByRole("button", { name: /Sync DPD/ })).toBeVisible();
     // Every section is reachable from the sidebar.
-    for (const name of ["Dashboard", "Drivers", "Income", "Expenses", "Adjustments", "Reports", "Period check", "Data & Integrations", "Settings"]) {
+    for (const name of ["Dashboard", "Drivers", "Income", "Expenses", "Adjustments", "Reports", "Period check", "Sliding scale", "Data & Integrations", "Settings"]) {
       await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name })).toBeVisible();
     }
   });

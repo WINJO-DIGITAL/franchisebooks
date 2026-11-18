@@ -187,6 +187,26 @@ isOneToOne: false
       referencedColumns: ["id","account_id"]
     }
                   ]
+                },"sliding_scale_rates": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"fuel_type": string,"id": string,"miles_from": number | null,"miles_to": number | null,"note": string | null,"rate": number,"stops_from": number,"stops_to": number | null,"vehicle_size": string | null,"vehicle_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"fuel_type"?: string,"id"?: string,"miles_from"?: number | null,"miles_to"?: number | null,"note"?: string | null,"rate": number,"stops_from": number,"stops_to"?: number | null,"vehicle_size"?: string | null,"vehicle_type": string
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"fuel_type"?: string,"id"?: string,"miles_from"?: number | null,"miles_to"?: number | null,"note"?: string | null,"rate"?: number,"stops_from"?: number,"stops_to"?: number | null,"vehicle_size"?: string | null,"vehicle_type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sliding_scale_rates_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"driver_day_rates": {
                   Row: {
                     "account_id": string,"created_at": string,"created_by": string | null,"day_rate": number,"pay_basis": string,"driver_id": string,"effective_from": string,"id": string,"note": string | null

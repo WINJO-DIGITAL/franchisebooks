@@ -11,6 +11,7 @@ export const NAV_ROUTES = [
   { href: "/adjustments", label: "Adjustments" },
   { href: "/reports", label: "Reports" },
   { href: "/check", label: "Period check" },
+  { href: "/sliding-scale", label: "Sliding scale" },
   { href: "/data", label: "Data & Integrations" },
   { href: "/settings", label: "Settings" },
 ] as const;
