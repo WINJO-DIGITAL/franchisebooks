@@ -38,10 +38,10 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
     loadCosts(ctx.supabase, { accountId: ctx.accountId, from: historyFrom, to: ctx.today }),
     ctx.supabase.from("app_settings").select("anomaly_config").eq("account_id", ctx.accountId).maybeSingle(),
     ctx.supabase.from("review_items").select("payload").eq("kind", "source_conflict").eq("status", "open"),
-    ctx.supabase.from("driver_day_rates").select("id, day_rate, effective_from, note").eq("driver_id", id).order("effective_from", { ascending: false }),
+    ctx.supabase.from("driver_day_rates").select("id, day_rate, effective_from, note, pay_basis").eq("driver_id", id).order("effective_from", { ascending: false }),
   ]);
   const rateRows = rateResult.data ?? [];
-  const dayRates: DayRate[] = rateRows.map((r) => ({ driverId: id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from }));
+  const dayRates: DayRate[] = rateRows.map((r) => ({ driverId: id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from, basis: r.pay_basis === "stop" ? "stop" : "day" }));
   const assignments = assignmentsResult.data ?? [];
   const config = resolveAnomalyConfig(settings.data?.anomaly_config);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
@@ -60,7 +60,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const parcels = worked.reduce((n, d) => n + (d.parcels ?? 0), 0);
   const myCosts = costs.filter((c) => c.allocation.scope === "driver" && c.allocation.driverId === id);
   const monthCosts = myCosts.filter((c) => c.date >= monthStart);
-  const monthWage = wageForDriver(id, worked.map((d) => d.date), dayRates);
+  const monthWage = wageForDriver(id, worked.map((d) => d.date), dayRates, new Map(worked.map((d) => [d.date, d.stops ?? null])));
   const currentRate = dayRates.find((r) => r.effectiveFrom <= ctx.today) ?? null;
 
   // Stop consistency: each day against the driver's own previous working days.
@@ -113,32 +113,32 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       </Section>
 
       <Section
-        title="Day rate and wage"
-        description="The wage is the day rate in force on each day worked, added up. Changing the rate never alters wages already worked."
+        title="Pay rate and wage"
+        description="The wage is the pay rate in force on each day worked, added up: a day rate pays once per day worked, a stop rate pays for every stop. Changing the rate never alters wages already worked."
         actions={ctx.canWrite ? <SetDayRateForm driverId={id} today={ctx.today} /> : null}
       >
         <dl className="grid gap-4 sm:grid-cols-3">
-          <Stat label="Current day rate" value={currentRate ? formatGBP(currentRate.dayRate) : "Not set"} />
+          <Stat label="Current rate" value={currentRate ? `${formatGBP(currentRate.dayRate)} ${currentRate.basis === "stop" ? "per stop" : "per day"}` : "Not set"} />
           <Stat label="Days worked this month" value={String(monthWage.daysWorked)} />
           <Stat
             label="Wage this month"
             value={monthWage.complete ? formatGBP(monthWage.wage) : `${formatGBP(monthWage.wage)} (incomplete)`}
-            sub={monthWage.complete ? undefined : `${monthWage.missingDates.length} worked day(s) have no day rate in force.`}
+            sub={monthWage.complete ? undefined : `${monthWage.missingDates.length} worked day(s) have no pay rate in force, or no stop count for a per-stop rate.`}
           />
         </dl>
         {rateRows.length > 0 ? (
           <TableWrap>
             <table className="table">
-              <thead><tr><th>From</th><th className="r">Day rate</th><th>Note</th></tr></thead>
+              <thead><tr><th>From</th><th>Paid</th><th className="r">Rate</th><th>Note</th></tr></thead>
               <tbody>
                 {rateRows.map((r) => (
-                  <tr key={r.id}><td>{formatUkDate(r.effective_from)}</td><td className="r num">{formatGBP(fromDb(r.day_rate))}</td><td>{r.note ?? ""}</td></tr>
+                  <tr key={r.id}><td>{formatUkDate(r.effective_from)}</td><td>{r.pay_basis === "stop" ? "Per stop" : "Per day"}</td><td className="r num">{formatGBP(fromDb(r.day_rate))}</td><td>{r.note ?? ""}</td></tr>
                 ))}
               </tbody>
             </table>
           </TableWrap>
         ) : (
-          <EmptyState title="No day rate set yet">Set the amount this driver is paid for each day worked. Wages cannot be worked out until a rate is set.</EmptyState>
+          <EmptyState title="No pay rate set yet">Set what this driver is paid per day worked or per stop. Wages cannot be worked out until a rate is set.</EmptyState>
         )}
       </Section>
 

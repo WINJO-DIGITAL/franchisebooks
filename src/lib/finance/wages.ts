@@ -1,20 +1,25 @@
 /**
- * Driver wages from day rates. Pure code: no database, no network.
+ * Driver wages from day rates or per-stop rates. Pure code: no database, no network.
  *
- * Rule: wage = sum over the days a driver worked of the day rate in force on
- * that day. A rate applies from its effective date until the next rate starts.
- * A worked day with no rate in force is NOT counted as zero: the wage is then
- * reported as incomplete and the missing days are listed, so nothing is guessed.
+ * Rule: wage = sum over the days a driver worked of what that day earns at the rate in force on
+ * that day. A "day" rate pays the rate once per day worked. A "stop" rate pays the rate for each
+ * stop that day. A rate applies from its effective date until the next rate starts.
+ * A worked day with no rate in force, or a stop rate with no stop count for that day, is NOT
+ * counted as zero: the wage is then reported as incomplete and the days are listed, so nothing is guessed.
  */
 
 import type { ISODate } from "@/lib/dates";
 import { sumPence, type Pence } from "@/lib/money";
 
+export type PayBasis = "day" | "stop";
+
 export interface DayRate {
   driverId: string;
-  /** Pence per day worked. */
+  /** Pence per day worked (basis "day") or per stop (basis "stop"). */
   dayRate: Pence;
   effectiveFrom: ISODate;
+  /** Defaults to "day" when not given, so existing rates keep their meaning. */
+  basis?: PayBasis;
 }
 
 export interface DriverWage {
@@ -24,7 +29,7 @@ export interface DriverWage {
   wage: Pence;
   /** True only when every worked day has a rate in force. */
   complete: boolean;
-  /** Worked days with no rate in force (the wage is incomplete if this is non-empty). */
+  /** Worked days with no rate in force, or (per-stop) no stop count (the wage is incomplete if this is non-empty). */
   missingDates: ISODate[];
 }
 
@@ -41,15 +46,31 @@ export function rateOn(rates: DayRate[], driverId: string, date: ISODate): DayRa
 /**
  * Wage for one driver over the days they worked.
  * `workedDates` may contain duplicates (several routes on one day); each date counts once.
+ * `stopsByDate` gives the stops worked on each date (already summed across routes); it is needed
+ * only for per-stop rates. A date missing from it, or mapped to null, is reported as missing.
  */
-export function wageForDriver(driverId: string, workedDates: ISODate[], rates: DayRate[]): DriverWage {
+export function wageForDriver(
+  driverId: string,
+  workedDates: ISODate[],
+  rates: DayRate[],
+  stopsByDate: Map<ISODate, number | null> = new Map(),
+): DriverWage {
   const dates = [...new Set(workedDates)].sort();
   const amounts: Pence[] = [];
   const missingDates: ISODate[] = [];
   for (const date of dates) {
     const rate = rateOn(rates, driverId, date);
-    if (rate) amounts.push(rate.dayRate);
-    else missingDates.push(date);
+    if (!rate) {
+      missingDates.push(date);
+      continue;
+    }
+    if ((rate.basis ?? "day") === "stop") {
+      const stops = stopsByDate.get(date);
+      if (stops == null) missingDates.push(date);
+      else amounts.push(Math.round(rate.dayRate * stops));
+    } else {
+      amounts.push(rate.dayRate);
+    }
   }
   return {
     driverId,

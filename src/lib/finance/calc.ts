@@ -330,6 +330,8 @@ interface DriverAccumulator {
   name: string;
   franchiseId: string;
   dates: Set<ISODate>;
+  /** Stops per worked day, summed across routes; null if any route that day had no stop count. */
+  stopsByDate: Map<ISODate, number | null>;
   parcels: number;
   stops: number;
   parcelsIncomplete: boolean;
@@ -400,6 +402,7 @@ function summariseFranchise(
         name: driverId ? (input.driverNames.get(driverId) ?? name) : name,
         franchiseId: franchiseId ?? "",
         dates: new Set(),
+        stopsByDate: new Map(),
         parcels: 0,
         stops: 0,
         parcelsIncomplete: false,
@@ -417,6 +420,8 @@ function summariseFranchise(
   for (const e of earnings) {
     const acc = ensure(e.driverId, e.driverKey, e.sourceDriverName);
     acc.dates.add(e.date);
+    const prevStops = acc.stopsByDate.get(e.date);
+    acc.stopsByDate.set(e.date, e.stops == null || prevStops === null ? null : (prevStops ?? 0) + e.stops);
     if (e.parcels == null) acc.parcelsIncomplete = true;
     else acc.parcels += e.parcels;
     if (e.stops == null) acc.stopsIncomplete = true;
@@ -491,7 +496,7 @@ function summariseFranchise(
       if (days === 0) {
         wage = adj.net;
       } else if (acc.driverId && input.dayRates) {
-        const w = wageForDriver(acc.driverId, [...acc.dates], input.dayRates);
+        const w = wageForDriver(acc.driverId, [...acc.dates], input.dayRates, acc.stopsByDate);
         wage = w.wage + adj.net;
         wageComplete = w.complete;
       } else {

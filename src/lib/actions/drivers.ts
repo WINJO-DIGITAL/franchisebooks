@@ -184,6 +184,7 @@ export async function linkUnregisteredDriver(_prev: ActionState, formData: FormD
  */
 const dayRateSchema = z.object({
   driverId: uuid,
+  payBasis: z.enum(["day", "stop"]),
   dayRate: moneyAmount,
   effectiveFrom: isoDate,
   note: optionalText(500),
@@ -191,25 +192,26 @@ const dayRateSchema = z.object({
 
 export async function setDayRate(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const ctx = await getContext();
-  if (!ctx.canWrite) return fail("You do not have permission to change day rates.");
+  if (!ctx.canWrite) return fail("You do not have permission to change pay rates.");
   const parsed = parseForm(dayRateSchema, formData);
   if ("error" in parsed) return parsed.error;
   const d = parsed.data;
-  if (d.effectiveFrom > ctx.today) return fail("A day rate cannot start in the future.", null, { effectiveFrom: "Choose today or an earlier date." });
+  if (d.effectiveFrom > ctx.today) return fail("A pay rate cannot start in the future.", null, { effectiveFrom: "Choose today or an earlier date." });
 
   const { error } = await ctx.supabase.from("driver_day_rates").insert({
     account_id: ctx.accountId,
     driver_id: d.driverId,
     day_rate: Number(toDb(d.dayRate)),
+    pay_basis: d.payBasis,
     effective_from: d.effectiveFrom,
     note: d.note,
     created_by: ctx.userId,
   });
   if (error) {
     return error.code === "23505"
-      ? fail("A day rate already starts on that date. Choose a different date.", error.message, { effectiveFrom: "A rate already starts on this date." })
+      ? fail("A pay rate already starts on that date. Choose a different date.", error.message, { effectiveFrom: "A rate already starts on this date." })
       : dbFailure(error);
   }
   revalidatePath(`/drivers/${d.driverId}`);
-  return ok("Day rate saved. Earlier wages are unchanged.");
+  return ok("Pay rate saved. Earlier wages are unchanged.");
 }

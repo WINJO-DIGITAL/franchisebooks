@@ -293,8 +293,8 @@ export async function loadEarningsMeaning(db: Db, accountId: string): Promise<Ea
 
 /** Every day rate the account has set, newest last. Wages pick the rate in force on each day worked. */
 export async function loadDayRates(db: Db, accountId: string): Promise<DayRate[]> {
-  const rows = await fetchAll(() => db.from("driver_day_rates").select("driver_id, day_rate, effective_from").eq("account_id", accountId).order("effective_from").order("id"));
-  return rows.map((r) => ({ driverId: r.driver_id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from }));
+  const rows = await fetchAll(() => db.from("driver_day_rates").select("driver_id, day_rate, effective_from, pay_basis").eq("account_id", accountId).order("effective_from").order("id"));
+  return rows.map((r) => ({ driverId: r.driver_id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from, basis: r.pay_basis === "stop" ? "stop" : "day" }));
 }
 
 export interface OtherPaymentDetail extends OtherPaymentRow {

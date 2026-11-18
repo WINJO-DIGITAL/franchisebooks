@@ -189,14 +189,14 @@ isOneToOne: false
                   ]
                 },"driver_day_rates": {
                   Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"day_rate": number,"driver_id": string,"effective_from": string,"id": string,"note": string | null
+                    "account_id": string,"created_at": string,"created_by": string | null,"day_rate": number,"pay_basis": string,"driver_id": string,"effective_from": string,"id": string,"note": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"day_rate": number,"driver_id": string,"effective_from": string,"id"?: string,"note"?: string | null
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"day_rate": number,"pay_basis"?: string,"driver_id": string,"effective_from": string,"id"?: string,"note"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"day_rate"?: number,"driver_id"?: string,"effective_from"?: string,"id"?: string,"note"?: string | null
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"day_rate"?: number,"pay_basis"?: string,"driver_id"?: string,"effective_from"?: string,"id"?: string,"note"?: string | null
                   }
                   Relationships: [
                     {

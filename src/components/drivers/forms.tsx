@@ -207,13 +207,19 @@ export function SetDayRateForm({ driverId, today }: { driverId: string; today: s
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Set day rate</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Set day rate">
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Set pay rate</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Set pay rate">
         <ActionForm action={setDayRate} className="space-y-4" onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
               <input type="hidden" name="driverId" value={driverId} />
-              <Field label="Amount paid per day worked (£)" hint="For example 160 or 160.50." error={state.fieldErrors?.dayRate}>
+              <Field label="Paid by" hint="Per day pays once for each day worked. Per stop pays for every stop on that day.">
+                <Select name="payBasis" defaultValue="day">
+                  <option value="day">Per day worked</option>
+                  <option value="stop">Per stop</option>
+                </Select>
+              </Field>
+              <Field label="Amount (£)" hint="A day rate such as 160, or a stop rate such as 0.85." error={state.fieldErrors?.dayRate}>
                 <Input name="dayRate" inputMode="decimal" required />
               </Field>
               <Field label="Applies from" hint="Days worked on or after this date use this rate." error={state.fieldErrors?.effectiveFrom}>
@@ -222,7 +228,7 @@ export function SetDayRateForm({ driverId, today }: { driverId: string; today: s
               <Field label="Note (optional)">
                 <Input name="note" />
               </Field>
-              <SubmitButton>Save day rate</SubmitButton>
+              <SubmitButton>Save pay rate</SubmitButton>
             </>
           )}
         </ActionForm>

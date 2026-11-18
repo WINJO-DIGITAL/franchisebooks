@@ -63,3 +63,24 @@ describe("workedDatesByDriver", () => {
     expect(map.get("b")).toEqual(["2026-11-01"]);
   });
 });
+
+describe("per-stop pay", () => {
+  const stopRate: DayRate[] = [{ driverId: "s", dayRate: 85, effectiveFrom: "2026-11-01", basis: "stop" }];
+
+  it("pays the stop rate for every stop on each day", () => {
+    const wage = wageForDriver("s", ["2026-11-02", "2026-11-03"], stopRate, new Map([["2026-11-02", 100], ["2026-11-03", 50]]));
+    // 150 stops at 0.85 = 127.50
+    expect(wage).toEqual({ driverId: "s", daysWorked: 2, wage: 12750, complete: true, missingDates: [] });
+  });
+
+  it("reports a per-stop day with no stop count as missing rather than zero", () => {
+    const wage = wageForDriver("s", ["2026-11-02", "2026-11-03"], stopRate, new Map([["2026-11-02", 100], ["2026-11-03", null]]));
+    expect(wage.complete).toBe(false);
+    expect(wage.missingDates).toEqual(["2026-11-03"]);
+    expect(wage.wage).toBe(8500);
+  });
+
+  it("treats a rate without a basis as per day, so existing rates are unchanged", () => {
+    expect(wageForDriver("a", ["2026-11-09"], rates).wage).toBe(16000);
+  });
+});
