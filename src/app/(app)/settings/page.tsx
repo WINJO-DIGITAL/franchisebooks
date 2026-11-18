@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { ManageBillingForm } from "@/components/billing/forms";
 import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, DpdLoginForm, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
 import { Badge, DefinitionList, Notice, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { DEFAULT_ANOMALY_CONFIG, resolveAnomalyConfig } from "@/lib/anomalies/detect";
+import { PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { hasDpdLogin } from "@/lib/dpd/login";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
@@ -26,6 +28,7 @@ export default async function SettingsPage() {
   ]);
   const s = settings.data;
   const dpdSaved = ctx.isOwner ? await hasDpdLogin(createAdminClient(), accountId) : false;
+  const { data: billing } = ctx.isOwner ? await supabase.from("user_billing").select("status, current_period_end, cancel_at_period_end, stripe_customer_id").eq("user_id", ctx.userId).maybeSingle() : { data: null };
   const config = resolveAnomalyConfig(s?.anomaly_config);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const optionFranchises = franchises.filter((f) => f.is_active).map((f) => ({ id: f.id, label: f.name ? `${f.fd_number} · ${f.name}` : f.fd_number }));
@@ -93,6 +96,28 @@ export default async function SettingsPage() {
           {ctx.isOwner ? <DpdLoginForm saved={dpdSaved} /> : <p className="text-sm text-muted">Only the owner can change the DPD login.</p>}
         </Panel>
       </Section>
+
+      {ctx.isOwner && billing ? (
+        <Section title="Subscription" description={`Franchise Manager is £${PLAN_PRICE_GBP} a month for your account, however many franchises you add.`}>
+          <Panel>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-1 text-sm">
+                <p className="flex items-center gap-2 font-medium">
+                  Status
+                  <Badge tone={billing.status === "active" || billing.status === "trialing" || billing.status === "comped" ? "good" : billing.status === "past_due" ? "warn" : "bad"}>
+                    {billing.status === "comped" ? "Included with your account" : billing.status.replace("_", " ")}
+                  </Badge>
+                </p>
+                {billing.current_period_end && billing.status !== "comped" ? (
+                  <p className="text-muted">{billing.cancel_at_period_end ? "Ends" : "Renews"} on {formatUkDate(billing.current_period_end.slice(0, 10))}</p>
+                ) : null}
+                {billing.status === "past_due" ? <p className="text-warn">The last payment did not go through. Update your card to keep access.</p> : null}
+              </div>
+              {billing.stripe_customer_id ? <ManageBillingForm /> : null}
+            </div>
+          </Panel>
+        </Section>
+      ) : null}
 
       <Section title="Alert levels" description="How different from normal something must be before it is flagged. Each driver is compared with their own history, never with other drivers.">
         <Panel>

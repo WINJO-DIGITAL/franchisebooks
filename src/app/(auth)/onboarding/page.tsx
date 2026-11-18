@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { requireBillingAccess } from "@/lib/billing/gate";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "./onboarding-form";
 
@@ -11,6 +12,8 @@ export default async function OnboardingPage() {
   if (!data.user) redirect("/login");
   const { data: profile } = await supabase.from("user_profiles").select("id").eq("id", data.user.id).maybeSingle();
   if (profile) redirect("/");
+  // A new customer pays first; set-up comes after.
+  await requireBillingAccess(supabase);
   return (
     <>
       <h1 className="text-xl font-semibold">Set up your business</h1>

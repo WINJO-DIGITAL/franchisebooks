@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { FRANCHISE_COOKIE } from "@/lib/context";
 import { env } from "@/lib/env";
+import { requireBillingAccess } from "@/lib/billing/gate";
 import { createClient } from "@/lib/supabase/server";
 import { dbFailure, fail, ok, parseForm, type ActionState } from "./helpers";
 
@@ -76,6 +77,7 @@ export async function completeOnboarding(_prev: ActionState, formData: FormData)
   const parsed = parseForm(onboardingSchema, formData);
   if ("error" in parsed) return parsed.error;
   const supabase = await createClient();
+  await requireBillingAccess(supabase);
   const { data: accountId, error } = await supabase.rpc("bootstrap_account", {
     p_business_name: parsed.data.businessName,
     p_full_name: parsed.data.fullName,

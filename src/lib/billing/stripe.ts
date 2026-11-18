@@ -1,0 +1,69 @@
+import "server-only";
+import Stripe from "stripe";
+import { env } from "@/lib/env";
+import type { AdminClient } from "@/lib/supabase/admin";
+import { billingRowFromSubscription, type SubscriptionLike } from "./status";
+
+export class BillingNotConfigured extends Error {
+  constructor() {
+    super("Billing is not set up yet.");
+  }
+}
+
+export function getStripe(): Stripe | null {
+  const key = env.stripeSecretKey();
+  return key ? new Stripe(key) : null;
+}
+
+/** Records a Stripe subscription against the user who pays. Safe to repeat: the same subscription gives the same row. */
+export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): Promise<void> {
+  const row = billingRowFromSubscription(sub);
+  let userId = row.userId;
+  if (!userId) {
+    const { data } = await db.from("user_billing").select("user_id").eq("stripe_customer_id", row.stripeCustomerId).maybeSingle();
+    userId = data?.user_id ?? null;
+  }
+  if (!userId) throw new Error(`Subscription ${row.stripeSubscriptionId} does not say which user it belongs to.`);
+  const { error } = await db.from("user_billing").upsert(
+    {
+      user_id: userId,
+      stripe_customer_id: row.stripeCustomerId,
+      stripe_subscription_id: row.stripeSubscriptionId,
+      status: row.status,
+      current_period_end: row.currentPeriodEnd,
+      cancel_at_period_end: row.cancelAtPeriodEnd,
+    },
+    { onConflict: "user_id" },
+  );
+  if (error) throw new Error(`Could not record the subscription: ${error.message}`);
+}
+
+/** A Stripe Checkout page for the monthly plan. The user's id travels with it so the webhook knows who paid. */
+export async function createCheckoutUrl(db: AdminClient, user: { id: string; email: string }): Promise<string> {
+  const stripe = getStripe();
+  const price = env.stripePriceId();
+  if (!stripe || !price) throw new BillingNotConfigured();
+  const { data: existing } = await db.from("user_billing").select("stripe_customer_id").eq("user_id", user.id).maybeSingle();
+  const base = env.appUrl();
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    line_items: [{ price, quantity: 1 }],
+    client_reference_id: user.id,
+    ...(existing?.stripe_customer_id ? { customer: existing.stripe_customer_id } : { customer_email: user.email }),
+    subscription_data: { metadata: { user_id: user.id } },
+    metadata: { user_id: user.id },
+    allow_promotion_codes: true,
+    success_url: `${base}/subscribe?checkout=done`,
+    cancel_url: `${base}/subscribe?checkout=cancelled`,
+  });
+  if (!session.url) throw new Error("Stripe did not return a checkout address.");
+  return session.url;
+}
+
+/** Stripe's page where a customer changes their card or cancels. */
+export async function createPortalUrl(customerId: string, returnUrl: string): Promise<string> {
+  const stripe = getStripe();
+  if (!stripe) throw new BillingNotConfigured();
+  const session = await stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+  return session.url;
+}

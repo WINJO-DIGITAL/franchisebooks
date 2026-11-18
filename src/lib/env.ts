@@ -65,6 +65,12 @@ export const env = {
     return raw && z.url().safeParse(raw).success ? raw : null;
   },
   dpdLoginSecret: () => optional("DPD_LOGIN_SECRET"),
+  /** Stripe billing. Without these the subscribe page says billing is not set up, and nothing is enforced. */
+  stripeSecretKey: () => optional("STRIPE_SECRET_KEY"),
+  stripeWebhookSecret: () => optional("STRIPE_WEBHOOK_SECRET"),
+  stripePriceId: () => optional("STRIPE_PRICE_ID"),
+  /** When true, the app asks for a paid subscription. Off by default so turning billing on is a deliberate step. */
+  billingEnforced: () => optional("BILLING_ENFORCED") === "true",
   logLevel: () => optional("LOG_LEVEL") ?? "info",
   errorWebhookUrl: () => optional("ERROR_WEBHOOK_URL"),
 };

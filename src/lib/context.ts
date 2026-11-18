@@ -3,6 +3,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { londonToday } from "@/lib/dates";
+import { requireBillingAccess } from "@/lib/billing/gate";
 import { createClient } from "@/lib/supabase/server";
 
 export const FRANCHISE_COOKIE = "franchise";
@@ -34,6 +35,7 @@ export const getContext = cache(async () => {
     .eq("id", auth.user.id)
     .maybeSingle();
   if (!profile) redirect("/onboarding");
+  await requireBillingAccess(supabase);
 
   const [{ data: account }, { data: franchiseRows }, cookieStore] = await Promise.all([
     supabase.from("accounts").select("id, name").eq("id", profile.account_id).maybeSingle(),

@@ -187,6 +187,18 @@ isOneToOne: false
       referencedColumns: ["id","account_id"]
     }
                   ]
+                },"user_billing": {
+                  Row: {
+                    "cancel_at_period_end": boolean,"current_period_end": string | null,"status": string,"stripe_customer_id": string | null,"stripe_subscription_id": string | null,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: []
                 },"sliding_scale_rates": {
                   Row: {
                     "account_id": string,"created_at": string,"created_by": string | null,"fuel_type": string,"id": string,"miles_from": number | null,"miles_to": number | null,"note": string | null,"rate": number,"stops_from": number,"stops_to": number | null,"vehicle_size": string | null,"vehicle_type": string
@@ -799,7 +811,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "bootstrap_account":
+            "billing_allows_access":
+{ Args: Record<string, never>; Returns: boolean
+                           },
+"bootstrap_account":
 { Args: { "p_business_name": string,"p_full_name": string }; Returns: string
                            },
 "cancel_driver_cover":
