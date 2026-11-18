@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth", "/api/cron", "/api/dropbox/webhook", "/api/stripe/webhook", "/api/health"];
+const PUBLIC_PATHS = ["/login", "/signup", "/welcome", "/auth", "/api/cron", "/api/dropbox/webhook", "/api/stripe/webhook", "/api/health"];
 
 /** Refreshes the Supabase session cookie and sends signed-out visitors to the login page. */
 export async function updateSession(request: NextRequest) {
@@ -25,6 +25,13 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
 
+  // The front page: visitors who are not signed in see the sales page at "/"; signed-in users get their dashboard.
+  if (!data.user && path === "/") {
+    const welcome = request.nextUrl.clone();
+    welcome.pathname = "/welcome";
+    welcome.search = "";
+    return NextResponse.rewrite(welcome);
+  }
   if (!data.user && !isPublic) {
     if (path.startsWith("/api/")) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     const login = request.nextUrl.clone();
@@ -33,7 +40,7 @@ export async function updateSession(request: NextRequest) {
     if (path !== "/") login.searchParams.set("next", path);
     return NextResponse.redirect(login);
   }
-  if (data.user && path === "/login") {
+  if (data.user && (path === "/login" || path === "/signup")) {
     const home = request.nextUrl.clone();
     home.pathname = "/";
     home.search = "";

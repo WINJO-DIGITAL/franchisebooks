@@ -31,6 +31,37 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
   redirect(next);
 }
 
+const signUpSchema = z
+  .object({
+    email: z.email("Enter your email address."),
+    password: z.string().min(10, "Use at least 10 characters."),
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, { message: "The two passwords do not match.", path: ["confirm"] });
+
+/** Creates a login. The next step is always the subscribe page; an emailed confirmation link, if required, leads there too. */
+export async function signUp(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = parseForm(signUpSchema, formData);
+  if ("error" in parsed) return parsed.error;
+  const origin = (await headers()).get("origin");
+  const base = (origin && /^https?:\/\//.test(origin) ? origin : env.appUrl()).replace(/\/$/, "");
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    options: { emailRedirectTo: `${base}/auth/confirm?next=/subscribe` },
+  });
+  if (error) {
+    return fail(
+      error.status === 422 || error.status === 400 ? "That email or password was not accepted. Check the email address, and use at least 10 characters for the password." : "Sign-up is not available right now. Please try again in a moment.",
+      `${error.status ?? ""} ${error.message}`.trim(),
+    );
+  }
+  // With email confirmation switched on there is no session yet: the link in the email finishes the job.
+  if (!data.session) return ok("Check your email. We have sent a link to confirm your address; it brings you back here to choose your plan.");
+  redirect("/subscribe");
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut({ scope: "local" }); // this device only
