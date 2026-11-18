@@ -6,6 +6,7 @@ import { DEFAULT_ANOMALY_CONFIG, type AnomalyConfig } from "@/lib/anomalies/dete
 import { getContext } from "@/lib/context";
 import { isYearMonth, monthRange, parseTimeToMinutes } from "@/lib/dates";
 import { formatGBP, toDb } from "@/lib/money";
+import { revenueDescription } from "@/lib/finance/credit-notes";
 import { dbFailure, fail, ok, parseForm, type ActionState } from "./helpers";
 import { isoDate, moneyAmount, optionalText, uuid } from "./schemas";
 
@@ -45,6 +46,7 @@ const revenueSchema = z.object({
   day: z.string().optional(),
   amount: moneyAmount,
   status: z.enum(["confirmed", "estimated"]),
+  kind: z.enum(["payment", "credit_note"]).default("payment"),
   description: optionalText(300),
 });
 
@@ -66,11 +68,11 @@ export async function addRevenue(_prev: ActionState, formData: FormData): Promis
   }
   const { error } = await ctx.supabase.from("revenue_entries").insert({
     account_id: ctx.accountId, franchise_id: d.franchiseId, period_start: start, period_end: end,
-    amount: toDb(d.amount) as unknown as number, status: d.status, description: d.description, created_by: ctx.userId,
+    amount: toDb(d.amount) as unknown as number, status: d.status, description: revenueDescription(d.kind, d.description), created_by: ctx.userId,
   });
   if (error) return dbFailure(error, "The revenue could not be saved. Nothing was changed.");
   revalidatePath("/", "layout");
-  return ok(`Revenue of ${formatGBP(d.amount)} saved as ${d.status}.`);
+  return ok(d.kind === "credit_note" ? `Credit note of ${formatGBP(d.amount)} saved as ${d.status}. It counts as money in.` : `Revenue of ${formatGBP(d.amount)} saved as ${d.status}.`);
 }
 
 export async function voidRevenue(_prev: ActionState, formData: FormData): Promise<ActionState> {
