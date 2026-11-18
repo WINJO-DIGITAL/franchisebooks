@@ -28,11 +28,11 @@ export async function addFranchise(_prev: ActionState, formData: FormData): Prom
 export async function updateFranchise(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const ctx = await getContext();
   if (!ctx.isOwner) return fail("Only the owner can change franchises.");
-  const parsed = parseForm(z.object({ id: uuid, fdNumber, name: optionalText(120), depot: optionalText(120), isActive: z.enum(["true", "false"]) }), formData);
+  const parsed = parseForm(z.object({ id: uuid, fdNumber, name: optionalText(120), depot: optionalText(120), isActive: z.enum(["true", "false"]), vehicleType: optionalText(80), vehicleSize: optionalText(80), vehicleFuel: z.enum(["", "diesel", "electric", "other"]).optional() }), formData);
   if ("error" in parsed) return parsed.error;
   const d = parsed.data;
   const { error, data } = await ctx.supabase
-    .from("franchises").update({ fd_number: d.fdNumber, name: d.name ?? "", depot: d.depot, is_active: d.isActive === "true" }).eq("id", d.id).select("id");
+    .from("franchises").update({ fd_number: d.fdNumber, name: d.name ?? "", depot: d.depot, is_active: d.isActive === "true", vehicle_type: d.vehicleType, vehicle_size: d.vehicleSize, vehicle_fuel: d.vehicleType ? (d.vehicleFuel || "diesel") : null }).eq("id", d.id).select("id");
   if (error) return error.code === "23505" ? fail("Another franchise already has that FD number.") : dbFailure(error);
   if (!data?.length) return fail("That franchise could not be found.");
   revalidatePath("/", "layout");

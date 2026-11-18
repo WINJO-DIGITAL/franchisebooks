@@ -58,7 +58,7 @@ export function AddFranchiseForm() {
   );
 }
 
-export function EditFranchiseButton({ franchise }: { franchise: { id: string; fdNumber: string; name: string; depot: string | null; isActive: boolean } }) {
+export function EditFranchiseButton({ franchise }: { franchise: { id: string; fdNumber: string; name: string; depot: string | null; isActive: boolean; vehicleType: string | null; vehicleSize: string | null; vehicleFuel: string | null } }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -70,6 +70,11 @@ export function EditFranchiseButton({ franchise }: { franchise: { id: string; fd
             <Field label="FD number" hint="Changing it does not affect past records." error={state.fieldErrors?.fdNumber}><Input name="fdNumber" defaultValue={franchise.fdNumber} required /></Field>
             <Field label="Name"><Input name="name" defaultValue={franchise.name} /></Field>
             <Field label="Depot"><Input name="depot" defaultValue={franchise.depot ?? ""} /></Field>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Vehicle" hint="As the sliding scale names it, e.g. Van."><Input name="vehicleType" defaultValue={franchise.vehicleType ?? ""} /></Field>
+              <Field label="Size"><Input name="vehicleSize" defaultValue={franchise.vehicleSize ?? ""} /></Field>
+              <Field label="Fuel"><Select name="vehicleFuel" defaultValue={franchise.vehicleFuel ?? "diesel"}><option value="diesel">Diesel</option><option value="electric">Electric</option><option value="other">Other</option></Select></Field>
+            </div>
             <Field label="Status"><Select name="isActive" defaultValue={String(franchise.isActive)}><option value="true">Active</option><option value="false">Inactive (no longer operating)</option></Select></Field>
             <SubmitButton>Save</SubmitButton>
           </>)}

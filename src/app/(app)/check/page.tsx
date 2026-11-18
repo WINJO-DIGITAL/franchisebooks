@@ -9,6 +9,7 @@ import { fetchAll } from "@/lib/data/fetch-all";
 import { loadCosts, loadEarnings } from "@/lib/data/period";
 import { formatUkDate, isISODate } from "@/lib/dates";
 import { checkPeriod, type CheckInvoice, type IncomeStatus } from "@/lib/finance/period-check";
+import { checkStopRates, normaliseFuel, type ScaleBand } from "@/lib/finance/sliding-scale";
 import { lastCompletedPeriod, periodContaining, periodLabel, recentPeriods } from "@/lib/finance/periods";
 import { formatGBP, fromDb } from "@/lib/money";
 
@@ -29,7 +30,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
   const choices = recentPeriods(ctx.today, 7);
 
   const franchises = ctx.franchise ? [ctx.franchise] : ctx.franchises.filter((f) => f.isActive);
-  const [earnings, costs, invoiceRows, settings] = await Promise.all([
+  const [earnings, costs, invoiceRows, settings, vehicleRows, scaleRows] = await Promise.all([
     loadEarnings(ctx.supabase, { accountId: ctx.accountId, from: period.start, to: period.end, franchiseId: ctx.franchiseId }),
     loadCosts(ctx.supabase, { accountId: ctx.accountId, from: period.start, to: period.end, franchiseId: ctx.franchiseId }),
     fetchAll(() => {
@@ -43,7 +44,13 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
       return q;
     }),
     ctx.supabase.from("app_settings").select("anomaly_config").eq("account_id", ctx.accountId).maybeSingle(),
+    fetchAll(() => ctx.supabase.from("franchises").select("id, vehicle_type, vehicle_size, vehicle_fuel").eq("account_id", ctx.accountId).order("id")),
+    fetchAll(() => ctx.supabase.from("sliding_scale_rates").select("vehicle_type, vehicle_size, fuel_type, stops_from, stops_to, miles_from, miles_to, rate").eq("account_id", ctx.accountId).order("id")),
   ]);
+  const bands: ScaleBand[] = scaleRows.map((r) => ({
+    vehicleType: r.vehicle_type, vehicleSize: r.vehicle_size, fuelType: normaliseFuel(r.fuel_type), stopsFrom: r.stops_from, stopsTo: r.stops_to,
+    milesFrom: r.miles_from, milesTo: r.miles_to, rate: Number(r.rate),
+  }));
   const tolerancePence = resolveAnomalyConfig(settings.data?.anomaly_config).invoiceTolerancePence;
 
   const results = franchises.map((f) => {
@@ -68,7 +75,15 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
       tolerancePence,
     });
     const chargeItems = costs.filter((c) => c.franchiseId === f.id && c.source === "dpd_portal");
-    return { franchise: f, invoice, check, chargeItems };
+    const vehicle = vehicleRows.find((v) => v.id === f.id);
+    const rateCheck = vehicle?.vehicle_type && bands.length > 0
+      ? checkStopRates(
+          earnings.filter((e) => e.franchiseId === f.id).map((e) => ({ date: e.date, stops: e.stops, miles: e.mileage ?? null, stopPayPence: e.stopPay ?? null })),
+          bands,
+          { vehicleType: vehicle.vehicle_type, vehicleSize: vehicle.vehicle_size, fuelType: normaliseFuel(vehicle.vehicle_fuel ?? "diesel") },
+        )
+      : null;
+    return { franchise: f, invoice, check, chargeItems, rateCheck, hasVehicle: Boolean(vehicle?.vehicle_type) };
   });
 
   return (
@@ -89,7 +104,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
       {results.length === 0 ? (
         <EmptyState title="No franchises yet">Add a franchise in Settings, then the DPD sync fills this in.</EmptyState>
       ) : (
-        results.map(({ franchise, invoice, check, chargeItems }) => (
+        results.map(({ franchise, invoice, check, chargeItems, rateCheck, hasVehicle }) => (
           <Section key={franchise.id} title={franchiseLabel(franchise)}>
             <Panel>
               <div className="grid gap-6 sm:grid-cols-3">
@@ -150,6 +165,36 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
                   </tbody>
                 </table>
               </TableWrap>
+            </div>
+
+            <div className="mt-4">
+              <Panel>
+                <h3 className="text-sm font-semibold">Stop rate against the sliding scale</h3>
+                {rateCheck == null ? (
+                  <p className="mt-1 text-sm text-muted">
+                    {hasVehicle ? "Enter the sliding scale to check each day's rate." : "Set this franchise's vehicle in Settings, and enter the sliding scale, to check each day's rate against it."}
+                  </p>
+                ) : rateCheck.differs.length === 0 ? (
+                  <p className="mt-1 text-sm text-ink-soft">
+                    <Badge tone="good">All agree</Badge> {rateCheck.agreed} day{rateCheck.agreed === 1 ? "" : "s"} matched the scale
+                    {rateCheck.notChecked > 0 ? `; ${rateCheck.notChecked} could not be compared (missing stops, miles, or no single matching band).` : "."}
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-1 text-sm text-ink-soft">{rateCheck.differs.length} day{rateCheck.differs.length === 1 ? "" : "s"} paid a different rate from the scale; {rateCheck.agreed} matched{rateCheck.notChecked > 0 ? `; ${rateCheck.notChecked} could not be compared` : ""}.</p>
+                    <TableWrap>
+                      <table className="ledger mt-2">
+                        <thead><tr><th>Date</th><th className="r">Stops</th><th className="r">Scale says</th><th className="r">DPD paid</th></tr></thead>
+                        <tbody>
+                          {rateCheck.differs.slice(0, 20).map((d) => (
+                            <tr key={d.date + d.stops}><td>{formatUkDate(d.date)}</td><td className="r num">{d.stops}</td><td className="r num">£{d.expected.toFixed(2)}</td><td className="r num text-bad">£{d.actual.toFixed(2)}</td></tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </TableWrap>
+                  </>
+                )}
+              </Panel>
             </div>
           </Section>
         ))

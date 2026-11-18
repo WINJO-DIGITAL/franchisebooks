@@ -25,7 +25,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const month = monthOf(ctx.today);
   const [settings, franchises, categories, revenue, audit] = await Promise.all([
     supabase.from("app_settings").select("sync_time_local, sync_timezone, sync_enabled, auto_monthly_reports, revenue_allocation_basis, anomaly_config").eq("account_id", accountId).maybeSingle(),
-    fetchAll(() => supabase.from("franchises").select("id, fd_number, name, depot, is_active, dpd_login_id").eq("account_id", accountId).order("fd_number")),
+    fetchAll(() => supabase.from("franchises").select("id, fd_number, name, depot, is_active, dpd_login_id, vehicle_type, vehicle_size, vehicle_fuel").eq("account_id", accountId).order("fd_number")),
     fetchAll(() => supabase.from("expense_categories").select("id, name, kind, is_system, is_active").eq("account_id", accountId).order("sort_order").order("id")),
     loadRevenue(supabase, { accountId, from: monthRange(addMonths(month, -12)).start, to: ctx.today }),
     ctx.canWrite ? supabase.from("audit_logs").select("id, action, entity_table, created_at, after").order("id", { ascending: false }).limit(8) : Promise.resolve({ data: [] }),
@@ -56,7 +56,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <tr key={f.id}>
                   <td className="num font-medium">{f.fd_number}</td><td>{f.name || "—"}</td><td>{f.depot ?? "—"}</td>
                   <td><Badge tone={f.is_active ? "good" : "neutral"}>{f.is_active ? "Active" : "Inactive"}</Badge></td>
-                  <td className="r">{ctx.isOwner ? <EditFranchiseButton franchise={{ id: f.id, fdNumber: f.fd_number, name: f.name, depot: f.depot, isActive: f.is_active }} /> : null}</td>
+                  <td className="r">{ctx.isOwner ? <EditFranchiseButton franchise={{ id: f.id, fdNumber: f.fd_number, name: f.name, depot: f.depot, isActive: f.is_active, vehicleType: f.vehicle_type, vehicleSize: f.vehicle_size, vehicleFuel: f.vehicle_fuel }} /> : null}</td>
                 </tr>
               ))}
             </tbody>

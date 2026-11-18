@@ -97,3 +97,80 @@ export function parseScaleRows(text: string): ScaleParseResult {
 
   return { rows: errors.length > 0 ? [] : rows, errors };
 }
+
+// ── Checking the rate DPD actually paid against the scale ───────────────────────────────────────────
+
+export interface ScaleBand {
+  vehicleType: string;
+  vehicleSize: string | null;
+  fuelType: FuelType;
+  stopsFrom: number;
+  stopsTo: number | null;
+  milesFrom: number | null;
+  milesTo: number | null;
+  /** Pounds per stop. */
+  rate: number;
+}
+
+export interface VehicleSpec {
+  vehicleType: string;
+  vehicleSize: string | null;
+  fuelType: FuelType;
+}
+
+const same = (a: string | null, b: string | null) => (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+
+function within(value: number, from: number | null, to: number | null): boolean {
+  return (from == null || value >= from) && (to == null || value <= to);
+}
+
+/**
+ * The per-stop rate the scale gives a day: the band for this vehicle (type, size, fuel) that covers the day's stops and,
+ * if the band has mileage limits, its miles. Returns null when no band matches, when a band needs miles the day does not
+ * have, or when more than one band matches (so a vague scale never produces a false flag).
+ */
+export function expectedStopRate(bands: ScaleBand[], vehicle: VehicleSpec, stops: number, miles: number | null): number | null {
+  const matches = bands.filter((b) => {
+    if (!same(b.vehicleType, vehicle.vehicleType) || b.fuelType !== vehicle.fuelType) return false;
+    if (b.vehicleSize != null && !same(b.vehicleSize, vehicle.vehicleSize)) return false;
+    if (!within(stops, b.stopsFrom, b.stopsTo)) return false;
+    const hasMileLimits = b.milesFrom != null || b.milesTo != null;
+    if (hasMileLimits) {
+      if (miles == null) return false;
+      return within(miles, b.milesFrom, b.milesTo);
+    }
+    return true;
+  });
+  return matches.length === 1 ? matches[0]!.rate : null;
+}
+
+export interface RateCheckDay {
+  date: string;
+  stops: number | null;
+  miles: number | null;
+  /** Pence paid for the day's stops. */
+  stopPayPence: number | null;
+}
+
+export interface RateCheckResult {
+  /** Days where the actual rate differs from the scale by more than the tolerance. */
+  differs: { date: string; stops: number; expected: number; actual: number }[];
+  /** Days that were compared and agreed. */
+  agreed: number;
+  /** Days that could not be compared (no stops, no stop pay, or no single matching band). */
+  notChecked: number;
+}
+
+/** Compares each day's actual per-stop rate (stop pay ÷ stops) with the scale. `tolerance` is in pounds per stop. */
+export function checkStopRates(days: RateCheckDay[], bands: ScaleBand[], vehicle: VehicleSpec, tolerance = 0.02): RateCheckResult {
+  const out: RateCheckResult = { differs: [], agreed: 0, notChecked: 0 };
+  for (const d of days) {
+    if (d.stops == null || d.stops <= 0 || d.stopPayPence == null) { out.notChecked += 1; continue; }
+    const expected = expectedStopRate(bands, vehicle, d.stops, d.miles);
+    if (expected == null) { out.notChecked += 1; continue; }
+    const actual = d.stopPayPence / 100 / d.stops;
+    if (Math.abs(actual - expected) > tolerance) out.differs.push({ date: d.date, stops: d.stops, expected, actual });
+    else out.agreed += 1;
+  }
+  return out;
+}

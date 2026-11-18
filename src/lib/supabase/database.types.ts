@@ -501,14 +501,14 @@ isOneToOne: false
                   ]
                 },"franchises": {
                   Row: {
-                    "account_id": string,"created_at": string,"depot": string | null,"dpd_login_id": string | null,"fd_number": string,"id": string,"is_active": boolean,"name": string,"notes": string | null,"updated_at": string
+                    "account_id": string,"created_at": string,"depot": string | null,"dpd_login_id": string | null,"fd_number": string,"id": string,"is_active": boolean,"name": string,"notes": string | null,"updated_at": string,"vehicle_fuel": string | null,"vehicle_size": string | null,"vehicle_type": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"depot"?: string | null,"dpd_login_id"?: string | null,"fd_number": string,"id"?: string,"is_active"?: boolean,"name"?: string,"notes"?: string | null,"updated_at"?: string
+                    "account_id": string,"created_at"?: string,"depot"?: string | null,"dpd_login_id"?: string | null,"fd_number": string,"id"?: string,"is_active"?: boolean,"name"?: string,"notes"?: string | null,"updated_at"?: string,"vehicle_fuel"?: string | null,"vehicle_size"?: string | null,"vehicle_type"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"depot"?: string | null,"dpd_login_id"?: string | null,"fd_number"?: string,"id"?: string,"is_active"?: boolean,"name"?: string,"notes"?: string | null,"updated_at"?: string
+                    "account_id"?: string,"created_at"?: string,"depot"?: string | null,"dpd_login_id"?: string | null,"fd_number"?: string,"id"?: string,"is_active"?: boolean,"name"?: string,"notes"?: string | null,"updated_at"?: string,"vehicle_fuel"?: string | null,"vehicle_size"?: string | null,"vehicle_type"?: string | null
                   }
                   Relationships: [
                     {
