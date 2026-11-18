@@ -97,8 +97,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
           DPD_PORTAL_URL: ${{ secrets.DPD_PORTAL_URL }}
-          DPD_USERNAME: ${{ secrets.DPD_USERNAME }}
-          DPD_PASSWORD: ${{ secrets.DPD_PASSWORD }}
           DPD_LOGIN_SECRET: ${{ secrets.DPD_LOGIN_SECRET }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}

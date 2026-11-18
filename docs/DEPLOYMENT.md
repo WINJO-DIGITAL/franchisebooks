@@ -87,8 +87,8 @@ Environment variables for the worker (set them in the host's secrets screen,
 
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 `SUPABASE_SERVICE_ROLE_KEY`, `ENCRYPTION_KEY`, `WORKER_AUTH_TOKEN`,
-`DPD_PORTAL_URL`, `DPD_USERNAME`, `DPD_PASSWORD`, `DPD_LOGIN_SECRET` (only if
-the portal needs one), `ERROR_WEBHOOK_URL` (optional). `PORT` and
+`DPD_PORTAL_URL`, `DPD_LOGIN_SECRET` (only if the portal needs one; each
+account's own DPD username and password are saved in the app, encrypted), `ERROR_WEBHOOK_URL` (optional). `PORT` and
 `SERVICE_NAME` are already set by the image.
 
 ### Option A — Fly.io (recommended: small, UK region, simple secrets)
