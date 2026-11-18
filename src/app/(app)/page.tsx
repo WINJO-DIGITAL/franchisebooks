@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { GettingStarted } from "@/components/dashboard/getting-started";
 import { AddMenu } from "@/components/add-menu";
 import { DailyColumns, type DailyPoint } from "@/components/daily-columns";
 import { SyncButtons } from "@/components/sync-buttons";
@@ -8,9 +9,11 @@ import { LinkButton } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadPeriodData } from "@/lib/data/period";
 import { loadSyncOverview } from "@/lib/data/status";
+import { dpdSetupReady } from "@/lib/dpd/readiness";
 import { addDays, eachDay, formatMonth, formatUkDate, formatUkDateLong, formatUkDayMonth, monthOf, monthRange } from "@/lib/dates";
 import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
 import { FIGURE_STATUS } from "@/lib/labels";
+import { remainingSetupSteps } from "@/lib/onboarding/steps";
 import { formatGBP, sumPence } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -58,6 +61,17 @@ export default async function DashboardPage() {
   }
   const noFranchises = ctx.franchises.length === 0;
   const noData = data.earnings.length === 0 && data.costs.length === 0;
+  const { data: dpdConnection } = await ctx.supabase.from("integration_connections").select("config").eq("account_id", accountId).eq("provider", "dpd").maybeSingle();
+  const rateDriverIds = new Set((data.dayRates ?? []).map((r) => r.driverId));
+  const workedDriverIds = new Set(data.earnings.map((e) => e.driverId).filter((id): id is string => id != null));
+  const setupSteps = remainingSetupSteps({
+    franchiseCount: ctx.franchises.length,
+    hasDpdLogin: dpdSetupReady(dpdConnection?.config),
+    hasEarnings: data.earnings.length > 0,
+    driverCount: data.driverNames.size,
+    driversWithoutRate: [...workedDriverIds].filter((id) => !rateDriverIds.has(id)).length,
+    ratesMatter: routeIncome,
+  });
 
   return (
     <>
@@ -68,11 +82,7 @@ export default async function DashboardPage() {
         inline
       />
 
-      {noFranchises ? (
-        <Notice tone="info" title="Welcome. Start by adding your first franchise." className="mb-6">
-          Add your FD number in <Link href="/settings" className="font-medium text-accent underline">Settings</Link>, then add your drivers and upload or sync your first DPD report.
-        </Notice>
-      ) : null}
+      <GettingStarted steps={setupSteps} />
 
       {/* Today */}
       <Section
