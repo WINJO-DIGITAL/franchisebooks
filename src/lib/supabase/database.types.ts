@@ -199,6 +199,18 @@ isOneToOne: false
                     "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: []
+                },"account_closure_requests": {
+                  Row: {
+                    "account_id": string,"completed_at": string | null,"id": string,"note": string | null,"requested_at": string,"requested_by": string | null,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"completed_at"?: string | null,"id"?: string,"note"?: string | null,"requested_at"?: string,"requested_by"?: string | null,"status"?: string
+                  }
+                  Update: {
+                    "account_id"?: string,"completed_at"?: string | null,"id"?: string,"note"?: string | null,"requested_at"?: string,"requested_by"?: string | null,"status"?: string
+                  }
+                  Relationships: []
                 },"dpd_logins": {
                   Row: {
                     "account_id": string,"created_at": string,"created_by": string | null,"id": string,"label": string,"last_error": string | null,"last_success_at": string | null,"username": string

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe, saveSubscription } from "@/lib/billing/stripe";
 import { env } from "@/lib/env";
+import { sendEmail } from "@/lib/notify/email";
 import { describeError, logger, reportError } from "@/lib/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -39,7 +40,19 @@ export async function POST(request: NextRequest) {
     }
     if (subscriptionId) {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      await saveSubscription(createAdminClient(), subscription);
+      const admin = createAdminClient();
+      const userId = await saveSubscription(admin, subscription);
+      if (subscription.status === "past_due") {
+        // Stripe is retrying the card. Tell the paying customer now, so the retry can be fixed in time.
+        const { data } = await admin.auth.admin.getUserById(userId);
+        if (data.user?.email) {
+          await sendEmail({
+            to: data.user.email,
+            subject: "Your Franchise Books payment did not go through",
+            text: "We could not take this month's payment for Franchise Books. Stripe will try again shortly. To keep access, update your card under Settings, then Manage billing.",
+          });
+        }
+      }
       logger.info({ type: event.type, subscription: subscriptionId, status: subscription.status }, "stripe webhook handled");
     }
     return NextResponse.json({ received: true });

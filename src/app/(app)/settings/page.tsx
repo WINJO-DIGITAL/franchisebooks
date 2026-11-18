@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ManageBillingForm } from "@/components/billing/forms";
+import { CloseAccountForm } from "@/components/settings/close-account";
 import { AddDpdLoginForm, RemoveDpdLoginButton } from "@/components/settings/forms";
 import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, DpdLoginForm, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
 import { Badge, DefinitionList, Notice, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
@@ -17,7 +18,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Settings" };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ closed?: string }> }) {
+  const params = await searchParams;
   const ctx = await getContext();
   const { supabase, accountId } = ctx;
   const month = monthOf(ctx.today);
@@ -146,6 +148,12 @@ export default async function SettingsPage() {
               {billing.stripe_customer_id ? <ManageBillingForm /> : null}
             </div>
           </Panel>
+        </Section>
+      ) : null}
+
+      {ctx.isOwner ? (
+        <Section title="Close account" description="Stop using Franchise Books and remove your DPD access.">
+          <Panel>{params.closed ? <p className="mb-3 text-sm text-good">Your closure request is recorded. Check your email for what happens next.</p> : null}<CloseAccountForm /></Panel>
         </Section>
       ) : null}
 

@@ -35,6 +35,10 @@ Set these on the web app (Vercel). The background worker does not need them.
 6. **Test end to end** in Stripe test mode with the test card `4242 4242 4242 4242`: sign up, subscribe, set up, watch the connecting screen.
 7. Set `BILLING_ENFORCED=true`.
 
+## Emails
+
+Service emails (a failed nightly read, a failed payment, a closure request) are sent through Resend. Set `RESEND_API_KEY` and `EMAIL_FROM` on Vercel (a sender address on a domain you have verified in Resend). Until both are set, nothing is sent and the attempt is logged.
+
 ## Notes
 
 * Access follows the **owner's** subscription: an account's other users never need their own.

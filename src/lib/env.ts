@@ -65,6 +65,9 @@ export const env = {
     return raw && z.url().safeParse(raw).success ? raw : null;
   },
   dpdLoginSecret: () => optional("DPD_LOGIN_SECRET"),
+  /** Email sending (Resend). Both must be set for any email to go out. */
+  resendApiKey: () => optional("RESEND_API_KEY"),
+  emailFrom: () => optional("EMAIL_FROM"),
   /** Stripe billing. Without these the subscribe page says billing is not set up, and nothing is enforced. */
   stripeSecretKey: () => optional("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: () => optional("STRIPE_WEBHOOK_SECRET"),

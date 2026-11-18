@@ -16,7 +16,7 @@ export function getStripe(): Stripe | null {
 }
 
 /** Records a Stripe subscription against the user who pays. Safe to repeat: the same subscription gives the same row. */
-export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): Promise<void> {
+export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): Promise<string> {
   const row = billingRowFromSubscription(sub);
   let userId = row.userId;
   if (!userId) {
@@ -36,6 +36,7 @@ export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): 
     { onConflict: "user_id" },
   );
   if (error) throw new Error(`Could not record the subscription: ${error.message}`);
+  return userId;
 }
 
 /** A Stripe Checkout page for the monthly plan. The user's id travels with it so the webhook knows who paid. */

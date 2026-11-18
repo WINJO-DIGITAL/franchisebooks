@@ -224,6 +224,8 @@ export default function WelcomePage() {
           <nav aria-label="Footer" className="flex gap-5">
             <Link href="/login" className="underline-offset-2 hover:text-ink hover:underline">Sign in</Link>
             <Link href="/signup" className="underline-offset-2 hover:text-ink hover:underline">Get started</Link>
+            <Link href="/privacy" className="underline-offset-2 hover:text-ink hover:underline">Privacy</Link>
+            <Link href="/terms" className="underline-offset-2 hover:text-ink hover:underline">Terms</Link>
           </nav>
         </div>
       </footer>

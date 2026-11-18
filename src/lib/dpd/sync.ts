@@ -24,6 +24,7 @@ import { discoverPortal, inventoryMarkdown } from "./discovery";
 import { PortalError } from "./errors";
 import { portalMapSchema, type PortalMap } from "./portal-map";
 import { PortalSession, type PortalCredentials } from "./session";
+import { ownerEmail, sendEmail } from "@/lib/notify/email";
 import { loadAllDpdLogins } from "./logins";
 import { ownPortalMap } from "./readiness";
 import { SHARED_PORTAL_MAP } from "./shared-map";
@@ -78,6 +79,17 @@ async function logSync(db: AdminClient, job: Job, level: "info" | "warning" | "e
 
 async function touchConnection(db: AdminClient, accountId: string, patch: { success?: boolean; error?: string | null }) {
   const now = new Date().toISOString();
+  if (patch.error) {
+    // Tell the owner once, when a read goes wrong, rather than leaving them to find it on payday.
+    const to = await ownerEmail(db, accountId).catch(() => null);
+    if (to) {
+      await sendEmail({
+        to,
+        subject: "Franchise Books could not read your DPD account",
+        text: `Tonight's read of your DPD account did not finish.\n\n${patch.error}\n\nOpen Settings in Franchise Books to check your DPD logins. Nothing has been changed on the DPD side.`,
+      });
+    }
+  }
   await db.from("integration_connections").upsert(
     {
       account_id: accountId, provider: "dpd", status: patch.error ? "error" : "connected", last_sync_at: now,
