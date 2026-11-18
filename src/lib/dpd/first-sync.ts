@@ -1,7 +1,7 @@
 import "server-only";
 import { londonToday } from "@/lib/dates";
 import { enqueueJob } from "@/lib/jobs/queue";
-import { pokeWorker } from "@/lib/jobs/run";
+import { startWorkerRun } from "@/lib/github/dispatch";
 import type { AdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -17,6 +17,6 @@ export async function queueFirstSync(db: AdminClient, accountId: string, userId:
     const { alreadyQueued } = await enqueueJob(db, { accountId, type: "dpd_sync", franchiseId: franchise.id, reportDate: today, trigger: "manual", requestedBy: userId });
     if (!alreadyQueued) queued += 1;
   }
-  await pokeWorker(); // not fatal: the worker also polls on its own timer
+  await startWorkerRun(); // not fatal: the next scheduled run also picks the jobs up
   return queued;
 }

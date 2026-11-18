@@ -8,14 +8,23 @@ describe("remaining set-up steps", () => {
     expect(remainingSetupSteps(done)).toEqual([]);
   });
 
-  it("starts a brand-new account with franchises, then the login, then drivers", () => {
+  it("asks a brand-new account only for the DPD login, never to type in franchises or drivers", () => {
     const keys = remainingSetupSteps({ franchiseCount: 0, hasDpdLogin: false, hasEarnings: false, driverCount: 0, driversWithoutRate: 0, ratesMatter: true }).map((s) => s.key);
-    expect(keys).toEqual(["franchises", "login", "drivers"]);
+    expect(keys).toEqual(["login"]);
   });
 
-  it("asks for the first read once the login is saved and nothing has been read", () => {
-    const keys = remainingSetupSteps({ ...done, hasEarnings: false }).map((s) => s.key);
-    expect(keys).toEqual(["first-read"]);
+  it("says the account is being read once the login is saved and nothing has been read", () => {
+    const steps = remainingSetupSteps({ ...done, hasEarnings: false });
+    expect(steps.map((s) => s.key)).toEqual(["first-read"]);
+    expect(steps[0]?.title).toBe("Reading your DPD account");
+  });
+
+  it("says the account is being read even before DPD has supplied any franchise", () => {
+    expect(remainingSetupSteps({ ...done, franchiseCount: 0, driverCount: 0, hasEarnings: false }).map((s) => s.key)).toEqual(["first-read"]);
+  });
+
+  it("shows nothing for an account with no hand-added drivers once DPD has been read", () => {
+    expect(remainingSetupSteps({ ...done, driverCount: 0 })).toEqual([]);
   });
 
   it("names how many drivers still need a pay rate, and says nothing when rates do not matter", () => {
@@ -26,8 +35,7 @@ describe("remaining set-up steps", () => {
     expect(remainingSetupSteps({ ...done, driversWithoutRate: 3, ratesMatter: false })).toEqual([]);
   });
 
-  it("does not ask for a first read while there is no login, or no franchise to read", () => {
+  it("does not ask for a first read while there is no login", () => {
     expect(remainingSetupSteps({ ...done, hasDpdLogin: false, hasEarnings: false }).map((s) => s.key)).toEqual(["login"]);
-    expect(remainingSetupSteps({ ...done, franchiseCount: 0, hasEarnings: false }).map((s) => s.key)).toEqual(["franchises"]);
   });
 });

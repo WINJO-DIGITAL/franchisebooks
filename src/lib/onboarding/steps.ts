@@ -17,26 +17,25 @@ export interface SetupState {
 }
 
 export interface SetupStep {
-  key: "franchises" | "login" | "first-read" | "drivers" | "rates";
+  key: "login" | "first-read" | "rates";
   title: string;
   detail: string;
   href: string;
   cta: string;
 }
 
+/**
+ * Franchises and drivers are not set-up steps: they come from DPD once a login is connected, so nobody has to type them in
+ * (they can still be added by hand in Settings and on the Drivers page).
+ */
 export function remainingSetupSteps(s: SetupState): SetupStep[] {
   const steps: SetupStep[] = [];
-  if (s.franchiseCount === 0) {
-    steps.push({ key: "franchises", title: "Add your franchises", detail: "Enter each FD number exactly as it appears on DPD documents.", href: "/settings", cta: "Add a franchise" });
-  }
   if (!s.hasDpdLogin) {
-    steps.push({ key: "login", title: "Connect your DPD login", detail: "Saved encrypted. It lets us read your payments and charges every night, read-only.", href: "/settings", cta: "Add your login" });
-  } else if (s.franchiseCount > 0 && !s.hasEarnings) {
-    steps.push({ key: "first-read", title: "Run your first read", detail: "Press Sync DPD, or wait for tonight's automatic read. Your figures appear here once it finishes.", href: "/data", cta: "Open Data & Integrations" });
+    steps.push({ key: "login", title: "Connect your DPD login", detail: "Saved encrypted. We read your franchises, drivers, payments and charges from DPD, read-only.", href: "/settings", cta: "Add your login" });
+  } else if (!s.hasEarnings) {
+    steps.push({ key: "first-read", title: "Reading your DPD account", detail: "We are finding your franchises and drivers on DPD. Press Sync DPD to start it now. Your figures appear here once it finishes.", href: "/data", cta: "Open Data & Integrations" });
   }
-  if (s.driverCount === 0) {
-    steps.push({ key: "drivers", title: "Add your drivers", detail: "So their days and pay can be worked out. Drivers who appear in DPD reports are added for you when you link them.", href: "/drivers/new", cta: "Add a driver" });
-  } else if (s.ratesMatter && s.driversWithoutRate > 0) {
+  if (s.driverCount > 0 && s.ratesMatter && s.driversWithoutRate > 0) {
     steps.push({
       key: "rates",
       title: `Set the pay rate for ${s.driversWithoutRate} driver${s.driversWithoutRate === 1 ? "" : "s"}`,

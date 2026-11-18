@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { dispatchSyncWorkflow } from "@/lib/github/dispatch";
+import { dispatchSyncWorkflow, startWorkerRun } from "@/lib/github/dispatch";
 
 const saved = process.env.GITHUB_SYNC_TOKEN;
 afterEach(() => {
@@ -22,7 +22,7 @@ describe("starting the sync workflow from the website", () => {
     const r = await dispatchSyncWorkflow({ force: true }, fakeFetch);
     expect(r).toEqual({ started: true });
     expect(url).toBe("https://api.github.com/repos/WINJO-DIGITAL/matthewai/actions/workflows/dpd-sync.yml/dispatches");
-    expect(body).toEqual({ ref: "main", inputs: { force: true, report_date: "" } });
+    expect(body).toEqual({ ref: "main", inputs: { force: "true", report_date: "" } });
     expect(auth).toBe("Bearer github_pat_test");
   });
 
@@ -31,5 +31,13 @@ describe("starting the sync workflow from the website", () => {
     const r = await dispatchSyncWorkflow({ force: true }, (async () => new Response("no", { status: 403 })) as typeof fetch);
     expect(r).toMatchObject({ started: false, reason: "refused" });
     expect((r as { message: string }).message).toContain("403");
+  });
+  it("starts a run that only works through what is queued, without forcing a new sync of everyone", async () => {
+    process.env.GITHUB_SYNC_TOKEN = "test-token";
+    let body: unknown = null;
+    const fakeFetch = (async (_url: string, init: RequestInit) => { body = JSON.parse(String(init.body)); return new Response(null, { status: 204 }); }) as unknown as typeof fetch;
+    const r = await startWorkerRun(fakeFetch);
+    expect(r.started).toBe(true);
+    expect(body).toEqual({ ref: "main", inputs: { force: "false", report_date: "" } });
   });
 });

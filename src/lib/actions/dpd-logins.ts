@@ -6,7 +6,7 @@ import { getContext } from "@/lib/context";
 import { londonToday } from "@/lib/dates";
 import { addDpdLogin, removeDpdLogin } from "@/lib/dpd/logins";
 import { enqueueJob } from "@/lib/jobs/queue";
-import { pokeWorker } from "@/lib/jobs/run";
+import { startWorkerRun } from "@/lib/github/dispatch";
 import { parseFdNumbers } from "@/lib/onboarding/franchises";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dbFailure, fail, ok, parseForm, type ActionState } from "./helpers";
@@ -45,7 +45,7 @@ export async function addDpdLoginAction(_prev: ActionState, formData: FormData):
     // No FD numbers given: find them from the portal. One discovery job handles every login still waiting.
     try {
       await enqueueJob(admin, { accountId: ctx.accountId, type: "dpd_discovery", reportDate: londonToday(), trigger: "manual", requestedBy: ctx.userId, payload: { discoverFranchises: true } });
-      await pokeWorker();
+      await startWorkerRun();
     } catch (error) {
       return fail("The login was added, but we could not start looking up its franchises. Press Sync DPD in a few minutes, or add the FD numbers by hand.", error instanceof Error ? error.message : null);
     }
@@ -98,7 +98,7 @@ export async function refreshDpdLoginAction(_prev: ActionState, formData: FormDa
   if (!login) return fail("That login could not be found.");
   try {
     await enqueueJob(admin, { accountId: ctx.accountId, type: "dpd_discovery", reportDate: londonToday(), trigger: "manual", requestedBy: ctx.userId, payload: { discoverFranchises: true, refreshLoginId: login.id } });
-    await pokeWorker();
+    await startWorkerRun();
   } catch (error) {
     return fail("The refresh could not be started. Please try again.", error instanceof Error ? error.message : null);
   }
