@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Fuel, LayoutDashboard, Menu, PoundSterling, RefreshCw, Settings, SlidersHorizontal, Users } from "lucide-react";
+import { ClipboardCheck, FileText, Fuel, LayoutDashboard, Menu, PoundSterling, RefreshCw, Settings, SlidersHorizontal, Users } from "lucide-react";
 import { cn } from "@/components/ui/cn";
 
 type NavItem = { href: string; label: string; short?: string; icon: typeof LayoutDashboard };
@@ -14,6 +14,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/expenses", label: "Expenses", icon: Fuel },
   { href: "/adjustments", label: "Adjustments", icon: SlidersHorizontal },
   { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/check", label: "Period check", icon: ClipboardCheck },
   { href: "/data", label: "Data & Integrations", icon: RefreshCw },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

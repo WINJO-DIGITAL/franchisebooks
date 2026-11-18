@@ -10,6 +10,7 @@ export const NAV_ROUTES = [
   { href: "/expenses", label: "Expenses" },
   { href: "/adjustments", label: "Adjustments" },
   { href: "/reports", label: "Reports" },
+  { href: "/check", label: "Period check" },
   { href: "/data", label: "Data & Integrations" },
   { href: "/settings", label: "Settings" },
 ] as const;

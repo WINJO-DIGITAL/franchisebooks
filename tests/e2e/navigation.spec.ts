@@ -48,7 +48,7 @@ test.describe("navigation on a phone", () => {
     await page.goto("/");
     await page.getByRole("navigation", { name: "Main" }).last().getByRole("link", { name: "More" }).click();
     await expect(page).toHaveURL(/\/menu$/);
-    for (const label of ["Adjustments", "Reports", "Alerts", "Data & Integrations", "Settings"]) {
+    for (const label of ["Adjustments", "Reports", "Period check", "Alerts", "Data & Integrations", "Settings"]) {
       await expect(page.getByRole("main").getByRole("link", { name: label })).toBeVisible();
     }
     await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
