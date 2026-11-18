@@ -34,7 +34,7 @@ Two deployables share one codebase:
 | Part | Runs on | Why |
 | --- | --- | --- |
 | **Web app** (`src/`) | Vercel | UI, sign-in, quick server work, Dropbox, reports, cron entry point |
-| **Worker** (`worker/`) | Any Docker host (Railway, Fly.io, Render, a VPS) | Headless Chromium for the DPD portal: needs system libraries, long run times and a stable process — none of which suit serverless functions |
+| **Worker** (`worker/`) | GitHub Actions by default; any Docker host otherwise | Headless Chromium for the DPD portal: needs system libraries, long run times and a stable process — none of which suit serverless functions |
 
 The DPD credentials exist **only** on the worker. The web app never sees them.
 

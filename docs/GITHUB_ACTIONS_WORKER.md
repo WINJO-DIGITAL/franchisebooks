@@ -125,7 +125,7 @@ In order of cost, cheapest first:
 
 1. Reduce the minutes: CI runs on every push count too. Trim `ci.yml` before paying for anything.
 2. Make the repository public (the code holds no secrets; credentials live in GitHub secrets and Supabase). Only if you are comfortable with that.
-3. A small always-on host (Render Starter or Railway hobby, roughly $5 to $7 a month) running `worker/index.ts` from `deploy/worker/Dockerfile`. The code for this already exists.
+3. A small always-on host (Railway hobby, roughly $5 to $7 a month) running `worker/index.ts` from `deploy/worker/Dockerfile`. The code for this already exists.
 
 ## Known limits
 

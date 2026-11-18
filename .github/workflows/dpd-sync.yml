@@ -1,19 +1,17 @@
 name: DPD nightly sync
 
-# Runs the DPD portal sync once a day, around 20:30 UK time, on a GitHub-hosted
-# runner. Nothing runs between syncs, so there is no server to pay for.
+# The DPD portal sync, run on a GitHub-hosted runner. Nothing runs between syncs, so there is no server to pay for.
 #
-# GitHub cron is UTC-only. It is scheduled at 19:32 and 20:32 UTC; exactly one of
-# those is 20:32 UK time (BST or GMT). The first step lets that one through and
-# stops the other within seconds. See docs/GITHUB_ACTIONS_WORKER.md.
+# GitHub's scheduled runs are often late or skipped, so this checks every 15 minutes between 19:00 and 23:59 UK time
+# (cron is UTC-only, so the hours cover both GMT and BST). The first step lets a run through only inside the evening
+# window (20:30 to 21:29 UK time); the others stop in seconds. Once the day's reads have been queued, later runs in the
+# window find nothing new to do. See docs/GITHUB_ACTIONS_WORKER.md.
 #
-# NOTE: GitHub only runs scheduled workflows from the repository's default
-# branch, so this file has to be on it for the schedule to start.
+# NOTE: GitHub only runs scheduled workflows from the repository's default branch, so this file must be on it (main).
 
 on:
   schedule:
-    - cron: "32 19 * * *"
-    - cron: "32 20 * * *"
+    - cron: "*/15 19-23 * * *"
   workflow_dispatch:
     inputs:
       force:

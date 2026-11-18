@@ -9,7 +9,7 @@ Where the testing, deployment tooling and operational scripts stand. (This file 
 | --- | --- | --- |
 | Error handling | `error.tsx`, `global-error.tsx`, `not-found.tsx`, loading states, `/api/health` (checks the database), `instrumentation.ts` | In use, tested |
 | Scripts | `create-owner` (private password prompt), `smoke` (read-only live-site checks), production guard for demo data | In use; `create-owner` and `smoke` exercised locally |
-| Deploy configs | `deploy/worker/Dockerfile` (the single worker Dockerfile), `fly.toml`, `railway.json`, `render.yaml`, `.dockerignore` | Worker command verified locally; see below for the image build |
+| Deploy configs | `deploy/worker/Dockerfile` (the single worker Dockerfile), `fly.toml`, `railway.json`, `.dockerignore` | Worker command verified locally; see below for the image build |
 | CI | `.github/workflows/ci.yml`: lint, types, unit; database + integration; browser tests; worker image build | Not yet run on GitHub |
 | Browser tests | Accessibility (axe, WCAG AA), navigation, responsive at 320/390/1280, auth, onboarding, password reset | Run and passing |
 | Docs | `RUNBOOK.md`, `DEPLOYMENT.md`, extra sections in `DATABASE.md` / `FINANCE.md`, `README.md` | Merged; button names corrected against the real screens |

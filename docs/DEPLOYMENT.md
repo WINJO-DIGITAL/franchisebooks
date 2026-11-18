@@ -10,7 +10,7 @@ code. Anything marked **(you)** needs a login or a decision only you can make.
 | --- | --- | --- |
 | Web app | Vercel | Pro plan if you want the 5-minute scheduler (see step 5) |
 | Database, sign-in, files | Supabase (production project) | Free plan allows two projects; if both are used, pause one or upgrade |
-| Background worker (DPD portal) | GitHub Actions, once a night (see [`GITHUB_ACTIONS_WORKER.md`](GITHUB_ACTIONS_WORKER.md)) | Free within GitHub's included minutes. Fly.io, Railway, Render or any Docker host also work if you outgrow it: a small always-on machine with at least 1 GB of memory |
+| Background worker (DPD portal) | GitHub Actions, every evening (see [`GITHUB_ACTIONS_WORKER.md`](GITHUB_ACTIONS_WORKER.md)) | Free within GitHub's included minutes. Fly.io, Railway or any Docker host also work if you outgrow it: a small always-on machine with at least 1 GB of memory |
 | Backups | Supabase daily backups | Included on the Pro plan |
 
 You will need these values at various points. Generate the secrets on your
@@ -80,7 +80,7 @@ Check: opening `https://<your-address>/api/health` shows
 ## 3. The background worker **(you)**
 
 The worker is a Docker image defined in `deploy/worker/Dockerfile`. It always
-builds from the repository root. Pick **one** host. (This is the only worker Dockerfile; `railway.json`, `render.yaml` and `deploy/worker/fly.toml` all point at it.)
+builds from the repository root. Pick **one** host. The default is GitHub Actions, so you only need this if you move off it. (This is the only worker Dockerfile; `railway.json` and `deploy/worker/fly.toml` all point at it.)
 
 Environment variables for the worker (set them in the host's secrets screen,
 **not** in a file in Git):
@@ -110,12 +110,6 @@ New project → *Deploy from GitHub repo*. Railway reads `railway.json` at the
 repository root (it points at the Dockerfile and the `/health` check). Add the
 variables under **Variables**. Generate a public domain under **Settings →
 Networking**.
-
-### Option C — Render
-
-*New → Blueprint* and pick the repository: it reads `render.yaml`. Render asks
-for each secret value when you create it. Use at least the *Starter* plan
-(Chromium needs about 1 GB).
 
 ### Option D — any VPS with Docker
 
@@ -272,7 +266,7 @@ which is where password-reset links appear.
 * **Web**: merge to `main`; Vercel deploys. Run the smoke test.
 * **Database changes**: `npx supabase db push` *before* deploying code that
   needs them. Never edit a migration that has already been applied; add a new one.
-* **Worker**: redeploy it (`fly deploy …`, or push for Railway/Render). Jobs
+* **Worker**: on GitHub Actions nothing needs redeploying (it runs the latest `main`). On another host, redeploy it (`fly deploy …`, or push for Railway). Jobs
   that were running are returned to the queue automatically.
 * Keep the Playwright version in `deploy/worker/Dockerfile` in step with
   `playwright` in `package.json`.

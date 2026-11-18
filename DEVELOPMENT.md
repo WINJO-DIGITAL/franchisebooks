@@ -14,7 +14,7 @@ _Living document. Last updated 17 November 2026._
 | 6. Reporting | Done |
 | (merge) | Work from the `ops-qa` branch (CI, error pages, health check, accessibility and responsive tests, runbook, deploy configs) combined with the application; see `docs/OPS_NOTES.md` |
 | 7. Quality assurance | Done for what can be tested locally — 332 automated tests + 145 browser tests green (see below) |
-| 8. Deployment | Prepared (Vercel/Fly/Railway/Render configs, worker image built and run locally, CI workflow, runbook); **not deployed** |
+| 8. Deployment | Prepared (Vercel app; the nightly sync on GitHub Actions; worker image for other Docker hosts; runbook); **not deployed** |
 
 ## What has and has not been tested
 

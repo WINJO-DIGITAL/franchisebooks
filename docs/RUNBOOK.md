@@ -34,7 +34,7 @@ safe.
 
 1. Open `https://<worker-address>/health`. "OK" means yes.
 2. If not: restart it on the host (Fly: `fly machine restart --config
-   deploy/worker/fly.toml`; Railway/Render: *Restart* in the dashboard; a VPS:
+   deploy/worker/fly.toml`; a VPS:
    `docker restart dpd-worker`).
 3. Look at its logs for a line with `"level":50` (errors). Secrets are
    already removed from the log.

@@ -95,7 +95,7 @@ a setting or data entry, not a code change.
 | 2–3 real sample documents (earnings PDF, fuel report, expense report) | Calibrating the parsers to the real layouts | Upload through the app; they go to the review queue if not recognised |
 | Dropbox app key + secret (create an app at dropbox.com/developers) | "Connect Dropbox" | Vercel environment variables |
 | A Supabase project for production | Database, auth, file storage | Decision needed: free up a slot or upgrade the plan |
-| Vercel project + a host for the worker (Railway, Fly.io, Render or any Docker host) | Hosting | See `docs/DEPLOYMENT.md` |
+| Vercel project + GitHub Actions for the nightly sync | Hosting | See `docs/DEPLOYMENT.md` |
 
 ## 5. Integration constraints identified
 

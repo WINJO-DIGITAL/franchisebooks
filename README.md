@@ -9,7 +9,7 @@ route and franchise earned and cost.
 * **Web app** — Next.js (App Router), TypeScript, Tailwind. Runs on Vercel.
 * **Database, sign-in and files** — Supabase (Postgres, Auth, Storage).
 * **Worker** — a small Docker service running Playwright/Chromium that reads
-  the DPD portal (read-only). Runs on Fly.io, Railway, Render or any Docker host.
+  the DPD portal (read-only). Runs on GitHub Actions by default; any Docker host also works.
 * **Tests** — Vitest (unit, database, integration), Playwright (end to end, accessibility).
 
 ## What it does
