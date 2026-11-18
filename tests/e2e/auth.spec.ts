@@ -52,7 +52,11 @@ test.describe("signing in", () => {
     if (isMobile) await page.goto("/menu");
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login/);
+    // Signed out, the front page is the sales page (not the dashboard), and a protected page still sends you to sign in.
     await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("what each driver is owed");
+    await expect(page.getByRole("link", { name: "Get started" }).first()).toBeVisible();
+    await page.goto("/drivers");
     await expect(page).toHaveURL(/\/login/);
   });
 });

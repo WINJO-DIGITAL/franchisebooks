@@ -26,7 +26,7 @@ export default async function SubscribePage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <h1 className="text-xl font-semibold">{justPaid ? "Confirming your payment" : "Start your subscription"}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{justPaid ? "Confirming your payment" : "Choose your plan"}</h1>
       {justPaid ? (
         <>
           <p className="mt-2 text-sm text-muted">Thank you. This takes a few seconds, and the page moves on by itself.</p>

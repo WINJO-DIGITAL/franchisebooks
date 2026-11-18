@@ -8,8 +8,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const params = await searchParams;
   return (
     <>
-      <h1 className="text-xl font-semibold">Sign in</h1>
-      <p className="mt-1 text-sm text-muted">Use the email address and password for your account.</p>
+      <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+      <p className="mt-1.5 text-sm text-muted">Sign in with the email address and password for your account.</p>
       <LoginForm next={params.next ?? "/"} />
       <p className="mt-6 text-center text-sm text-muted">
         New here? <Link href="/signup" className="text-accent underline-offset-2 hover:underline">Create an account</Link>
