@@ -21,8 +21,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/" className="mb-6 flex items-center gap-2.5 px-2 pt-1">
             <span className="grid size-8 shrink-0 place-items-center rounded-md bg-accent text-[0.8125rem] font-semibold tracking-tight text-white" aria-hidden>{initials}</span>
             <span className="min-w-0">
-              <span className="block truncate text-[0.9375rem] font-semibold leading-tight">{ctx.accountName || "Franchise Manager"}</span>
-              <span className="block text-xs text-muted">Franchise Manager</span>
+              <span className="block truncate text-[0.9375rem] font-semibold leading-tight">{ctx.accountName || "Franchise Books"}</span>
+              <span className="block text-xs text-muted">Franchise Books</span>
             </span>
           </Link>
           <SidebarNav attention={reviewCount} />
@@ -43,7 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-paper/95 px-4 backdrop-blur sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2 lg:hidden">
             <span className="grid size-8 shrink-0 place-items-center rounded-md bg-accent text-[0.8125rem] font-semibold tracking-tight text-white" aria-hidden>{initials}</span>
-            <span className="sr-only">Franchise Manager</span>
+            <span className="sr-only">Franchise Books</span>
           </Link>
           <FranchiseSwitcher
             franchises={ctx.franchises.filter((f) => f.isActive || f.id === ctx.franchiseId).map((f) => ({ id: f.id, label: franchiseLabel(f) }))}

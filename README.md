@@ -1,4 +1,4 @@
-# Franchise Manager
+# Franchise Books by Winjo Digital
 
 Daily management for multi-route delivery franchises (built for DPD franchise
 owners). It collects driver earnings, fuel and expenses from the DPD partner

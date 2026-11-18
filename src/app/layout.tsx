@@ -4,7 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Franchise Manager", template: "%s · Franchise Manager" },
+  title: { default: "Franchise Books by Winjo Digital", template: "%s · Franchise Books" },
   description: "Daily management for multi-route delivery franchises.",
   robots: { index: false, follow: false },
 };

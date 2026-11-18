@@ -39,7 +39,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   const kindWord = report.period ? "Period" : "Monthly";
   const periodWord = report.period ? "period" : "month";
   const rangeText = report.period ? periodLabel(report.period) : formatMonth(report.month);
-  const doc = new PDFDocument({ size: "A4", margin: MARGIN, bufferPages: true, info: { Title: `${kindWord} report ${rangeText} - ${report.scopeLabel}`, Author: report.accountName || "Franchise Manager" } });
+  const doc = new PDFDocument({ size: "A4", margin: MARGIN, bufferPages: true, info: { Title: `${kindWord} report ${rangeText} - ${report.scopeLabel}`, Author: report.accountName || "Franchise Books" } });
   const chunks: Buffer[] = [];
   doc.on("data", (chunk: Buffer) => chunks.push(chunk));
   const finished = new Promise<Buffer>((resolve, reject) => {
@@ -128,7 +128,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   // ── Title block ───────────────────────────────────────────────────────────
   doc.rect(0, 0, PAGE_WIDTH, 6).fill(ACCENT);
   y = MARGIN + 4;
-  doc.font("Helvetica").fontSize(9).fillColor(MUTED).text((report.accountName || "Franchise Manager").toUpperCase(), MARGIN, y, { characterSpacing: 0.6 });
+  doc.font("Helvetica").fontSize(9).fillColor(MUTED).text((report.accountName || "Franchise Books").toUpperCase(), MARGIN, y, { characterSpacing: 0.6 });
   y += 15;
   doc.font("Helvetica-Bold").fontSize(21).fillColor(INK).text(`${kindWord} report: ${rangeText}`, MARGIN, y);
   y += 28;

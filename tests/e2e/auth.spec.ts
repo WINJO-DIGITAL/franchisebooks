@@ -69,14 +69,14 @@ test.describe("onboarding", () => {
     // One-character names are rejected with a friendly message.
     await page.getByLabel("What is your business called?").fill("A");
     await page.getByLabel("What is your name?").fill("B");
-    await page.getByRole("button", { name: "Start using Franchise Manager" }).click();
+    await page.getByRole("button", { name: "Connect DPD and set up my dashboard" }).click();
     await expect(page.getByText("Enter your business name.")).toBeVisible();
     await expect(page).toHaveURL(/\/onboarding$/);
 
     await page.getByLabel("What is your business called?").fill("Onboarding Test Couriers");
     await page.getByLabel("What is your name?").fill("Olive Owner");
     await page.getByLabel("Your first franchise FD number").fill("fd-onb1");
-    await page.getByRole("button", { name: "Start using Franchise Manager" }).click();
+    await page.getByRole("button", { name: "Connect DPD and set up my dashboard" }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole("heading", { name: "Something went wrong" })).toHaveCount(0);
   });

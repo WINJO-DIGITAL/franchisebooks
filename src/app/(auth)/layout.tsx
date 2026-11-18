@@ -7,7 +7,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="mb-8 flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-lg bg-accent text-base font-semibold tracking-tight text-white" aria-hidden>{brandInitials()}</span>
           <div>
-            <p className="text-lg font-semibold leading-tight">Franchise Manager</p>
+            <p className="text-lg font-semibold leading-tight">Franchise Books by Winjo Digital</p>
             <p className="text-sm text-muted">Daily management for delivery franchises</p>
           </div>
         </div>

@@ -5,8 +5,8 @@ import { PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { brandInitials } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: { absolute: "Franchise Manager: know what your DPD franchise earns and what each driver is owed" },
-  description: "Connect your DPD login once. Every night Franchise Manager reads your payments and charges, works out each driver's pay, and has a report ready for payday.",
+  title: { absolute: "Franchise Books by Winjo Digital: know what your DPD franchise earns and what each driver is owed" },
+  description: "Connect your DPD login once. Every night Franchise Books reads your payments and charges, works out each driver's pay, and has a report ready for payday.",
   robots: { index: true, follow: true },
 };
 
@@ -38,7 +38,7 @@ export default function WelcomePage() {
       <header className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link href="/welcome" className="flex items-center gap-2.5">
           <span className="grid size-9 place-items-center rounded-lg bg-accent text-sm font-semibold tracking-tight text-white" aria-hidden>{brandInitials()}</span>
-          <span className="text-base font-semibold">Franchise Manager</span>
+          <span className="text-base font-semibold">Franchise Books</span>
         </Link>
         <nav aria-label="Account" className="flex items-center gap-2">
           <Link href="/login" className={buttonClass("quiet", "sm")}>Sign in</Link>
@@ -117,7 +117,7 @@ export default function WelcomePage() {
 
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
-          <p>Franchise Manager is an independent product. It is not affiliated with or endorsed by DPD.</p>
+          <p>Franchise Books by Winjo Digital is an independent product. It is not affiliated with or endorsed by DPD.</p>
           <Link href="/login" className="underline-offset-2 hover:underline">Sign in</Link>
         </div>
       </footer>

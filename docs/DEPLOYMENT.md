@@ -1,6 +1,6 @@
 # Deployment
 
-A plain, in-order guide to putting Franchise Manager live. Do the steps in
+A plain, in-order guide to putting Franchise Books by Winjo Digital live. Do the steps in
 order; each one says how to check it worked. Nothing here needs you to write
 code. Anything marked **(you)** needs a login or a decision only you can make.
 

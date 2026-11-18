@@ -98,7 +98,7 @@ export default async function SettingsPage() {
       </Section>
 
       {ctx.isOwner && billing ? (
-        <Section title="Subscription" description={`Franchise Manager is £${PLAN_PRICE_GBP} a month for your account, however many franchises you add.`}>
+        <Section title="Subscription" description={`Franchise Books by Winjo Digital is £${PLAN_PRICE_GBP} a month for your account, however many franchises you add.`}>
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1 text-sm">
