@@ -25,9 +25,9 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - The DPD read depends on DPD's current page layout; a layout change stops reads until the portal map is updated.
 
 ## Test results (latest run on this branch)
-- Unit tests: 339 passing. Typecheck and lint clean.
+- Unit tests: 344 passing. Typecheck, lint and production build clean.
 - Database and integration tests: not run here (need a local Supabase stack).
-- End-to-end tests: not run since the redesign and rename.
+- End-to-end tests: not run since the redesign and rename (needs the full local stack).
 
 ## Log of finished work (not a checklist)
 - Fuel importer fix, pay per day or per stop, period reports on Mondays, shared DPD setup, encrypted logins (merged to main).
@@ -36,3 +36,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - Rename to Franchise Books by Winjo Digital; homepage and auth-card redesign.
 - Several DPD logins per account, listed in Settings.
 - Legal pages (draft), owner-only account closure, service emails via Resend (off until keys are set).
+- Nightly reads spread across a 30-minute window per account (deterministic, unit tested).
+- Content Security Policy added; verified in a browser on the production build, no violations on public pages.
+- Driver daily table fits a phone (detail columns shown from tablet width).
+- Production build verified (`next build` succeeds).
