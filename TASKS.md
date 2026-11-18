@@ -7,12 +7,23 @@ A paid subscription (£49 a month per account) that reads each franchise's DPD f
 income, expenses, driver pay and a report for each four-week period, with self-service sign-up and onboarding.
 
 ## Outstanding
-- [ ] Owner to run migrations `20261118000700`, `...0800`, `...0900` and `...1000` in order, and to set Vercel secrets (Stripe key, Resend key and sender).
-- [ ] Owner to set the Supabase auth settings (sign-ups on, email confirmation on, redirect URLs) and the Invite email template (see docs/DRIVER_LOGINS.md).
-- [ ] Owner to fill in the contact email and VAT wording in the legal pages, and get them reviewed.
-- [ ] Owner to enter the sliding scale rates from the DPD portal and set each franchise's vehicle (Settings, Edit franchise).
-- [ ] Database, integration and end-to-end tests have not been run against this branch (they need a local Supabase stack; CI runs them).
-- [ ] Decision to confirm: credit notes are recorded as labelled money in (Settings, Add revenue); change this if the accountant prefers otherwise.
+
+### You (owner) to do
+- [ ] Check the Resend domain `mail.winjodigital.co.uk` shows "verified" (it was still pending).
+- [ ] Add on Vercel (`matthewai`): `STRIPE_SECRET_KEY` (restricted test key), `RESEND_API_KEY` (send-only key), `EMAIL_FROM` (`hello@mail.winjodigital.co.uk`).
+- [ ] In Stripe test mode, turn on the customer portal.
+- [ ] Decide whether £49 includes VAT, then set the price and the legal wording.
+- [ ] Fill in the contact email and VAT wording on the privacy and terms pages, and get them reviewed.
+- [ ] Turn on sign-ups in Supabase (Authentication settings) when ready to take customers.
+- [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise).
+- [ ] Confirm with your accountant how credit notes should be treated (currently: money in, labelled).
+- [ ] Say "merge" when the working branch has new changes to take live.
+
+### Assistant to do
+- [ ] Re-check the Resend domain and send a test invitation once it verifies.
+- [ ] Test the Stripe webhook and checkout end to end in test mode once the Vercel keys are set.
+- [ ] Run the database, integration and end-to-end test suites against a local stack (CI runs them on push).
+- [ ] Test a driver invitation and login end to end.
 
 ## Current implementation (summary)
 - Next.js app with Supabase (Postgres, RLS) and a background worker that reads DPD with headless Chromium.
