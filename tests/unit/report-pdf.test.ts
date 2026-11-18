@@ -125,6 +125,27 @@ function periodReport(dayRates: { driverId: string; dayRate: number; effectiveFr
   };
 }
 
+describe("driver day by day section", () => {
+  it("lists each day with stops, parcels, pay, route and mileage under the driver", async () => {
+    const report = periodReport([{ driverId: "d1", dayRate: 12000, effectiveFrom: "2026-10-01" }]);
+    report.dailyPayments = [
+      { date: "2026-11-16", driverName: "Jamie Example", franchiseLabel: "FD-TEST-1", route: "359", stops: 85, parcels: 106, excessParcels: 21, stopPay: 19720, parcelPay: 105, total: 19825, mileage: 85 },
+      { date: "2026-11-17", driverName: "Jamie Example", franchiseLabel: "FD-TEST-1", route: "359", stops: 109, parcels: 165, excessParcels: null, stopPay: null, parcelPay: null, total: 23497, mileage: null },
+    ];
+    const text = await textOf(report);
+    expect(text).toContain("Driver day by day");
+    expect(text).toContain("Jamie Example");
+    expect(text).toContain("£197.20");
+    expect(text).toContain("£234.97");
+    expect(text).not.toMatch(/undefined|NaN/);
+  });
+
+  it("is left out when there are no daily rows", async () => {
+    const text = await textOf(periodReport([]));
+    expect(text).not.toContain("Driver day by day");
+  });
+});
+
 describe("four-week period report PDF (income model)", () => {
   it("titles the period and shows income, wages, charges and profit", async () => {
     const text = await textOf(periodReport([{ driverId: "d1", dayRate: 12000, effectiveFrom: "2026-10-01" }]));

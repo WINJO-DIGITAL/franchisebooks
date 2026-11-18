@@ -142,6 +142,34 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         )}
       </Section>
 
+      <Section title="Daily payments" description="Each day as DPD shows it on the Payments page: stops, parcels, what they paid, route and mileage. Days imported before these details were read show a dash until the next sync fills them in.">
+        {earnings.length === 0 ? <EmptyState title="No daily payments yet">They appear once a DPD report naming this driver has been imported.</EmptyState> : (
+          <TableWrap>
+            <table className="ledger">
+              <thead>
+                <tr><th>Date</th><th className="r">Stops</th><th className="r">Total parcels</th><th className="r">Excess parcels</th><th className="r">Stop pay</th><th className="r">Per stop</th><th className="r">Parcel pay</th><th className="r">Total</th><th>Route</th><th className="r">Mileage</th></tr>
+              </thead>
+              <tbody>
+                {[...earnings].reverse().slice(0, 45).map((e) => (
+                  <tr key={e.id}>
+                    <td className="num whitespace-nowrap">{formatUkDateLong(e.date)}</td>
+                    <td className="r num">{e.stops ?? "—"}</td>
+                    <td className="r num">{e.parcels ?? "—"}</td>
+                    <td className="r num">{e.excessParcels ?? "—"}</td>
+                    <td className="r num">{e.stopPay == null ? "—" : formatGBP(e.stopPay)}</td>
+                    <td className="r num">{e.stopPay != null && e.stops ? formatGBP(Math.round(e.stopPay / e.stops)) : "—"}</td>
+                    <td className="r num">{e.parcelPay == null ? "—" : formatGBP(e.parcelPay)}</td>
+                    <td className="r num font-medium">{formatGBP(e.gross)}</td>
+                    <td className="num">{e.route ?? "—"}</td>
+                    <td className="r num">{e.mileage ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        )}
+      </Section>
+
       <Section title="Earnings history" description="Last 45 days. DPD figures are shown exactly as imported; adjustments are separate.">
         {recent.length === 0 ? <EmptyState title="No earnings recorded yet">Earnings appear here once a DPD report naming this driver has been imported.</EmptyState> : (
           <TableWrap>

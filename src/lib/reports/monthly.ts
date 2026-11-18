@@ -8,6 +8,7 @@ import { fetchAll } from "@/lib/data/fetch-all";
 import { loadPeriodData, type AdjustmentDetail } from "@/lib/data/period";
 import { addDays, addMonths, monthRange, type ISODate, type YearMonth } from "@/lib/dates";
 import type { DpdPeriod } from "@/lib/finance/periods";
+import type { Pence } from "@/lib/money";
 import {
   combineFranchises, comparePerformance, summarisePeriod,
   type CategoryTotal, type DriverSummary, type FranchiseSummary, type PerformanceComparison,
@@ -15,6 +16,21 @@ import {
 import type { Database } from "@/lib/supabase/database.types";
 
 type Db = SupabaseClient<Database>;
+
+/** One driver's day as DPD shows it on the Payments page. */
+export interface ReportDailyPayment {
+  date: ISODate;
+  driverName: string;
+  franchiseLabel: string;
+  route: string | null;
+  stops: number | null;
+  parcels: number | null;
+  excessParcels: number | null;
+  stopPay: Pence | null;
+  parcelPay: Pence | null;
+  total: Pence;
+  mileage: number | null;
+}
 
 export interface ReportDriver extends DriverSummary {
   franchiseLabel: string;
@@ -60,6 +76,8 @@ export interface MonthlyReport {
   totals: FranchiseSummary;
   franchises: (FranchiseSummary & { label: string })[];
   drivers: ReportDriver[];
+  /** Every driver-day in the period, for the day-by-day section. Optional so older reports still render. */
+  dailyPayments?: ReportDailyPayment[];
   categories: CategoryTotal[];
   adjustments: ReportAdjustment[];
   unusual: ReportAlert[];
@@ -121,6 +139,22 @@ export async function buildMonthlyReport(db: Db, input: { accountId: string; mon
     })))
     .sort((a, b) => a.franchiseLabel.localeCompare(b.franchiseLabel) || a.name.localeCompare(b.name, "en-GB"));
 
+  const dailyPayments: ReportDailyPayment[] = data.earnings
+    .map((e) => ({
+      date: e.date,
+      driverName: (e.driverId ? data.driverNames.get(e.driverId) : null) ?? e.sourceDriverName,
+      franchiseLabel: label.get(e.franchiseId) ?? "",
+      route: e.route,
+      stops: e.stops,
+      parcels: e.parcels,
+      excessParcels: e.excessParcels ?? null,
+      stopPay: e.stopPay ?? null,
+      parcelPay: e.parcelPay ?? null,
+      total: e.gross,
+      mileage: e.mileage ?? null,
+    }))
+    .sort((a, b) => a.franchiseLabel.localeCompare(b.franchiseLabel) || a.driverName.localeCompare(b.driverName, "en-GB") || a.date.localeCompare(b.date));
+
   const reversed = new Set(data.adjustments.filter((a) => a.reversesId).map((a) => a.reversesId as string));
   const adjustments: ReportAdjustment[] = (data.adjustments as AdjustmentDetail[])
     .map((a) => ({
@@ -146,6 +180,7 @@ export async function buildMonthlyReport(db: Db, input: { accountId: string; mon
     totals,
     franchises: scoped.filter((f) => f.franchiseId).map((f) => ({ ...f, label: label.get(f.franchiseId!) ?? "" })),
     drivers,
+    dailyPayments,
     categories: totals.categories,
     adjustments,
     unusual: relevant.filter((a) => !MISSING_TYPES.has(a.anomaly_type)).map(toAlert),

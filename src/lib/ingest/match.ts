@@ -127,6 +127,7 @@ export function matchFranchise(
 }
 
 const CATEGORY_KEYWORDS: [RegExp, string][] = [
+  [/\bfranchise\s+fee\b/i, "Franchise fee"],
   [/\b(diesel|petrol|unleaded|fuel|adblue)\b/i, "Fuel"],
   [/\btyres?\b|\bpuncture\b/i, "Tyres"],
   [/\b(repair|bodywork|windscreen|breakdown|recovery)\b/i, "Repairs"],

@@ -72,6 +72,10 @@ describe("expense categories", () => {
     expect(matchCategory(null, "Van rental week 46", categories)?.name).toBe("Vehicle hire");
     expect(matchCategory("Misc", "Coffee for the depot", categories)?.name).toBe("Other operating expenses");
   });
+  it("files a franchise fee under Franchise fee", () => {
+    const withFee = [...categories, { id: "ff", name: "Franchise fee" }];
+    expect(matchCategory(null, "Franchise fee", withFee)?.name).toBe("Franchise fee");
+  });
   it("files a charge described as fuel under Fuel even when the portal heading says DPD charges", () => {
     const withDpd = [...categories, { id: "dpd", name: "DPD charges" }];
     expect(matchCategory("DPD charges", "Fuel Usage", withDpd)?.name).toBe("Fuel");

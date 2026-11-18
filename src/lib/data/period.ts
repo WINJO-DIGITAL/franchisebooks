@@ -11,7 +11,7 @@ import type {
 } from "@/lib/finance/calc";
 import type { DayRate } from "@/lib/finance/wages";
 import { DAILY_PAYMENT_LINE } from "@/lib/ingest/invoice";
-import { fromDb, fromDbNullable } from "@/lib/money";
+import { fromDb, fromDbNullable, type Pence } from "@/lib/money";
 import type { Database } from "@/lib/supabase/database.types";
 import { fetchAll, must } from "./fetch-all";
 
@@ -45,6 +45,13 @@ export interface EarningDetail extends EarningRow {
   payPerStop: string | null;
   importedFileId: string;
   source: string;
+  /** Details from the DPD Payments table; null for days imported before they were read. */
+  excessParcels?: number | null;
+  mileage?: number | null;
+  stopPay?: Pence | null;
+  parcelPay?: Pence | null;
+  /** The DPD driver reference (for example DR66445), when the report gave one. */
+  driverRef?: string | null;
 }
 
 export interface AdjustmentDetail extends AdjustmentRow {
@@ -69,7 +76,7 @@ export async function loadEarnings(db: Db, filter: PeriodFilter & { driverId?: s
   const rows = await fetchAll(() => {
     let q = db
       .from("daily_earnings")
-      .select("id, franchise_id, driver_id, driver_key, source_driver_name, report_date, route, parcels, stops, pay_per_parcel, pay_per_stop, gross_earnings, deductions, additional_payments, net_earnings, imported_file_id, source")
+      .select("id, franchise_id, driver_id, driver_key, source_driver_name, report_date, route, parcels, stops, pay_per_parcel, pay_per_stop, gross_earnings, deductions, additional_payments, net_earnings, imported_file_id, source, excess_parcels, mileage, stop_pay, parcel_pay, source_driver_ref")
       .eq("account_id", filter.accountId)
       .eq("is_current", true)
       .gte("report_date", filter.from)
@@ -98,6 +105,11 @@ export async function loadEarnings(db: Db, filter: PeriodFilter & { driverId?: s
     netSupplied: fromDbNullable(r.net_earnings),
     importedFileId: r.imported_file_id,
     source: r.source,
+    excessParcels: r.excess_parcels,
+    mileage: r.mileage,
+    stopPay: fromDbNullable(r.stop_pay),
+    parcelPay: fromDbNullable(r.parcel_pay),
+    driverRef: r.source_driver_ref,
   }));
 }
 

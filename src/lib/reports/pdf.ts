@@ -276,6 +276,28 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     paragraph("“Vs usual” compares average daily earnings with the driver's own average over the previous three months. * = some reports did not include this count.", MUTED);
   }
 
+  // ── Driver day by day ─────────────────────────────────────────────────────
+  const daily = report.dailyPayments ?? [];
+  if (daily.length > 0) {
+    heading("Driver day by day", "Each day as DPD shows it on the Payments page: stops, parcels, what they paid, route and mileage. A dash means that detail was not recorded.");
+    const dash = (n: number | null) => (n == null ? "-" : n.toLocaleString("en-GB"));
+    const dailyRows: Row[] = [];
+    let lastGroup = "";
+    for (const d of daily) {
+      const group = `${d.driverName}${report.franchiseId ? "" : ` - ${d.franchiseLabel}`}`;
+      if (group !== lastGroup) { dailyRows.push({ group }); lastGroup = group; }
+      dailyRows.push([formatUkDate(d.date), d.route ?? "-", dash(d.stops), dash(d.parcels), dash(d.excessParcels), d.stopPay == null ? "-" : money(d.stopPay), d.parcelPay == null ? "-" : money(d.parcelPay), money(d.total), dash(d.mileage)]);
+    }
+    table(
+      [
+        { title: "Date", width: 80 }, { title: "Route", width: 48 }, { title: "Stops", width: 40, align: "right" }, { title: "Parcels", width: 46, align: "right" }, { title: "Excess", width: 44, align: "right" },
+        { title: "Stop pay", width: 68, align: "right" }, { title: "Parcel pay", width: 62, align: "right" }, { title: "Total", width: 72, align: "right" }, { title: "Miles", width: 40, align: "right" },
+      ],
+      dailyRows,
+      { fontSize: 8 },
+    );
+  }
+
   // ── Expense breakdown ─────────────────────────────────────────────────────
   heading("Expense breakdown");
   if (report.categories.length === 0) paragraph("No fuel or expenses were recorded for this period.", MUTED);

@@ -10,7 +10,8 @@ export type DocumentType = "earnings_report" | "fuel_report" | "expense_report" 
 
 export type EarningsField =
   | "driver" | "driverRef" | "date" | "route" | "parcels" | "stops" | "payPerParcel" | "payPerStop"
-  | "gross" | "deductions" | "additional" | "net";
+  | "gross" | "deductions" | "additional" | "net"
+  | "excessParcels" | "mileage" | "stopPay" | "parcelPay";
 
 export type FuelField =
   | "date" | "time" | "card" | "registration" | "driver" | "supplier" | "description" | "litres"
@@ -32,6 +33,10 @@ const EARNINGS: Record<EarningsField, string[]> = {
   deductions: ["deductions", "deduction", "charges", "less deductions"],
   additional: ["additional", "additional payments", "additional payment", "additions", "bonus", "extras", "other payments"],
   net: ["net", "net earnings", "net pay", "net amount", "total pay", "payable", "net payable"],
+  excessParcels: ["excess parcels", "excess parcel", "excess"],
+  mileage: ["mileage", "miles"],
+  stopPay: ["stop pay", "stop pay £", "stop pay gbp"],
+  parcelPay: ["parcel pay", "parcel pay £", "parcel pay gbp"],
 };
 
 const FUEL: Record<FuelField, string[]> = {

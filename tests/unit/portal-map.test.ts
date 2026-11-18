@@ -144,6 +144,9 @@ describe("the DPD portal map", () => {
     expect(parsed.documentType).toBe("earnings_report");
     expect(parsed.earnings).toHaveLength(2);
     expect(parsed.earnings[0]).toMatchObject({ driverName: "Jamie Test", driverRef: "DR66445", date: "2026-11-16", route: "359", stops: 85, parcels: 106, gross: 19825 });
+    // The details the portal shows alongside the total are kept too.
+    expect(parsed.earnings[0]).toMatchObject({ excessParcels: 21, mileage: 85, stopPay: 19720, parcelPay: 105 });
+    expect(parsed.earnings[1]).toMatchObject({ excessParcels: 13, mileage: 94, stopPay: 20240, parcelPay: 65 });
     expect(parsed.confidence).toBeGreaterThanOrEqual(0.85);
   });
 

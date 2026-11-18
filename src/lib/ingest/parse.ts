@@ -39,6 +39,12 @@ export interface ParsedEarningsRow {
   deductions: Pence;
   additional: Pence;
   net: Pence | null;
+  /** Parcels beyond the stops, paid at 5p each. Shown on the DPD Payments table. */
+  excessParcels: number | null;
+  mileage: number | null;
+  /** What the stops paid, and what the excess parcels paid, which add up to the day's total. */
+  stopPay: Pence | null;
+  parcelPay: Pence | null;
 }
 
 export interface ParsedFuelRow {
@@ -351,6 +357,10 @@ function parseEarningsTable(
       if (value == null) { rowIssues.push(`${label} "${text}" could not be read`); confidence.reduce(0.05); }
       return value;
     };
+    // Optional details from the DPD Payments table. A cell that cannot be read is simply left out.
+    const excessParcels = parseCount(cell(row, col.excessParcels));
+    const mileage = parseCount(cell(row, col.mileage));
+    const optionalMoney = (text: string): Pence | null => (text === "" ? null : parseMoney(text));
     const payPerParcel = rate(cell(row, col.payPerParcel), "pay per parcel");
     const payPerStop = rate(cell(row, col.payPerStop), "pay per stop");
 
@@ -372,6 +382,10 @@ function parseEarningsTable(
       stops: stops === "invalid" ? null : stops,
       payPerParcel,
       payPerStop,
+      excessParcels: excessParcels === "invalid" ? null : excessParcels,
+      mileage: mileage === "invalid" ? null : mileage,
+      stopPay: optionalMoney(cell(row, col.stopPay)),
+      parcelPay: optionalMoney(cell(row, col.parcelPay)),
       gross: grossParsed,
       deductions,
       additional,
