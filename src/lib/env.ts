@@ -65,6 +65,9 @@ export const env = {
     return raw && z.url().safeParse(raw).success ? raw : null;
   },
   dpdLoginSecret: () => optional("DPD_LOGIN_SECRET"),
+  /** Lets the website start the nightly GitHub workflow by hand. Optional: without it the button queues the job for the next run. */
+  githubSyncToken: () => optional("GITHUB_SYNC_TOKEN"),
+  githubRepo: () => optional("GITHUB_REPOSITORY") ?? "WINJO-DIGITAL/matthewai",
   /** Email sending (Resend). Both must be set for any email to go out. */
   resendApiKey: () => optional("RESEND_API_KEY"),
   emailFrom: () => optional("EMAIL_FROM"),

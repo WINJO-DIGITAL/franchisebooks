@@ -12,6 +12,7 @@ import { mergeDpdConfig } from "@/lib/dpd/config";
 import { portalMapSchema } from "@/lib/dpd/portal-map";
 import { dpdSetupReady } from "@/lib/dpd/readiness";
 import { enqueueJob } from "@/lib/jobs/queue";
+import { dispatchSyncWorkflow } from "@/lib/github/dispatch";
 import { pokeWorker } from "@/lib/jobs/run";
 import { generateMonthlyReport } from "@/lib/reports/generate";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -36,12 +37,14 @@ export async function syncDpdNow(_prev: ActionState, _formData: FormData): Promi
       const { alreadyQueued } = await enqueueJob(admin, { accountId: ctx.accountId, type: "dpd_sync", franchiseId: franchise.id, reportDate: ctx.today, trigger: "manual", requestedBy: ctx.userId });
       if (!alreadyQueued) queued += 1;
     }
-    const poke = await pokeWorker();
     revalidatePath("/", "layout");
     if (queued === 0) return ok("A DPD sync is already running. This page will show the result when it finishes.");
-    return poke.ok
-      ? ok(`DPD sync started for ${targets.length} franchise${targets.length === 1 ? "" : "s"}. This usually takes a few minutes.`)
-      : ok(`DPD sync queued for ${targets.length} franchise${targets.length === 1 ? "" : "s"}. It runs at the next evening sync.`);
+    // Start the nightly workflow on GitHub Actions now, so the read happens straight away rather than at the evening window.
+    const started = await dispatchSyncWorkflow({ force: true });
+    const count = `${targets.length} franchise${targets.length === 1 ? "" : "s"}`;
+    if (started.started) return ok(`DPD sync started on GitHub for ${count}. This usually takes a few minutes; this page updates when it finishes.`);
+    await pokeWorker();
+    return ok(`DPD sync queued for ${count}. ${started.message} It runs at the next evening sync unless it is started by hand.`);
   } catch (error) {
     return unexpectedFailure(error, "The sync could not be started.");
   }
