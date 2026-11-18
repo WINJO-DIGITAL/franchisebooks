@@ -42,3 +42,29 @@ export function decideSchedule(settings: ScheduleSettings, now: Date): ScheduleD
     reportMonthDue: dayOfMonth >= 2 ? addMonths(monthOf(today), -1) : null,
   };
 }
+
+/**
+ * Spreads accounts' nightly reads across a window, so that thousands of logins do not all reach DPD in the same minute.
+ * An account starts between its chosen time and `windowMinutes` later, and the same account always gets the same offset.
+ * Pure and deterministic (FNV-1a hash of the account id).
+ */
+export const STAGGER_WINDOW_MINUTES = 30;
+
+export function staggerOffsetMinutes(accountId: string, windowMinutes = STAGGER_WINDOW_MINUTES): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < accountId.length; i++) {
+    hash ^= accountId.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash % windowMinutes;
+}
+
+/** "20:30" plus the account's stagger offset, as "HH:MM". Returns the input unchanged if it cannot be read. */
+export function staggeredSyncTime(syncTimeLocal: string, accountId: string, windowMinutes = STAGGER_WINDOW_MINUTES): string {
+  const base = parseTimeToMinutes(syncTimeLocal);
+  if (base == null) return syncTimeLocal;
+  const minutes = (base + staggerOffsetMinutes(accountId, windowMinutes)) % (24 * 60);
+  const h = String(Math.floor(minutes / 60)).padStart(2, "0");
+  const m = String(minutes % 60).padStart(2, "0");
+  return `${h}:${m}`;
+}

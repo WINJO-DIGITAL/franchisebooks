@@ -18,7 +18,7 @@ import { generateMonthlyReport } from "@/lib/reports/generate";
 import type { AdminClient } from "@/lib/supabase/admin";
 import type { JsonObject } from "@/lib/supabase/json";
 import { claimNextJob, completeJob, enqueueJob, failJob, WORKER_JOB_TYPES, type Job, type JobOutcome, type JobType } from "./queue";
-import { decideSchedule } from "./schedule";
+import { decideSchedule, staggeredSyncTime } from "./schedule";
 
 export interface RunContext {
   /** Present only on the worker: needed for DPD portal jobs. */
@@ -152,7 +152,8 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
   for (const settings of settingsRows ?? []) {
     result.accounts += 1;
     const accountId = settings.account_id;
-    const decision = decideSchedule({ syncEnabled: settings.sync_enabled, syncTimeLocal: settings.sync_time_local, syncTimezone: settings.sync_timezone }, now);
+    // Each account's read starts up to STAGGER_WINDOW_MINUTES after its chosen time, so the nightly load is spread out.
+    const decision = decideSchedule({ syncEnabled: settings.sync_enabled, syncTimeLocal: staggeredSyncTime(settings.sync_time_local, accountId), syncTimezone: settings.sync_timezone }, now);
 
     const [{ data: connections }, { data: franchises }] = await Promise.all([
       db.from("integration_connections").select("provider, status, config, last_sync_at").eq("account_id", accountId),
