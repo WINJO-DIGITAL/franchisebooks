@@ -59,6 +59,12 @@ export const env = {
       });
     return parsed.success ? parsed.data : null;
   },
+  /** The DPD portal address, shared by every account. The login itself is per account (see lib/dpd/login). */
+  dpdPortalUrl: () => {
+    const raw = optional("DPD_PORTAL_URL");
+    return raw && z.url().safeParse(raw).success ? raw : null;
+  },
+  dpdLoginSecret: () => optional("DPD_LOGIN_SECRET"),
   logLevel: () => optional("LOG_LEVEL") ?? "info",
   errorWebhookUrl: () => optional("ERROR_WEBHOOK_URL"),
 };

@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
+import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, DpdLoginForm, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
 import { Badge, DefinitionList, Notice, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { DEFAULT_ANOMALY_CONFIG, resolveAnomalyConfig } from "@/lib/anomalies/detect";
+import { hasDpdLogin } from "@/lib/dpd/login";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
 import { loadRevenue } from "@/lib/data/period";
 import { addMonths, formatMonth, formatUkDate, monthOf, monthRange } from "@/lib/dates";
 import { FIGURE_STATUS } from "@/lib/labels";
 import { formatGBP } from "@/lib/money";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -23,6 +25,7 @@ export default async function SettingsPage() {
     ctx.canWrite ? supabase.from("audit_logs").select("id, action, entity_table, created_at, after").order("id", { ascending: false }).limit(8) : Promise.resolve({ data: [] }),
   ]);
   const s = settings.data;
+  const dpdSaved = ctx.isOwner ? await hasDpdLogin(createAdminClient(), accountId) : false;
   const config = resolveAnomalyConfig(s?.anomaly_config);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const optionFranchises = franchises.filter((f) => f.is_active).map((f) => ({ id: f.id, label: f.name ? `${f.fd_number} · ${f.name}` : f.fd_number }));
@@ -82,6 +85,12 @@ export default async function SettingsPage() {
           {ctx.isOwner && s ? <ScheduleForm syncTime={s.sync_time_local} syncEnabled={s.sync_enabled} autoReports={s.auto_monthly_reports} basis={s.revenue_allocation_basis} /> : (
             <DefinitionList items={[["Evening sync", s ? `${s.sync_time_local.slice(0, 5)} UK time` : "—"], ["Automatic monthly reports", s?.auto_monthly_reports ? "On" : "Off"]]} />
           )}
+        </Panel>
+      </Section>
+
+      <Section title="DPD portal login" description="The login the app uses to sign in to the DPD portal for the nightly sync. It is stored encrypted, and only the owner can change it.">
+        <Panel>
+          {ctx.isOwner ? <DpdLoginForm saved={dpdSaved} /> : <p className="text-sm text-muted">Only the owner can change the DPD login.</p>}
         </Panel>
       </Section>
 

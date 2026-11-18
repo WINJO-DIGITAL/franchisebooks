@@ -24,6 +24,7 @@ import { discoverPortal, inventoryMarkdown } from "./discovery";
 import { PortalError } from "./errors";
 import { portalMapSchema, type PortalMap } from "./portal-map";
 import { PortalSession, type PortalCredentials } from "./session";
+import { loadDpdLogin } from "./login";
 
 /** Keeps one signed-in session open across consecutive jobs so several franchises need only one sign-in. */
 export class PortalSessionPool {
@@ -83,12 +84,13 @@ async function touchConnection(db: AdminClient, accountId: string, patch: { succ
   );
 }
 
-function credentialsOrThrow(): PortalCredentials {
-  const dpd = env.dpd();
-  if (!dpd) {
-    throw new PortalError("config", "credentials", "The DPD portal login details have not been set on the background worker yet.", "DPD_PORTAL_URL / DPD_USERNAME / DPD_PASSWORD missing");
-  }
-  return dpd;
+/** The portal address from the worker's settings, with this account's own saved login. */
+async function credentialsFor(db: AdminClient, accountId: string): Promise<PortalCredentials> {
+  const url = env.dpdPortalUrl();
+  if (!url) throw new PortalError("config", "credentials", "The DPD portal address has not been set on the background worker yet.", "DPD_PORTAL_URL missing");
+  const login = await loadDpdLogin(db, accountId);
+  if (!login) throw new PortalError("config", "credentials", "No DPD portal login has been saved for this account. Add it in Settings.");
+  return { url, username: login.username, password: login.password, loginSecret: env.dpdLoginSecret() };
 }
 
 export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessionPool): Promise<JobOutcome> {
@@ -101,7 +103,7 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   if (!map) {
     throw new PortalError("config", "portal-map", "The DPD portal has not been set up for automatic sync yet. Run “Explore the DPD portal” first, then ask your developer to complete the setup. Until then, upload reports by hand or use Dropbox.");
   }
-  const credentials = credentialsOrThrow();
+  const credentials = await credentialsFor(db, job.account_id);
 
   let session: PortalSession;
   try {
@@ -192,7 +194,7 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
 }
 
 export async function runDpdDiscoveryJob(db: AdminClient, job: Job): Promise<JobOutcome> {
-  const credentials = credentialsOrThrow();
+  const credentials = await credentialsFor(db, job.account_id);
   const existing = await loadPortalMap(db, job.account_id).catch(() => null);
   // Discovery only needs the login part of a map; everything else is what it is finding out.
   const map: PortalMap = existing ?? portalMapSchema.parse({ version: 1, franchise: { mode: "none" }, reports: [{ id: "placeholder", label: "placeholder", kind: "earnings", navigate: [], collect: { mode: "table" } }] });

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { addCategory, setCategoryActive, } from "@/lib/actions/expenses";
+import { saveDpdLoginAction } from "@/lib/actions/dpd-login";
 import { addFranchise, addRevenue, updateAlertSettings, updateBusinessName, updateFranchise, updateSchedule, voidRevenue } from "@/lib/actions/settings";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,27 @@ import { ReasonDialog } from "@/components/ui/reason-dialog";
 interface Option {
   id: string;
   label: string;
+}
+
+export function DpdLoginForm({ saved }: { saved: boolean }) {
+  return (
+    <ActionForm action={saveDpdLoginAction} className="grid gap-4 sm:max-w-md">
+      {(state) => (
+        <>
+          <p className="text-sm text-muted">
+            {saved ? "A login is saved. Enter it again to replace it. The password is never shown back." : "No login saved yet. The nightly sync cannot sign in to DPD until you save one."}
+          </p>
+          <Field label="DPD portal username" error={state.fieldErrors?.username}>
+            <Input name="username" autoComplete="off" required />
+          </Field>
+          <Field label="DPD portal password" error={state.fieldErrors?.password}>
+            <Input name="password" type="password" autoComplete="new-password" required />
+          </Field>
+          <SubmitButton>Save DPD login</SubmitButton>
+        </>
+      )}
+    </ActionForm>
+  );
 }
 
 export const BusinessNameForm = ({ name }: { name: string }) => (
