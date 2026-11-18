@@ -218,8 +218,11 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
 async function runLoginFranchiseDiscovery(db: AdminClient, job: Job): Promise<JobOutcome> {
   const url = env.dpdPortalUrl();
   if (!url) throw new PortalError("config", "credentials", "The DPD portal address has not been set on the background worker yet.", "DPD_PORTAL_URL missing");
+  // A refresh targets one login: check it signs in, pick up any new franchises, and queue a read for each of its franchises.
+  const refreshLoginId = (job.payload as { refreshLoginId?: string } | null)?.refreshLoginId ?? null;
   const waitingLogins = async (excluded: Set<string>) => {
     const logins = await listDpdLogins(db, job.account_id);
+    if (refreshLoginId) return logins.filter((l) => l.id === refreshLoginId && !excluded.has(l.id));
     const { data: linked } = await db.from("franchises").select("dpd_login_id").eq("account_id", job.account_id).not("dpd_login_id", "is", null);
     const linkedIds = new Set((linked ?? []).map((r) => r.dpd_login_id));
     return logins.filter((l) => !linkedIds.has(l.id) && !excluded.has(l.id));
@@ -270,8 +273,14 @@ async function runLoginFranchiseDiscovery(db: AdminClient, job: Job): Promise<Jo
     pending = await waitingLogins(attempted);
   }
 
-  // The new franchises are read straight away, so their figures appear without waiting for tonight.
-  for (const franchiseId of newFranchiseIds) {
+  // The new franchises are read straight away, so their figures appear without waiting for tonight. A refresh also re-reads
+  // the login's existing franchises, which is what "refresh" is for.
+  const readIds = [...newFranchiseIds];
+  if (refreshLoginId) {
+    const { data: mine } = await db.from("franchises").select("id").eq("account_id", job.account_id).eq("dpd_login_id", refreshLoginId).eq("is_active", true);
+    for (const f of mine ?? []) if (!readIds.includes(f.id)) readIds.push(f.id);
+  }
+  for (const franchiseId of readIds) {
     await enqueueJob(db, { accountId: job.account_id, type: "dpd_sync", franchiseId, reportDate: londonToday(), trigger: "manual", requestedBy: job.requested_by ?? undefined });
   }
   if (succeeded === 0 && firstError) throw firstError;

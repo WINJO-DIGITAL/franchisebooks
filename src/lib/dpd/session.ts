@@ -163,7 +163,7 @@ export class PortalSession {
         throw new PortalError("blocked", "login:captcha", "The DPD portal is asking for a CAPTCHA, which cannot (and will not) be completed automatically.");
       }
       if (LOGIN_ERROR_TEXT.test(body)) {
-        throw new PortalError("auth", "login:rejected", "The DPD portal did not accept the username and password. Please check the login details set on the worker.");
+        throw new PortalError("auth", "login:rejected", "DPD did not accept this username and password. Check them in Settings, under DPD logins.");
       }
       throw new PortalError("layout", "login:confirm", "Sign-in to the DPD portal could not be confirmed. The page layout may have changed.", "Signed-in marker not found after submitting the login form");
     }

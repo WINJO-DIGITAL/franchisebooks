@@ -86,3 +86,22 @@ export async function removeDpdLoginAction(_prev: ActionState, formData: FormDat
   revalidatePath("/settings");
   return ok("Login removed.");
 }
+
+/** "Check and refresh" for one login: signs in to check it, picks up its franchises, and re-reads them. Owner only. */
+export async function refreshDpdLoginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const ctx = await getContext();
+  if (!ctx.isOwner) return fail("Only the owner can refresh a DPD login.");
+  const parsed = parseForm(z.object({ id: uuid }), formData);
+  if ("error" in parsed) return parsed.error;
+  const admin = createAdminClient();
+  const { data: login } = await admin.from("dpd_logins").select("id").eq("id", parsed.data.id).eq("account_id", ctx.accountId).maybeSingle();
+  if (!login) return fail("That login could not be found.");
+  try {
+    await enqueueJob(admin, { accountId: ctx.accountId, type: "dpd_discovery", reportDate: londonToday(), trigger: "manual", requestedBy: ctx.userId, payload: { discoverFranchises: true, refreshLoginId: login.id } });
+    await pokeWorker();
+  } catch (error) {
+    return fail("The refresh could not be started. Please try again.", error instanceof Error ? error.message : null);
+  }
+  revalidatePath("/settings");
+  return ok("Checking this login now. The result appears in the list in a minute or two: either its franchises and figures are updated, or the reason it could not sign in is shown.");
+}

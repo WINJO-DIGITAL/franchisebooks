@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { addCategory, setCategoryActive, } from "@/lib/actions/expenses";
 import { saveDpdLoginAction } from "@/lib/actions/dpd-login";
-import { addDpdLoginAction, removeDpdLoginAction } from "@/lib/actions/dpd-logins";
+import { addDpdLoginAction, refreshDpdLoginAction, removeDpdLoginAction } from "@/lib/actions/dpd-logins";
 import { addFranchise, addRevenue, updateAlertSettings, updateBusinessName, updateFranchise, updateSchedule, voidRevenue } from "@/lib/actions/settings";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Button } from "@/components/ui/button";
@@ -206,6 +206,15 @@ export function AddDpdLoginForm() {
         </ActionForm>
       </Dialog>
     </>
+  );
+}
+
+export function RefreshDpdLoginButton({ id }: { id: string }) {
+  return (
+    <ActionForm action={refreshDpdLoginAction}>
+      <input type="hidden" name="id" value={id} />
+      <SubmitButton variant="secondary" size="sm" pendingLabel="Checking…">Check &amp; refresh</SubmitButton>
+    </ActionForm>
   );
 }
 

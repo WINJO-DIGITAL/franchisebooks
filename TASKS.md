@@ -47,6 +47,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - Rename to Franchise Books by Winjo Digital; homepage and auth-card redesign.
 - Several DPD logins per account, listed in Settings.
 - Legal pages (draft), owner-only account closure, service emails via Resend (off until keys are set).
+- Each DPD login has "Check & refresh" in Settings: checks it signs in (wrong logins are reported there), picks up new franchises and re-reads them.
 - Adding a DPD login: name and FD numbers are optional; with no FD numbers, the franchises are found from the portal (Routes drop-down) and read straight away.
 - Nightly reads spread across a 30-minute window per account (deterministic, unit tested).
 - Content Security Policy added; verified in a browser on the production build, no violations on public pages.
