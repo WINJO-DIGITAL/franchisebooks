@@ -8,8 +8,11 @@ import { FRANCHISE_COOKIE } from "@/lib/context";
 import { env } from "@/lib/env";
 import { requireBillingAccess } from "@/lib/billing/gate";
 import { isDriverLogin } from "@/lib/driver/context";
+import { londonToday } from "@/lib/dates";
 import { queueFirstSync } from "@/lib/dpd/first-sync";
-import { saveDpdLogin } from "@/lib/dpd/login";
+import { addDpdLogin } from "@/lib/dpd/logins";
+import { enqueueJob } from "@/lib/jobs/queue";
+import { MAX_DPD_LOGINS, readDpdLoginBlocks } from "@/lib/onboarding/dpd-logins-form";
 import { parseFdNumbers } from "@/lib/onboarding/franchises";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -105,22 +108,50 @@ export async function updatePassword(_prev: ActionState, formData: FormData): Pr
 const onboardingSchema = z.object({
   businessName: z.string().min(2, "Enter your business name.").max(120),
   fullName: z.string().min(2, "Enter your name.").max(120),
-  fdNumbers: z.string().min(1, "Add at least one FD number."),
-  dpdUsername: z.string().min(1, "Enter your DPD portal username.").max(200),
-  dpdPassword: z.string().min(1, "Enter your DPD portal password.").max(500),
+});
+
+const dpdLoginSchema = z.object({
+  username: z.string().min(1, "Enter your DPD portal username.").max(200),
+  password: z.string().min(1, "Enter your DPD portal password.").max(500),
+  label: z.string().max(120),
 });
 
 /**
- * Finishes sign-up: creates the business, adds its franchises, saves the DPD login (encrypted) and starts the first read of
- * DPD. The person then lands on a progress screen while their dashboard fills in.
+ * Finishes sign-up: creates the business, saves each DPD login (encrypted), links any FD numbers typed against their login,
+ * and starts the first read of DPD. A login with no FD numbers is read from DPD to find its franchises.
+ * The person then lands on a progress screen while their dashboard fills in.
  */
 export async function completeOnboarding(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = parseForm(onboardingSchema, formData);
   if ("error" in parsed) return parsed.error;
-  const fds = parseFdNumbers(parsed.data.fdNumbers);
-  if (fds.errors.length > 0 || fds.fdNumbers.length === 0) {
-    return fail("Please check the FD numbers.", null, { fdNumbers: fds.errors[0] ?? "Add at least one FD number." });
+
+  const blocks = readDpdLoginBlocks(formData);
+  if (blocks.length === 0) return fail("Add at least one DPD login.", null, { dpdUsername_0: "Enter your DPD portal username." });
+  if (blocks.length > MAX_DPD_LOGINS) return fail(`You can add up to ${MAX_DPD_LOGINS} DPD logins.`);
+
+  // Check every login and its FD numbers before anything is created.
+  const fieldErrors: Record<string, string> = {};
+  const seenFds = new Map<string, string>();
+  const checked: { label: string; username: string; password: string; fds: string[]; id: string }[] = [];
+  for (const block of blocks) {
+    const login = dpdLoginSchema.safeParse({ username: block.username, password: block.password, label: block.label });
+    if (!login.success) {
+      for (const issue of login.error.issues) {
+        const field = issue.path[0] === "username" ? "dpdUsername" : issue.path[0] === "password" ? "dpdPassword" : "dpdLabel";
+        fieldErrors[`${field}_${block.id}`] = issue.message;
+      }
+    }
+    const fds = block.fds ? parseFdNumbers(block.fds) : { fdNumbers: [] as string[], errors: [] as string[] };
+    if (fds.errors.length > 0) fieldErrors[`dpdFds_${block.id}`] = fds.errors[0]!;
+    for (const fd of fds.fdNumbers) {
+      if (seenFds.has(fd)) fieldErrors[`dpdFds_${block.id}`] = `${fd} is already listed on another login.`;
+      else seenFds.set(fd, block.id);
+    }
+    if (login.success) {
+      checked.push({ id: block.id, label: login.data.label || login.data.username, username: login.data.username, password: block.password, fds: fds.fdNumbers });
+    }
   }
+  if (Object.keys(fieldErrors).length > 0) return fail("Please check your DPD logins.", null, fieldErrors);
 
   const supabase = await createClient();
   await requireBillingAccess(supabase);
@@ -133,16 +164,32 @@ export async function completeOnboarding(_prev: ActionState, formData: FormData)
     p_full_name: parsed.data.fullName,
   });
   if (error) return dbFailure(error, "Your business could not be set up. Please try again.");
+  const account = accountId as string;
 
-  const { error: franchiseError } = await supabase.from("franchises").insert(fds.fdNumbers.map((fd) => ({ account_id: accountId as string, fd_number: fd, name: "" })));
-  if (franchiseError) return dbFailure(franchiseError, "Your business was set up, but the franchises could not be added. Add them in Settings.");
+  const admin = createAdminClient();
+  const loginIds: string[] = [];
+  try {
+    for (const login of checked) {
+      loginIds.push(await addDpdLogin(admin, account, auth.user.id, login.label, { username: login.username, password: login.password }));
+    }
+  } catch (error) {
+    return fail("Your business was set up, but a DPD login could not be saved. Open Settings, add your DPD logins there, then press Sync DPD.", error instanceof Error ? error.message : null);
+  }
+
+  const franchiseRows = checked.flatMap((login, i) => login.fds.map((fd) => ({ account_id: account, fd_number: fd, name: "", dpd_login_id: loginIds[i] })));
+  if (franchiseRows.length > 0) {
+    const { error: franchiseError } = await supabase.from("franchises").insert(franchiseRows);
+    if (franchiseError) return dbFailure(franchiseError, "Your business was set up, but the franchises could not be added. Add them in Settings.");
+  }
 
   try {
-    const admin = createAdminClient();
-    await saveDpdLogin(admin, accountId as string, auth.user.id, { username: parsed.data.dpdUsername, password: parsed.data.dpdPassword });
-    await queueFirstSync(admin, accountId as string, auth.user.id);
+    if (checked.some((login) => login.fds.length === 0)) {
+      // Logins with no FD numbers: read DPD to find their franchises (also queues their first figures).
+      await enqueueJob(admin, { accountId: account, type: "dpd_discovery", reportDate: londonToday(), trigger: "manual", requestedBy: auth.user.id, payload: { discoverFranchises: true } });
+    }
+    await queueFirstSync(admin, account, auth.user.id);
   } catch (error) {
-    return fail("Your business was set up, but we could not start reading DPD. Open Settings, add your DPD login there, then press Sync DPD.", error instanceof Error ? error.message : null);
+    return fail("Your business was set up, but we could not start reading DPD. Open Settings, and press Sync DPD.", error instanceof Error ? error.message : null);
   }
   redirect("/connecting");
 }
