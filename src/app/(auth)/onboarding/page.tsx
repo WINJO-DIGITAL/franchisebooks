@@ -17,7 +17,7 @@ export default async function OnboardingPage() {
   return (
     <>
       <h1 className="text-xl font-semibold">Set up your business</h1>
-      <p className="mt-1 text-sm text-muted">Three quick questions and you are ready to go. You can change all of this later in Settings.</p>
+      <p className="mt-1 text-sm text-muted">A few details, then we read your DPD account and build your dashboard. You can change all of this later in Settings.</p>
       <OnboardingForm />
     </>
   );

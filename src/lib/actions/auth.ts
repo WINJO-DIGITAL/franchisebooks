@@ -7,6 +7,10 @@ import { z } from "zod";
 import { FRANCHISE_COOKIE } from "@/lib/context";
 import { env } from "@/lib/env";
 import { requireBillingAccess } from "@/lib/billing/gate";
+import { queueFirstSync } from "@/lib/dpd/first-sync";
+import { saveDpdLogin } from "@/lib/dpd/login";
+import { parseFdNumbers } from "@/lib/onboarding/franchises";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { dbFailure, fail, ok, parseForm, type ActionState } from "./helpers";
 
@@ -100,29 +104,45 @@ export async function updatePassword(_prev: ActionState, formData: FormData): Pr
 const onboardingSchema = z.object({
   businessName: z.string().min(2, "Enter your business name.").max(120),
   fullName: z.string().min(2, "Enter your name.").max(120),
-  fdNumber: z.string().max(40).optional(),
-  franchiseName: z.string().max(120).optional(),
+  fdNumbers: z.string().min(1, "Add at least one FD number."),
+  dpdUsername: z.string().min(1, "Enter your DPD portal username.").max(200),
+  dpdPassword: z.string().min(1, "Enter your DPD portal password.").max(500),
 });
 
+/**
+ * Finishes sign-up: creates the business, adds its franchises, saves the DPD login (encrypted) and starts the first read of
+ * DPD. The person then lands on a progress screen while their dashboard fills in.
+ */
 export async function completeOnboarding(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = parseForm(onboardingSchema, formData);
   if ("error" in parsed) return parsed.error;
+  const fds = parseFdNumbers(parsed.data.fdNumbers);
+  if (fds.errors.length > 0 || fds.fdNumbers.length === 0) {
+    return fail("Please check the FD numbers.", null, { fdNumbers: fds.errors[0] ?? "Add at least one FD number." });
+  }
+
   const supabase = await createClient();
   await requireBillingAccess(supabase);
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) redirect("/login");
+
   const { data: accountId, error } = await supabase.rpc("bootstrap_account", {
     p_business_name: parsed.data.businessName,
     p_full_name: parsed.data.fullName,
   });
   if (error) return dbFailure(error, "Your business could not be set up. Please try again.");
-  if (parsed.data.fdNumber) {
-    const { error: franchiseError } = await supabase.from("franchises").insert({
-      account_id: accountId as string,
-      fd_number: parsed.data.fdNumber.toUpperCase(),
-      name: parsed.data.franchiseName ?? "",
-    });
-    if (franchiseError) return dbFailure(franchiseError, "Your business was set up, but the franchise could not be added. You can add it in Settings.");
+
+  const { error: franchiseError } = await supabase.from("franchises").insert(fds.fdNumbers.map((fd) => ({ account_id: accountId as string, fd_number: fd, name: "" })));
+  if (franchiseError) return dbFailure(franchiseError, "Your business was set up, but the franchises could not be added. Add them in Settings.");
+
+  try {
+    const admin = createAdminClient();
+    await saveDpdLogin(admin, accountId as string, auth.user.id, { username: parsed.data.dpdUsername, password: parsed.data.dpdPassword });
+    await queueFirstSync(admin, accountId as string, auth.user.id);
+  } catch (error) {
+    return fail("Your business was set up, but we could not start reading DPD. Open Settings, add your DPD login there, then press Sync DPD.", error instanceof Error ? error.message : null);
   }
-  redirect("/");
+  redirect("/connecting");
 }
 
 export async function selectFranchise(formData: FormData): Promise<void> {
