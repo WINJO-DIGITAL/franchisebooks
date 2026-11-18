@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { PortalError } from "@/lib/dpd/errors";
+import { saveDpdLogin } from "@/lib/dpd/login";
 import { portalMapSchema, type PortalMap } from "@/lib/dpd/portal-map";
 import { PortalSession } from "@/lib/dpd/session";
 import { PortalSessionPool } from "@/lib/dpd/sync";
@@ -29,12 +30,12 @@ const MAP = (): PortalMap => portalMapSchema.parse({
 async function setup(options: Parameters<typeof startMockPortal>[0]) {
   portal = await startMockPortal(options);
   process.env.DPD_PORTAL_URL = portal.url + "/login";
-  process.env.DPD_USERNAME = "test.user";
-  process.env.DPD_PASSWORD = options.password ?? "correct-horse";
   await sql(
     `insert into public.integration_connections (account_id, provider, status, config) values ($1, 'dpd', 'connected', $2::jsonb)
      on conflict (account_id, provider) do update set config = excluded.config`, [t.accountId, JSON.stringify({ portalMap: MAP() })],
   );
+  // Each account signs in with its own saved login (encrypted); the portal map here is the account's own override.
+  await saveDpdLogin(db, t.accountId, null, { username: "test.user", password: options.password ?? "correct-horse" });
 }
 
 async function runSync(date: string, attempts = 1) {
@@ -142,7 +143,7 @@ describe("DPD portal automation (against a synthetic mock portal)", () => {
 
   it("reports wrong credentials in plain English and does not retry", async () => {
     await setup({ fdNumber: t.fdNumber, password: "right" });
-    process.env.DPD_PASSWORD = "wrong";
+    await saveDpdLogin(db, t.accountId, null, { username: "test.user", password: "wrong" });
     const result = await runSync("2026-11-16");
     expect(result.status).toBe("blocked");
     expect(result.error_message).toMatch(/did not accept the username and password/);

@@ -1,7 +1,7 @@
 /**
  * Dry run of the DPD portal map against the real portal. Nothing is saved.
  *
- *   npm run dpd:try-map -- --fd FD42102,FD46578 [--date 2026-11-16] [--map docs/dpd-portal-map.json] [--out ./csv-out]
+ *   npm run dpd:try-map -- --fd FD42102,FD46578 [--date 2026-11-16] [--map src/lib/dpd/portal-map.json] [--out ./csv-out]
  *
  * Signs in (read-only), collects every report in the map for each FD number,
  * reads it with the same parser the real import uses, and prints what would be
@@ -39,7 +39,7 @@ async function main() {
     console.error("--date must look like 2026-11-16");
     process.exit(1);
   }
-  const map = portalMapSchema.parse(JSON.parse(readFileSync(arg("map", "docs/dpd-portal-map.json") ?? "docs/dpd-portal-map.json", "utf8")));
+  const map = portalMapSchema.parse(JSON.parse(readFileSync(arg("map", "src/lib/dpd/portal-map.json") ?? "src/lib/dpd/portal-map.json", "utf8")));
   const out = arg("out", "") ?? "";
   if (out) mkdirSync(out, { recursive: true });
 

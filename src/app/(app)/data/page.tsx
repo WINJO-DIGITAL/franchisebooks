@@ -9,6 +9,7 @@ import { buttonClass } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadSyncOverview } from "@/lib/data/status";
 import { formatRelative, formatUkDate, formatUkDateTime } from "@/lib/dates";
+import { dpdSetupReady, ownPortalMap } from "@/lib/dpd/readiness";
 import { env } from "@/lib/env";
 import { DOCUMENT_TYPE, FILE_STATUS } from "@/lib/labels";
 import { formatGBP, fromDb } from "@/lib/money";
@@ -51,7 +52,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
   const attention = reviewList.length;
   const importedToday = fileList.filter((f) => f.status === "imported").length;
   const inventory = (discovery.data?.[0]?.result as { markdown?: string; message?: string } | null) ?? null;
-  const portalMap = (dpd?.config as { portalMap?: unknown } | null)?.portalMap;
+  const portalMap = ownPortalMap(dpd?.config);
 
   return (
     <>
@@ -189,7 +190,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
       <Section title="DPD portal" description="Read-only access to the DPD partner portal. It can only look and download; it can never change anything in DPD.">
         <Panel>
           <p className="text-[0.9375rem] text-ink-soft">
-            {portalMap ? "The portal setup is saved. Automatic DPD sync runs every evening at the time set in Settings." : "Automatic DPD sync is not set up yet. First explore the portal (read-only) so the system can learn what is available, then your developer completes the setup below."}
+            {dpdSetupReady(dpd?.config) ? "Your DPD login is saved. Automatic DPD sync runs every evening at the time set in Settings." : "Automatic DPD sync is not set up yet. Add your DPD login in Settings and it runs every evening."}
           </p>
           {ctx.isOwner ? (
             <div className="mt-4 space-y-5">
@@ -201,7 +202,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
                 </details>
               ) : null}
               <details className="rounded-lg border border-line bg-surface px-4 py-3">
-                <summary className="cursor-pointer text-sm font-medium">Portal setup (for your developer)</summary>
+                <summary className="cursor-pointer text-sm font-medium">Custom portal setup for this account (advanced; normally left empty)</summary>
                 <div className="mt-3"><PortalMapForm current={portalMap ? JSON.stringify(portalMap, null, 2) : ""} /></div>
               </details>
             </div>

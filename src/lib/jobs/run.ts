@@ -10,6 +10,7 @@ import { addDays, isISODate, isYearMonth, londonToday, monthOf, monthRange } fro
 import { lastCompletedPeriod, type DpdPeriod } from "@/lib/finance/periods";
 import { runDropboxSync } from "@/lib/dropbox/sync";
 import { PortalError } from "@/lib/dpd/errors";
+import { dpdSetupReady } from "@/lib/dpd/readiness";
 import type { PortalSessionPool } from "@/lib/dpd/sync";
 import { env } from "@/lib/env";
 import { describeError, logger, reportError } from "@/lib/logger";
@@ -56,7 +57,7 @@ async function execute(db: AdminClient, job: Job, ctx: RunContext): Promise<JobO
       // A period report must not be made from stale figures: wait until a DPD sync has succeeded since the period closed.
       if (period) {
         const { data: connection } = await db.from("integration_connections").select("config").eq("account_id", job.account_id).eq("provider", "dpd").maybeSingle();
-        if ((connection?.config as { portalMap?: unknown } | null)?.portalMap) {
+        if (dpdSetupReady(connection?.config)) {
           const closed = addDays(period.end, 1);
           const { count: synced } = await db.from("import_jobs").select("id", { count: "exact", head: true })
             .eq("account_id", job.account_id).eq("job_type", "dpd_sync").in("status", ["succeeded", "partial"]).gte("report_date", closed);
@@ -159,10 +160,10 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
     ]);
     const dpd = connections?.find((c) => c.provider === "dpd");
     const dropbox = connections?.find((c) => c.provider === "dropbox");
-    const dpdReady = Boolean((dpd?.config as { portalMap?: unknown } | null)?.portalMap);
+    const dpdReady = dpdSetupReady(dpd?.config);
 
     if (decision.syncDue) {
-      // Evening DPD sync: once per franchise per day, and only when the portal has actually been set up.
+      // Evening DPD sync: once per franchise per day, and only for accounts that have saved their DPD login.
       if (dpdReady) {
         for (const franchise of franchises ?? []) {
           const { count } = await db.from("import_jobs").select("id", { count: "exact", head: true })

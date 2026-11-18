@@ -1,6 +1,7 @@
 import "server-only";
 import { decryptJson, encryptJson } from "@/lib/crypto";
 import type { AdminClient } from "@/lib/supabase/admin";
+import { mergeDpdConfig } from "./config";
 
 /** The DPD portal login for one account. Stored encrypted; never sent back to the browser. */
 export interface DpdLogin {
@@ -9,20 +10,12 @@ export interface DpdLogin {
 }
 
 /** Saves (or replaces) an account's DPD portal login. It is encrypted before it is stored. */
-export async function saveDpdLogin(db: AdminClient, accountId: string, userId: string, login: DpdLogin): Promise<void> {
-  const { data: existing } = await db.from("integration_connections").select("id").eq("account_id", accountId).eq("provider", "dpd").maybeSingle();
-  let connectionId = existing?.id ?? null;
-  if (!connectionId) {
-    const { data: created, error } = await db
-      .from("integration_connections")
-      .insert({ account_id: accountId, provider: "dpd", status: "disconnected", config: {}, created_by: userId })
-      .select("id")
-      .single();
-    if (error) throw new Error(`Could not prepare the DPD connection: ${error.message}`);
-    connectionId = created.id;
-  }
+export async function saveDpdLogin(db: AdminClient, accountId: string, userId: string | null, login: DpdLogin): Promise<void> {
+  // Make sure the connection exists first (without marking the account ready), store the secret, then mark it ready.
+  const connectionId = await mergeDpdConfig(db, accountId, userId, {});
   const { error } = await db.rpc("save_integration_secret", { p_connection_id: connectionId, p_ciphertext: encryptJson(login) });
   if (error) throw new Error(`Could not store the DPD login: ${error.message}`);
+  await mergeDpdConfig(db, accountId, userId, { loginSavedAt: new Date().toISOString() }, "connected");
 }
 
 /** Reads and decrypts an account's DPD portal login, or returns null if none is saved (or it cannot be read). */

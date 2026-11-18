@@ -25,6 +25,8 @@ import { PortalError } from "./errors";
 import { portalMapSchema, type PortalMap } from "./portal-map";
 import { PortalSession, type PortalCredentials } from "./session";
 import { loadDpdLogin } from "./login";
+import { ownPortalMap } from "./readiness";
+import { SHARED_PORTAL_MAP } from "./shared-map";
 
 /** Keeps one signed-in session open across consecutive jobs so several franchises need only one sign-in. */
 export class PortalSessionPool {
@@ -56,10 +58,11 @@ export class PortalSessionPool {
   }
 }
 
-export async function loadPortalMap(db: AdminClient, accountId: string): Promise<PortalMap | null> {
+/** The portal map to use for an account: its own override if it has one, otherwise the setup shared by every account. */
+export async function loadPortalMap(db: AdminClient, accountId: string): Promise<PortalMap> {
   const { data } = await db.from("integration_connections").select("config").eq("account_id", accountId).eq("provider", "dpd").maybeSingle();
-  const raw = (data?.config as { portalMap?: unknown } | null)?.portalMap;
-  if (!raw) return null;
+  const raw = ownPortalMap(data?.config);
+  if (!raw) return SHARED_PORTAL_MAP;
   const parsed = portalMapSchema.safeParse(raw);
   if (!parsed.success) {
     throw new PortalError("config", "portal-map", "The DPD portal setup is not valid. Ask your developer to check it.", parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "));
@@ -100,9 +103,6 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   if (!franchise) throw new PortalError("config", "job", "The franchise for this sync no longer exists.");
 
   const map = await loadPortalMap(db, job.account_id);
-  if (!map) {
-    throw new PortalError("config", "portal-map", "The DPD portal has not been set up for automatic sync yet. Run “Explore the DPD portal” first, then ask your developer to complete the setup. Until then, upload reports by hand or use Dropbox.");
-  }
   const credentials = await credentialsFor(db, job.account_id);
 
   let session: PortalSession;
@@ -195,9 +195,8 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
 
 export async function runDpdDiscoveryJob(db: AdminClient, job: Job): Promise<JobOutcome> {
   const credentials = await credentialsFor(db, job.account_id);
-  const existing = await loadPortalMap(db, job.account_id).catch(() => null);
-  // Discovery only needs the login part of a map; everything else is what it is finding out.
-  const map: PortalMap = existing ?? portalMapSchema.parse({ version: 1, franchise: { mode: "none" }, reports: [{ id: "placeholder", label: "placeholder", kind: "earnings", navigate: [], collect: { mode: "table" } }] });
+  // Discovery only needs the login part of a map; the shared map has it (an account's own invalid override falls back to it too).
+  const map: PortalMap = await loadPortalMap(db, job.account_id).catch(() => SHARED_PORTAL_MAP);
 
   const session = await PortalSession.open(credentials, map);
   try {

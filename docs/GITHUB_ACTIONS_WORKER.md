@@ -68,7 +68,7 @@ Variables (not secret):
 ## The portal map (what the sync reads)
 
 The sync only runs once a **portal map** is saved. The map for the real portal is
-in [`docs/dpd-portal-map.json`](dpd-portal-map.json). It reads two reports for each
+in [`src/lib/dpd/portal-map.json`](../src/lib/dpd/portal-map.json). It reads two reports for each
 franchise, using the franchise's FD number to pick the route in the portal's
 "Routes" filter and the reporting period that contains the date:
 
@@ -80,7 +80,7 @@ franchise, using the franchise's FD number to pick the route in the portal's
 To switch it on:
 
 1. In the app, add each franchise with its **FD number exactly as the portal shows it** (for example `FD42102`).
-2. **Data & Integrations → DPD portal setup**: paste the contents of `docs/dpd-portal-map.json` and save.
+2. **Settings → DPD portal login**: the owner saves their DPD username and password. The portal setup (`src/lib/dpd/portal-map.json`) is shared by every account, so nothing is pasted per account.
 3. Try it first, saving nothing (needs the DPD variables in `.env.local` or the environment):
    `npm run dpd:try-map -- --fd FD42102,FD46578 --date 2026-11-16`
    It prints, for each report, how many rows the importer read, the total, and the date range.

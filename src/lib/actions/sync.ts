@@ -8,7 +8,9 @@ import { periodContaining, periodLabel } from "@/lib/finance/periods";
 import { DropboxError } from "@/lib/dropbox/client";
 import { openDropbox } from "@/lib/dropbox/connection";
 import { runDropboxSync } from "@/lib/dropbox/sync";
+import { mergeDpdConfig } from "@/lib/dpd/config";
 import { portalMapSchema } from "@/lib/dpd/portal-map";
+import { dpdSetupReady } from "@/lib/dpd/readiness";
 import { enqueueJob } from "@/lib/jobs/queue";
 import { pokeWorker } from "@/lib/jobs/run";
 import { generateMonthlyReport } from "@/lib/reports/generate";
@@ -23,8 +25,8 @@ export async function syncDpdNow(_prev: ActionState, _formData: FormData): Promi
   if (!ctx.canWrite) return fail("You do not have permission to start a sync.");
   const admin = createAdminClient();
   const { data: connection } = await admin.from("integration_connections").select("config").eq("account_id", ctx.accountId).eq("provider", "dpd").maybeSingle();
-  if (!(connection?.config as { portalMap?: unknown } | null)?.portalMap) {
-    return fail("The DPD portal has not been set up for automatic sync yet. Until it is, upload reports by hand below or connect Dropbox.", "No portal map is stored for this account. See docs/DEPLOYMENT.md → DPD integration.");
+  if (!dpdSetupReady(connection?.config)) {
+    return fail("Add your DPD login in Settings first. Until then, upload reports by hand below or connect Dropbox.", "No DPD login is saved for this account.");
   }
   const targets = ctx.franchise ? [ctx.franchise] : ctx.franchises.filter((f) => f.isActive);
   if (targets.length === 0) return fail("Add a franchise in Settings first.");
@@ -79,9 +81,10 @@ export async function savePortalMap(_prev: ActionState, formData: FormData): Pro
   const raw = String(formData.get("portalMap") ?? "").trim();
   const admin = createAdminClient();
   if (raw === "") {
-    await admin.from("integration_connections").upsert({ account_id: ctx.accountId, provider: "dpd", status: "disconnected", config: {} }, { onConflict: "account_id,provider" });
+    // Removes only this account's own override; the saved login is kept and the shared setup is used again.
+    await mergeDpdConfig(admin, ctx.accountId, ctx.userId, { portalMap: undefined });
     revalidatePath("/data");
-    return ok("DPD portal setup removed. Automatic DPD sync is off.");
+    return ok("This account's own portal setup was removed. The standard DPD setup is used.");
   }
   let json: unknown;
   try {
@@ -93,13 +96,13 @@ export async function savePortalMap(_prev: ActionState, formData: FormData): Pro
   if (!parsed.success) {
     return fail("The portal setup is not valid.", parsed.error.issues.slice(0, 8).map((i) => `${i.path.join(".")}: ${i.message}`).join("\n"), { portalMap: "Not a valid portal setup." });
   }
-  const { error } = await admin.from("integration_connections").upsert(
-    { account_id: ctx.accountId, provider: "dpd", status: "connected", config: { portalMap: parsed.data } as unknown as JsonObject, created_by: ctx.userId },
-    { onConflict: "account_id,provider" },
-  );
-  if (error) return dbFailure(error);
+  try {
+    await mergeDpdConfig(admin, ctx.accountId, ctx.userId, { portalMap: parsed.data });
+  } catch (error) {
+    return unexpectedFailure(error);
+  }
   revalidatePath("/", "layout");
-  return ok("DPD portal setup saved. Press Sync DPD to try it.");
+  return ok("This account's own portal setup saved. It is used instead of the standard setup. Press Sync DPD to try it.");
 }
 
 export async function listDropboxFolders(path: string): Promise<{ ok: boolean; message?: string; folders: { path: string; name: string }[] }> {

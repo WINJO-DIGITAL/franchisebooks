@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatRelative } from "@/lib/dates";
+import { dpdSetupReady } from "@/lib/dpd/readiness";
 import type { Database } from "@/lib/supabase/database.types";
 
 type Db = SupabaseClient<Database>;
@@ -40,7 +41,7 @@ export async function loadSyncOverview(db: Db, accountId: string): Promise<SyncO
   const latest = jobs[0];
   const lastSuccess = jobs.find((j) => j.status === "succeeded" || j.status === "partial");
   const running = jobs.some((j) => j.status === "queued" || j.status === "running");
-  const hasPortalMap = Boolean((dpdConnection.data?.config as { portalMap?: unknown } | null)?.portalMap);
+  const hasPortalMap = dpdSetupReady(dpdConnection.data?.config);
 
   let dpd: IntegrationStatus;
   if (running) {
@@ -48,8 +49,8 @@ export async function loadSyncOverview(db: Db, accountId: string): Promise<SyncO
   } else if (!latest) {
     dpd = {
       key: "dpd", name: "DPD portal", tone: "warn", running: false, lastSuccessAt: null,
-      headline: hasPortalMap ? "DPD has not been synchronised yet." : "DPD portal connection is not set up yet.",
-      detail: hasPortalMap ? "It runs automatically every evening. Sync DPD queues a run for the next evening sync." : "Until it is, upload reports by hand.",
+      headline: hasPortalMap ? "DPD has not been synchronised yet." : "Your DPD login has not been added yet.",
+      detail: hasPortalMap ? "It runs automatically every evening. Sync DPD queues a run for the next evening sync." : "Add it in Settings. Until then, upload reports by hand.",
     };
   } else if (latest.status === "succeeded") {
     dpd = { key: "dpd", name: "DPD portal", tone: "good", headline: "DPD synchronised successfully.", detail: `Last sync ${formatRelative(latest.finished_at)}.`, lastSuccessAt: latest.finished_at, running: false };

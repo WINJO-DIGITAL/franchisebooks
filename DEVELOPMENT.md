@@ -57,7 +57,7 @@ _Living document. Last updated 17 November 2026._
 
 ## Known limitations
 
-* **Portal map is written for Payments and Charges** (`docs/dpd-portal-map.json`, tried against the real portal with `npm run dpd:try-map`: all four routes read cleanly). It still has to be saved in the app (Data & Integrations) and franchises added with their FD numbers before the nightly sync does anything. Invoices are not imported (no importer).
+* **Portal map is written for Payments and Charges** (`src/lib/dpd/portal-map.json`, tried against the real portal with `npm run dpd:try-map`: all four routes read cleanly). It is the shared setup for every account (loaded from `src/lib/dpd/shared-map.ts`), so nothing needs saving per account: an account is ready for the nightly sync once its owner has saved their DPD login in Settings and added their franchises with their FD numbers. An account can still carry its own map as an override. Invoices are not imported (no importer).
 * **The nightly sync runs on GitHub Actions** (`docs/GITHUB_ACTIONS_WORKER.md`), not an always-on worker.
 * **Earnings meaning:** the portal's Payments are per route per day. The app treats imported earnings as driver pay (a cost). If they are what DPD pays the franchise for the route, the finance model needs revisiting (see `docs/FINANCE.md`, open question).
 * The meaning of DPD "earnings" vs franchise revenue is assumed per the brief (earnings = cost; revenue entered separately). See `docs/FINANCE.md`.

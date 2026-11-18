@@ -19,7 +19,5 @@ services:
       - { key: ENCRYPTION_KEY, sync: false }
       - { key: WORKER_AUTH_TOKEN, sync: false }
       - { key: DPD_PORTAL_URL, sync: false }
-      - { key: DPD_USERNAME, sync: false }
-      - { key: DPD_PASSWORD, sync: false }
       - { key: DPD_LOGIN_SECRET, sync: false }
       - { key: ERROR_WEBHOOK_URL, sync: false }

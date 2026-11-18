@@ -4,7 +4,7 @@ import { portalMapSchema } from "@/lib/dpd/portal-map";
 import { env } from "@/lib/env";
 import { readSelfBilledInvoicePdf } from "@/lib/ingest/invoice-pdf";
 
-const map = portalMapSchema.parse(JSON.parse(readFileSync("docs/dpd-portal-map.json", "utf8")));
+const map = portalMapSchema.parse(JSON.parse(readFileSync("src/lib/dpd/portal-map.json", "utf8")));
 const report = map.reports.find((r) => r.id === "invoices")!;
 const inv: { invoiceNo: string; fdNumber: string; invoiceDate: string }[] = JSON.parse(readFileSync("/tmp/claude-0/dpd-invoices/read.json", "utf8")).map((e: { invoice: unknown }) => e.invoice).filter(Boolean);
 const latest2026 = (fd: string) => inv.filter((i) => i.fdNumber === fd && i.invoiceDate.startsWith("2026")).sort((a, b) => b.invoiceDate.localeCompare(a.invoiceDate))[0]!.invoiceNo;

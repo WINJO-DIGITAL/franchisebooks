@@ -26,7 +26,7 @@ async function main() {
   const fds = (arg("fd", "") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const out = arg("out", "") ?? "";
   if (fds.length === 0 || !out) throw new Error("Give --fd FD1,FD2 and --out <folder outside the repo>.");
-  const map = portalMapSchema.parse(JSON.parse(readFileSync("docs/dpd-portal-map.json", "utf8")));
+  const map = portalMapSchema.parse(JSON.parse(readFileSync("src/lib/dpd/portal-map.json", "utf8")));
   const periodTexts: string[] = JSON.parse(readFileSync(arg("periods", "/tmp/claude-0/dpd-data/period-texts.json") ?? "", "utf8"));
   const periods = periodTexts.map((t) => parsePeriodText(t)).filter((p): p is { start: string; end: string } => p !== null);
   mkdirSync(out, { recursive: true });

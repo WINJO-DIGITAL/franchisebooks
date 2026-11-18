@@ -14,7 +14,7 @@ let t: TestAccount;
 beforeAll(async () => {
   t = await createTestAccount("Jobs And Reports");
   await sql(
-    `insert into public.integration_connections (account_id, provider, status, config) values ($1, 'dpd', 'connected', '{"portalMap":{"version":1}}'::jsonb)`, [t.accountId],
+    `insert into public.integration_connections (account_id, provider, status, config) values ($1, 'dpd', 'connected', '{"loginSavedAt":"2026-11-18T00:00:00Z"}'::jsonb)`, [t.accountId],
   );
 }, 60_000);
 afterAll(() => pool.end());
