@@ -191,8 +191,8 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
       }
     }
 
-    // Automatic reports. With report_frequency "dpd_period": one for each DPD four-week period, once it has ended and its
-    // last day's figures have been synced (two days after it ends). Otherwise one for each calendar month, from the 2nd.
+    // Automatic reports. With report_frequency "dpd_period": one for each DPD four-week period, made on the Monday after it
+    // ends (its last day is a Sunday, so the day after is the Monday). Otherwise one for each calendar month, from the 2nd.
     if (settings.auto_monthly_reports && settings.report_frequency === "dpd_period" && (franchises?.length ?? 0) > 0) {
       const period = lastCompletedPeriod(londonToday(now));
       const [{ count: existing }, { count: activity }, { count: jobs }] = await Promise.all([
