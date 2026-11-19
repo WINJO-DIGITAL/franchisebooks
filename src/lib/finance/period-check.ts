@@ -9,7 +9,7 @@
  * Pure code: no database, no network.
  */
 
-import type { ISODate } from "@/lib/dates";
+import { addDays, type ISODate } from "@/lib/dates";
 import { DAILY_PAYMENT_LINE } from "@/lib/ingest/invoice";
 import type { Pence } from "@/lib/money";
 import { sumPence } from "@/lib/money";
@@ -42,9 +42,15 @@ export interface PeriodCheckInput {
   charges: Pence[];
   invoice: CheckInvoice | null;
   tolerancePence: Pence;
+  /**
+   * The first and last day of daily payments the app holds for this franchise. The invoice is compared only for a period these
+   * cover: before the first day there is no data, which is not the same as nothing having been paid. Leave out to always compare.
+   */
+  coverage?: { first: ISODate | null; last: ISODate | null };
 }
 
-export type IncomeStatus = "waiting" | "unreadable" | "match" | "differs";
+/** "unread": the app does not hold the daily payments for this period (it started reading later), so there is nothing to compare. */
+export type IncomeStatus = "waiting" | "unreadable" | "unread" | "match" | "differs";
 
 export interface PeriodCheck {
   income: {
@@ -90,8 +96,14 @@ export function checkPeriod(input: PeriodCheckInput): PeriodCheck {
     } else {
       invoiceStopPay = sumPence(invoice.lines.filter((l) => DAILY_PAYMENT_LINE.test(l.description)).map((l) => l.amount));
       extras = invoice.lines.filter((l) => !DAILY_PAYMENT_LINE.test(l.description));
-      difference = ourPayments - invoiceStopPay;
-      status = Math.abs(difference) <= input.tolerancePence ? "match" : "differs";
+      const cov = input.coverage;
+      const covered = cov === undefined || (cov.first != null && cov.last != null && cov.first <= addDays(input.period.start, 6) && cov.last >= addDays(input.period.end, -6));
+      if (!covered) {
+        status = "unread";
+      } else {
+        difference = ourPayments - invoiceStopPay;
+        status = Math.abs(difference) <= input.tolerancePence ? "match" : "differs";
+      }
     }
   }
 

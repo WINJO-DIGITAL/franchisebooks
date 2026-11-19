@@ -20,6 +20,7 @@ const STATUS: Record<IncomeStatus, { label: string; tone: Tone }> = {
   differs: { label: "Does Not Match", tone: "bad" },
   waiting: { label: "Invoice Not in Yet", tone: "warn" },
   unreadable: { label: "Invoice Could Not Be Read", tone: "warn" },
+  unread: { label: "Days Not Read Yet", tone: "warn" },
 };
 
 export default async function PeriodCheckPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
@@ -47,6 +48,15 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
     fetchAll(() => ctx.supabase.from("franchises").select("id, vehicle_type, vehicle_size, vehicle_fuel").eq("account_id", ctx.accountId).order("id")),
     fetchAll(() => ctx.supabase.from("sliding_scale_rates").select("vehicle_type, vehicle_size, fuel_type, stops_from, stops_to, miles_from, miles_to, rate").eq("account_id", ctx.accountId).order("id")),
   ]);
+  // The first and last day of daily payments held for each franchise: an invoice is only compared with days the app has read.
+  const coverage = new Map<string, { first: string | null; last: string | null }>();
+  await Promise.all(franchises.map(async (f) => {
+    const edge = async (ascending: boolean) => {
+      const { data } = await ctx.supabase.from("daily_earnings").select("report_date").eq("account_id", ctx.accountId).eq("franchise_id", f.id).eq("is_current", true).order("report_date", { ascending }).limit(1);
+      return data?.[0]?.report_date ?? null;
+    };
+    coverage.set(f.id, { first: await edge(true), last: await edge(false) });
+  }));
   const bands: ScaleBand[] = scaleRows.map((r) => ({
     vehicleType: r.vehicle_type, vehicleSize: r.vehicle_size, fuelType: normaliseFuel(r.fuel_type), stopsFrom: r.stops_from, stopsTo: r.stops_to,
     milesFrom: r.miles_from, milesTo: r.miles_to, rate: Number(r.rate),
@@ -73,6 +83,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
       charges: costs.filter((c) => c.franchiseId === f.id && c.source === "dpd_portal").map((c) => c.amount),
       invoice,
       tolerancePence,
+      coverage: coverage.get(f.id),
     });
     const chargeItems = costs.filter((c) => c.franchiseId === f.id && c.source === "dpd_portal");
     const vehicle = vehicleRows.find((v) => v.id === f.id);
@@ -83,7 +94,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
           { vehicleType: vehicle.vehicle_type, vehicleSize: vehicle.vehicle_size, fuelType: normaliseFuel(vehicle.vehicle_fuel ?? "diesel") },
         )
       : null;
-    return { franchise: f, invoice, check, chargeItems, rateCheck, hasVehicle: Boolean(vehicle?.vehicle_type) };
+    return { franchise: f, invoice, check, chargeItems, rateCheck, hasVehicle: Boolean(vehicle?.vehicle_type), firstDay: coverage.get(f.id)?.first ?? null };
   });
 
   return (
@@ -104,13 +115,13 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
       {results.length === 0 ? (
         <EmptyState title="No Franchises Yet">Add a franchise in Settings, then the DPD sync fills this in.</EmptyState>
       ) : (
-        results.map(({ franchise, invoice, check, chargeItems, rateCheck, hasVehicle }) => (
+        results.map(({ franchise, invoice, check, chargeItems, rateCheck, hasVehicle, firstDay }) => (
           <Section key={franchise.id} title={franchiseLabel(franchise)}>
             <Panel>
               <div className="grid gap-6 sm:grid-cols-3">
                 <Stat
                   label="Money in (daily payments)"
-                  value={formatGBP(check.income.ourPayments)}
+                  value={check.income.status === "unread" ? "Not Read Yet" : formatGBP(check.income.ourPayments)}
                   sub={check.income.invoiceStopPay == null ? "Invoice stop pay: not available yet" : `Invoice stop pay: ${formatGBP(check.income.invoiceStopPay)}`}
                   status={<Badge tone={STATUS[check.income.status].tone}>{STATUS[check.income.status].label}</Badge>}
                 />
@@ -125,6 +136,14 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
                   sub={check.payable.expected == null ? undefined : "Self-billed total less charges. Compare with the remittance advice (it can differ by a penny)."}
                 />
               </div>
+
+              {check.income.status === "unread" ? (
+                <p className="mt-4 text-sm text-ink-soft">
+                  {firstDay
+                    ? `The app holds daily payments from ${formatUkDate(firstDay)}. This period starts before that, so there is nothing to compare the invoice with. The invoice itself is not in question.`
+                    : "The app has not read any daily payments for this franchise yet, so there is nothing to compare the invoice with. The invoice itself is not in question."}
+                </p>
+              ) : null}
 
               {check.income.status === "differs" && check.income.difference != null ? (
                 <p className="mt-4 text-sm text-bad">

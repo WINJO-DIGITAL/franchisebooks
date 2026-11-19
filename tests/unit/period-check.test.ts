@@ -67,4 +67,25 @@ describe("period check", () => {
     expect(vatOn(1500)).toBe(300);
     expect(vatOn(24725)).toBe(4945);
   });
+
+  it("does not call it a mismatch when the app never read the period: no data is not zero earned", () => {
+    // The app only holds daily payments from 9 Nov, so a period that closed on 8 Nov has no days to compare with.
+    const c = checkPeriod({ period, payments: [], charges, invoice, tolerancePence: 100, coverage: { first: "2026-11-09", last: "2026-11-19" } });
+    expect(c.income.status).toBe("unread");
+    expect(c.income.difference).toBeNull();
+    expect(c.income.invoiceStopPay).toBe(722286); // the invoice's own figure is still shown
+  });
+
+  it("says unread when no daily payments have been read at all", () => {
+    const c = checkPeriod({ period, payments: [], charges, invoice, tolerancePence: 100, coverage: { first: null, last: null } });
+    expect(c.income.status).toBe("unread");
+  });
+
+  it("still compares, and still reports a real difference, once the app holds the whole period", () => {
+    const covered = { first: "2026-10-12", last: "2026-11-19" };
+    expect(checkPeriod({ period, payments: [722286], charges, invoice, tolerancePence: 100, coverage: covered }).income.status).toBe("match");
+    const off = checkPeriod({ period, payments: [700000], charges, invoice, tolerancePence: 100, coverage: covered });
+    expect(off.income.status).toBe("differs");
+    expect(off.income.difference).toBe(700000 - 722286);
+  });
 });
