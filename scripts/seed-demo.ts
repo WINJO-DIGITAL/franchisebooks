@@ -9,6 +9,7 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { addDays, londonToday, weekdayOf } from "@/lib/dates";
+import { runAnomalyScan } from "@/lib/anomalies/run";
 import { importDocument } from "@/lib/ingest/pipeline";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { arg, loadLocalEnv } from "./lib/env";
@@ -110,6 +111,16 @@ async function main() {
   const monthStart = `${today.slice(0, 7)}-01`;
   await user.from("revenue_entries").insert({ account_id: account, franchise_id: franchiseId, period_start: monthStart, period_end: today.slice(0, 7) + "-" + String(new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).getUTCDate()).padStart(2, "0"), amount: "9500.00", status: "estimated", description: "Synthetic estimate", created_by: login.data.user.id });
   await user.rpc("create_pay_adjustment", { p_franchise_id: franchiseId, p_driver_id: driverIds[0]!, p_earnings_date: addDays(today, -4), p_type: "additional_payment", p_amount: 50 as unknown as number, p_reason: "Covered an extra route (demo)" });
+  // One synthetic DPD invoice whose stop-pay line is far below the daily payments we hold, so the cross-check (the app's only alert)
+  // has something to show. All figures invented.
+  const periodStart = addDays(today, -28);
+  const periodEnd = addDays(today, -1);
+  await admin.from("dpd_invoices").insert({
+    account_id: account, franchise_id: franchiseId, invoice_no: "FI-DEMO-1", invoice_date: periodEnd, due_date: periodEnd, period_start: periodStart, period_end: periodEnd,
+    net_total: 1000, vat_total: 200, invoice_total: 1200, reconciled: true, problems: [],
+    lines: [{ description: "Successful collection and delivery stops Monday - Friday", quantity: 400, rate: "Various", amount: 100000, vatCode: "S" }] as never,
+  });
+  await runAnomalyScan(admin, account, { from: addDays(today, -35), to: today });
   console.log(`Demo data loaded: ${imported} days of synthetic earnings, fuel, one adjustment and an estimated revenue figure.\nSign in with ${EMAIL} / ${PASSWORD}`);
 }
 

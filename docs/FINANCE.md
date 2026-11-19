@@ -78,11 +78,12 @@ Whether DPD's "daily earnings" statement is what a driver is paid (a cost to you
 
 ## Telling duplicates and missing data apart
 
-The app decides from facts, not guesses:
+See `docs/CORE.md` for the principles. In short:
 
-* **Daily payments are the record of what was paid each day.** A DPD invoice is a summary of the same money for a four-week period. It is checked against the daily payments, never added to them, so nothing is counted twice. Only the invoice's extra lines (Fuel Supplement, C&D App and so on, not the stop-pay lines) count as extra income.
-* **The same driver, franchise and day with the same figures is one record.** It does not matter if the route text differs or the driver code is spelled `DR27903` or `ref:dr27903`. Two routes on one day stay separate only when their figures differ.
-* **No data is not zero.** An invoice is compared with the daily payments only for a period the app holds daily payments for. For earlier days (before the first read) there is nothing to compare, so no alert is raised, and the invoice is not wrong.
-* **Only what is printed is used.** The app reports the figures on a document as they are. It never fills in a figure the document does not show. If a printed total does not add up, the invoice is flagged for checking instead of being corrected. An invoice needs checking by hand only when its own printed totals disagree.
+* **Income is the daily Payments; expenses are the Transaction Charges.** A DPD invoice is a summary of those two. It is scanned and kept as a reference so our figures can be cross-checked against DPD's. It is never added to income or expenses, because that would count the money twice.
+* **The only alert is that cross-check.** The payments we read, less the charges, against what the invoice states for the period.
+* **A duplicate is the same row read twice:** the same franchise, driver, day and route. Two rows on the portal with identical figures are two records. The two spellings of a driver code (`DR27903` and `ref:dr27903`) are the same driver.
+* **No data is not zero.** An invoice is compared with the daily payments only for a period the app holds daily payments for.
+* **Only what is printed is used.** The app never fills in or corrects a figure. A printed total that does not add up is flagged for checking.
 * **A daily report with headings and no rows** is a day with nothing in it. It is recorded as read and does not wait for a decision.
-* **A franchise with no transaction charges is zero, not an error.** Some franchises (for example FD78797) carry no transaction charges: the portal's Transaction Charges page shows no table, a zero total, or "no records". That is correct. Other accounts can be paying for that franchise's running costs. The app records zero charges when the page says so, and still raises an error for a page it does not recognise, so a changed layout is still caught.
+* **A franchise with no transaction charges is zero, not an error.** Some franchises (for example FD78797) carry no transaction charges: the Transaction Charges page shows no table, a zero total, or "no records". That is correct, because other accounts can be paying for that franchise's running costs. The app records zero when the page says so, and still raises an error for a page it does not recognise.

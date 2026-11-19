@@ -66,7 +66,7 @@ export async function runAnomalyScan(
   const syncMinutes = parseTimeToMinutes(settings?.sync_time_local ?? "20:30") ?? 20 * 60 + 30;
   const reportsExpectedThrough = londonMinutesOfDay(now, timezone) >= syncMinutes + REPORT_GRACE_MINUTES ? today : addDays(today, -1);
 
-  const candidates = detectAnomalies({
+  const detected = detectAnomalies({
     evalFrom: range.from,
     evalTo: range.to,
     reportsExpectedThrough,
@@ -89,6 +89,9 @@ export async function runAnomalyScan(
       return { id: c.id, franchiseId: c.franchise_id, title: c.title, detail: c.detail, date: incoming?.report_date ?? c.created_at.slice(0, 10) };
     }),
   });
+  // The app's alerts are about one thing: do the daily Payments we read, less the charges, agree with the DPD invoice? Everything
+  // the portal states is treated as fact, so duplicate drivers, unregistered names and the like are not alerts.
+  const candidates = detected.filter((c) => ALERT_TYPES.has(c.type));
 
   const created = await saveCandidates(db, accountId, candidates);
   const autoResolved = await closeStaleAlerts(db, accountId, range, candidates);
@@ -122,6 +125,9 @@ async function saveCandidates(db: AdminClient, accountId: string, candidates: An
   }
   return created;
 }
+
+/** The only alert types the app raises: the invoice cross-check. */
+const ALERT_TYPES: ReadonlySet<string> = new Set(["invoice_mismatch", "invoice_unreadable"]);
 
 const SELF_CLOSING = ["missing_fuel", "unregistered_driver", "source_conflict", "cost_unassigned"];
 

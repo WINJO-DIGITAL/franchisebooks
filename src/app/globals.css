@@ -2,7 +2,7 @@
 
 /*
  * Design tokens — "ledger" look: warm cream paper, deep brown ink, hairline rules, one
- * orange accent (Franchise Books brand). Figures are set large in tabular numerals.
+ * orange accent (Franchise Books brand; a deeper shade of the logo orange for text and buttons so it passes WCAG AA, the bright logo orange for bars). Figures are set large in tabular numerals.
  */
 @theme {
   --color-paper: #fcf6e8;
@@ -14,10 +14,10 @@
   --color-line: #eadcc6;
   --color-line-strong: #d6c5a9;
 
-  --color-accent: #f06000;
-  --color-accent-strong: #c24d00;
+  --color-accent: #b84700;
+  --color-accent-strong: #9a3a00;
   --color-accent-soft: #fde9d8;
-  --color-accent-bar: #f58a3a;
+  --color-accent-bar: #f06000;
 
   --color-good: #1c6e45;
   --color-good-soft: #e6f3ec;

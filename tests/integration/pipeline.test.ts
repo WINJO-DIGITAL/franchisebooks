@@ -90,8 +90,11 @@ describe("earnings PDF end to end", () => {
     expect(outcome.message).toContain("disagree");
     const [alex] = await sql<{ stops: number }>("select stops from public.daily_earnings where account_id = $1 and source_driver_name = 'Alex Example' and is_current", [t.accountId]);
     expect(alex!.stops).toBe(108);
+    // The disagreement waits for a person as a review item. It is not an alert: the only alert is the invoice cross-check.
+    const review = await sql("select kind from public.review_items where account_id = $1 and kind = 'source_conflict' and status = 'open'", [t.accountId]);
+    expect(review).toHaveLength(1);
     const alerts = await sql("select anomaly_type from public.anomalies where account_id = $1 and anomaly_type = 'source_conflict'", [t.accountId]);
-    expect(alerts).toHaveLength(1);
+    expect(alerts).toHaveLength(0);
   });
 
   it("adds the names on a report as drivers instead of raising unregistered-driver alerts", async () => {

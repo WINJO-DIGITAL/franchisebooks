@@ -9,7 +9,7 @@ import { ReasonDialog } from "@/components/ui/reason-dialog";
 import { voidCost } from "@/lib/actions/expenses";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
-import { loadCosts, loadDriverNames, loadOtherPayments } from "@/lib/data/period";
+import { loadCosts, loadDriverNames } from "@/lib/data/period";
 import { addDays, addMonths, formatMonth, formatUkDate, isYearMonth, monthOf, monthRange } from "@/lib/dates";
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
@@ -30,11 +30,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const show = FILTERS.some((f) => f.key === params.show) ? (params.show as (typeof FILTERS)[number]["key"]) : "all";
   const { start, end } = monthRange(month);
 
-  const [costs, names, categories, otherPayments] = await Promise.all([
+  const [costs, names, categories] = await Promise.all([
     loadCosts(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId }),
     loadDriverNames(ctx.supabase, ctx.accountId),
     fetchAll(() => ctx.supabase.from("expense_categories").select("id, name, kind, is_active").eq("is_active", true).order("sort_order").order("id")),
-    loadOtherPayments(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId }),
   ]);
   const { data: activeDrivers } = await ctx.supabase.from("drivers").select("id, display_name").eq("is_active", true).order("display_name");
   const drivers = (activeDrivers ?? []).map((d) => ({ id: d.id, label: d.display_name }));
@@ -43,8 +42,6 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const fuelTotal = sumPence(costs.filter(isFuel).map((c) => c.amount));
   const otherTotal = sumPence(costs.filter((c) => !isFuel(c)).map((c) => c.amount));
   const unallocated = costs.filter((c) => c.allocation.scope === "unallocated");
-  const otherPaymentsTotal = sumPence(otherPayments.map((o) => o.amount));
-  const otherByLabel = [...otherPayments.reduce((m, o) => m.set(o.label, (m.get(o.label) ?? 0) + o.amount), new Map<string, number>())].sort((a, b) => b[1] - a[1]);
   const litres = costs.reduce((n, c) => n + (c.litres ?? 0), 0);
 
   const visible = costs
@@ -142,38 +139,6 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           </table>
         </TableWrap>
       )}
-
-      {otherPayments.length > 0 ? (
-        <section className="mt-10" aria-labelledby="other-dpd-payments">
-          <h2 id="other-dpd-payments" className="text-lg font-semibold">Other DPD payments</h2>
-          <p className="mb-3 text-sm text-muted">Extra lines DPD pays you on its invoices, such as the Fuel Supplement and C&amp;D App. They are income, not expenses, so they are not in the totals above. Amounts exclude VAT.</p>
-          <div className="mb-4 flex flex-wrap gap-x-8 gap-y-2">
-            <Stat label="Paid to you" value={formatGBP(otherPaymentsTotal)} />
-            {otherByLabel.map(([label, amount]) => <Stat key={label} label={label} value={formatGBP(amount)} />)}
-          </div>
-          <TableWrap>
-            <table className="ledger">
-              <thead>
-                <tr><th>Invoice period</th><th>What</th>{!ctx.franchise ? <th>Franchise</th> : null}<th className="hidden sm:table-cell">Invoice</th><th className="r">Amount</th></tr>
-              </thead>
-              <tbody>
-                {[...otherPayments].sort((a, b) => b.date.localeCompare(a.date) || a.label.localeCompare(b.label)).map((o) => (
-                  <tr key={o.id}>
-                    <td className="num whitespace-nowrap">{formatUkDate(o.date)}<span className="block text-xs text-muted">to {formatUkDate(o.periodEnd)}</span></td>
-                    <td className="font-medium">{o.label}</td>
-                    {!ctx.franchise ? <td>{franchiseName.get(o.franchiseId) ?? "—"}</td> : null}
-                    <td className="num hidden sm:table-cell">{o.invoiceNo}</td>
-                    <td className="r num font-semibold">{formatGBP(o.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr><td colSpan={2}>Total paid to you</td>{!ctx.franchise ? <td /> : null}<td className="hidden sm:table-cell" /><td className="r num">{formatGBP(otherPaymentsTotal)}</td></tr>
-              </tfoot>
-            </table>
-          </TableWrap>
-        </section>
-      ) : null}
     </>
   );
 }
