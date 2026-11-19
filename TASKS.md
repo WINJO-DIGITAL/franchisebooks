@@ -18,7 +18,6 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise) (you).
 - [ ] Confirm with your accountant how credit notes should be treated (currently: money in, labelled) (you).
 - [ ] Press Sync DPD once, then check a new run appears in GitHub Actions, to prove `GITHUB_SYNC_TOKEN` works (you).
-- [ ] Delete the unused GitHub secrets `DPD_USERNAME` and `DPD_PASSWORD` (you).
 - [ ] Give the assistant an email address to send a test driver invitation to (you).
 
 ### Assistant to do
