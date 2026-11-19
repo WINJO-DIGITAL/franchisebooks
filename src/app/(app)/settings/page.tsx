@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { ManageBillingForm } from "@/components/billing/forms";
 import { CloseAccountForm } from "@/components/settings/close-account";
 import { AddDpdLoginForm, RefreshDpdLoginButton, RemoveDpdLoginButton } from "@/components/settings/forms";
-import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, DpdLoginForm, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
+import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
 import { Badge, DefinitionList, Notice, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { DEFAULT_ANOMALY_CONFIG, resolveAnomalyConfig } from "@/lib/anomalies/detect";
 import { PLAN_PRICE_GBP } from "@/lib/billing/status";
-import { hasDpdLogin } from "@/lib/dpd/login";
 import { listDpdLogins } from "@/lib/dpd/logins";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
@@ -33,7 +32,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   ]);
   const driverOptions = driverRows.map((d) => ({ id: d.id, label: d.display_name }));
   const s = settings.data;
-  const dpdSaved = ctx.isOwner ? await hasDpdLogin(createAdminClient(), accountId) : false;
   const listedLogins = ctx.isOwner ? await listDpdLogins(createAdminClient(), accountId) : [];
   const { data: billing } = ctx.isOwner ? await supabase.from("user_billing").select("status, current_period_end, cancel_at_period_end, stripe_customer_id").eq("user_id", ctx.userId).maybeSingle() : { data: null };
   const config = resolveAnomalyConfig(s?.anomaly_config);
@@ -124,12 +122,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           </Panel>
         </Section>
       ) : null}
-
-      <Section title="DPD portal login" description="The login the app uses to sign in to the DPD portal for the nightly sync. It is stored encrypted, and only the owner can change it.">
-        <Panel>
-          {ctx.isOwner ? <DpdLoginForm saved={dpdSaved} /> : <p className="text-sm text-muted">Only the owner can change the DPD login.</p>}
-        </Panel>
-      </Section>
 
       {ctx.isOwner && billing ? (
         <Section title="Subscription" description={`Franchise Books by Winjo Digital is £${PLAN_PRICE_GBP} a month for your account, however many franchises you add.`}>
