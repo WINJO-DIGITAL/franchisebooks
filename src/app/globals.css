@@ -100,6 +100,16 @@ dialog::backdrop {
   background: rgb(239 237 231 / 0.45);
 }
 
+/* Browser autofill would otherwise paint fields yellow. Keep them in the app's own colours. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  -webkit-text-fill-color: var(--color-ink);
+  caret-color: var(--color-ink);
+}
+
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(300%); }

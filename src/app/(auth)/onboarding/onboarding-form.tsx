@@ -15,10 +15,10 @@ export function OnboardingForm() {
       {(state) => (
         <>
           <Field label="What is your business called?" error={state.fieldErrors?.businessName}>
-            <Input name="businessName" autoComplete="organization" required />
+            <Input name="businessName" autoComplete="organization" autoCapitalize="words" required />
           </Field>
           <Field label="What is your name?" error={state.fieldErrors?.fullName}>
-            <Input name="fullName" autoComplete="name" required />
+            <Input name="fullName" autoComplete="name" autoCapitalize="words" required />
           </Field>
 
           {blocks.map((id, position) => (
