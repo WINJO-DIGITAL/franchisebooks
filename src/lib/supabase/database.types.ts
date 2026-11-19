@@ -904,6 +904,9 @@ isOneToOne: false
             "billing_allows_access":
 { Args: Record<string, never>; Returns: boolean
                            },
+"billing_plan":
+{ Args: Record<string, never>; Returns: string | null
+                           },
 "bootstrap_account":
 { Args: { "p_business_name": string,"p_full_name": string }; Returns: string
                            },

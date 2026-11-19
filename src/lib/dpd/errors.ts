@@ -20,3 +20,6 @@ export class PortalError extends Error {
     return this.kind === "network" || this.kind === "layout";
   }
 }
+
+/** The step name used when the portal's Period drop-down has no period containing the date asked for. */
+export const PERIOD_NOT_LISTED = "period-not-listed";

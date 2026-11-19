@@ -5,6 +5,8 @@
  */
 
 import "server-only";
+import { accountPlan } from "@/lib/billing/plan";
+import { queueHistoryReads } from "@/lib/history/backfill";
 import { runAnomalyScan } from "@/lib/anomalies/run";
 import { addDays, isISODate, isYearMonth, londonMinutesOfDay, londonToday, monthOf, monthRange } from "@/lib/dates";
 import { lastCompletedPeriod, type DpdPeriod } from "@/lib/finance/periods";
@@ -151,7 +153,7 @@ export async function drainJobs(
 
 export interface TickResult {
   accounts: number;
-  queued: { dpdSync: number; dropboxSync: number; anomalyScan: number; monthlyReport: number };
+  queued: { dpdSync: number; dropboxSync: number; anomalyScan: number; monthlyReport: number; historyRead: number };
   released: number;
   /** Accounts with a franchise still not read after the evening deadline (23:00 UK). */
   missedSync: number;
@@ -162,7 +164,7 @@ export interface TickResult {
  * places at once: every decision is "queue it unless it already exists".
  */
 export async function runSchedulerTick(db: AdminClient, now: Date = new Date()): Promise<TickResult> {
-  const result: TickResult = { accounts: 0, queued: { dpdSync: 0, dropboxSync: 0, anomalyScan: 0, monthlyReport: 0 }, released: 0, missedSync: 0 };
+  const result: TickResult = { accounts: 0, queued: { dpdSync: 0, dropboxSync: 0, anomalyScan: 0, monthlyReport: 0, historyRead: 0 }, released: 0, missedSync: 0 };
   const { data: released } = await db.rpc("release_stale_jobs", { p_older_than: "45 minutes" });
   result.released = Number(released ?? 0);
 
@@ -193,6 +195,10 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
             await enqueueJob(db, { accountId, type: "dpd_sync", franchiseId: franchise.id, reportDate: decision.reportDate, trigger: "schedule" });
             result.queued.dpdSync += 1;
           }
+        }
+        // Max plan: a few more past periods each night, queued after tonight's reads so those are done first.
+        if ((franchises?.length ?? 0) > 0 && (await accountPlan(db, accountId)) === "max") {
+          result.queued.historyRead += await queueHistoryReads(db, accountId, decision.reportDate);
         }
       }
       // Daily check for missing reports and anything unusual (runs whether or not DPD sync is set up).

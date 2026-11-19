@@ -5,6 +5,7 @@ import { AddDpdLoginForm, RefreshDpdLoginButton, RemoveDpdLoginButton } from "@/
 import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
 import { Badge, DefinitionList, Notice, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { DEFAULT_ANOMALY_CONFIG, resolveAnomalyConfig } from "@/lib/anomalies/detect";
+import { currentPlan } from "@/lib/billing/plan";
 import { PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { listDpdLogins } from "@/lib/dpd/logins";
 import { franchiseLabel, getContext } from "@/lib/context";
@@ -32,6 +33,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const s = settings.data;
   const listedLogins = ctx.isOwner ? await listDpdLogins(createAdminClient(), accountId) : [];
   const { data: billing } = ctx.isOwner ? await supabase.from("user_billing").select("status, current_period_end, cancel_at_period_end, stripe_customer_id").eq("user_id", ctx.userId).maybeSingle() : { data: null };
+  const plan = ctx.isOwner ? await currentPlan(supabase) : null;
   const config = resolveAnomalyConfig(s?.anomaly_config);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const optionFranchises = franchises.filter((f) => f.is_active).map((f) => ({ id: f.id, label: f.name ? `${f.fd_number} · ${f.name}` : f.fd_number }));
@@ -122,7 +124,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       ) : null}
 
       {ctx.isOwner && billing ? (
-        <Section title="Subscription" description={`Franchise Books by Winjo Digital is £${PLAN_PRICE_GBP} a month for your account, however many franchises you add.`}>
+        <Section title="Subscription" description={`Your plan is ${plan === "max" ? "Max" : "Standard"}: £${PLAN_PRICE_GBP[plan ?? "standard"]} a month for your account, however many franchises you add.${plan === "max" ? "" : ` Max (£${PLAN_PRICE_GBP.max} a month) adds your DPD history over the current and previous tax year, with trends, driver performance and rate checks. Change plan under Manage Billing.`}`}>
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1 text-sm">

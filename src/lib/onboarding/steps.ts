@@ -7,8 +7,8 @@ export interface SetupState {
   franchiseCount: number;
   /** A DPD login has been saved for the account. */
   hasDpdLogin: boolean;
-  /** At least one DPD payment has been read. */
-  hasEarnings: boolean;
+  /** DPD has been read successfully at least once, or a payment is held. A franchise with no payments still completes this. */
+  firstReadDone: boolean;
   driverCount: number;
   /** Drivers who have days worked but no pay rate set. */
   driversWithoutRate: number;
@@ -32,8 +32,8 @@ export function remainingSetupSteps(s: SetupState): SetupStep[] {
   const steps: SetupStep[] = [];
   if (!s.hasDpdLogin) {
     steps.push({ key: "login", title: "Connect Your DPD Login", detail: "Saved encrypted. We read your franchises, drivers, payments and charges from DPD, read-only.", href: "/settings", cta: "Add your login" });
-  } else if (!s.hasEarnings) {
-    steps.push({ key: "first-read", title: "Reading Your DPD Account", detail: "We are finding your franchises and drivers on DPD. Press Sync DPD to start it now. Your figures appear here once it finishes.", href: "/data", cta: "Open Data & Integrations" });
+  } else if (!s.firstReadDone) {
+    steps.push({ key: "first-read", title: "Reading Your DPD Account", detail: "We are reading your franchises, drivers, payments and charges from DPD. This starts straight after set-up, and your figures appear here once it finishes.", href: "/data", cta: "Open Data & Integrations" });
   }
   if (s.driverCount > 0 && s.ratesMatter && s.driversWithoutRate > 0) {
     steps.push({
@@ -65,7 +65,7 @@ export function setupChecklist(s: SetupState): ChecklistItem[] {
   const ratesDone = !(s.driverCount > 0 && s.ratesMatter && s.driversWithoutRate > 0);
   const items: ChecklistItem[] = [
     { key: "login", title: "Connect Your DPD Login", detail: "Saved encrypted and read-only.", href: "/settings", cta: "Add your login", done: s.hasDpdLogin },
-    { key: "first-read", title: "First read of your DPD account", detail: s.hasEarnings ? "Your franchises, drivers and payments have been read from DPD." : "Press Sync DPD to start it now. Your figures appear once it finishes.", href: "/data", cta: "Open Data & Integrations", done: s.hasEarnings },
+    { key: "first-read", title: "First read of your DPD account", detail: s.firstReadDone ? "Your franchises, drivers, payments and charges have been read from DPD." : "This starts straight after set-up. Your figures appear once it finishes.", href: "/data", cta: "Open Data & Integrations", done: s.firstReadDone },
     {
       key: "rates",
       title: ratesDone ? "Set your drivers' pay rates" : `Set the pay rate for ${s.driversWithoutRate} driver${s.driversWithoutRate === 1 ? "" : "s"}`,
@@ -74,7 +74,7 @@ export function setupChecklist(s: SetupState): ChecklistItem[] {
         : "Per day worked or per stop. Until a driver has one, their wages show as incomplete and no driver statement is made for them.",
       href: "/drivers",
       cta: "Set pay rates",
-      done: s.hasEarnings && ratesDone,
+      done: s.firstReadDone && ratesDone,
     },
   ];
   return items.every((i) => i.done) ? [] : items;

@@ -89,14 +89,14 @@ describe("reading the FD number on DPD invoices (FD75486 and FD75488)", () => {
 });
 
 describe("first-franchisee checklist", () => {
-  const start = { franchiseCount: 0, hasDpdLogin: false, hasEarnings: false, driverCount: 0, driversWithoutRate: 0, ratesMatter: true };
+  const start = { franchiseCount: 0, hasDpdLogin: false, firstReadDone: false, driverCount: 0, driversWithoutRate: 0, ratesMatter: true };
   it("lists the three steps, ticking off what is done", () => {
     expect(setupChecklist(start).map((i) => [i.key, i.done])).toEqual([["login", false], ["first-read", false], ["rates", false]]);
-    const afterSync = setupChecklist({ ...start, hasDpdLogin: true, hasEarnings: true, franchiseCount: 2, driverCount: 6, driversWithoutRate: 4 });
+    const afterSync = setupChecklist({ ...start, hasDpdLogin: true, firstReadDone: true, franchiseCount: 2, driverCount: 6, driversWithoutRate: 4 });
     expect(afterSync.map((i) => [i.key, i.done])).toEqual([["login", true], ["first-read", true], ["rates", false]]);
     expect(afterSync[2]!.title).toBe("Set the pay rate for 4 drivers");
   });
   it("goes away once every driver who worked has a pay rate", () => {
-    expect(setupChecklist({ ...start, hasDpdLogin: true, hasEarnings: true, franchiseCount: 2, driverCount: 6, driversWithoutRate: 0 })).toEqual([]);
+    expect(setupChecklist({ ...start, hasDpdLogin: true, firstReadDone: true, franchiseCount: 2, driverCount: 6, driversWithoutRate: 0 })).toEqual([]);
   });
 });

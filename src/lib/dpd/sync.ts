@@ -21,7 +21,7 @@ import { describeError, logger } from "@/lib/logger";
 import type { AdminClient } from "@/lib/supabase/admin";
 import type { JsonObject } from "@/lib/supabase/json";
 import { discoverPortal, inventoryMarkdown } from "./discovery";
-import { PortalError } from "./errors";
+import { PERIOD_NOT_LISTED, PortalError } from "./errors";
 import { portalMapSchema, type PortalMap } from "./portal-map";
 import { PortalSession, type PortalCredentials } from "./session";
 import { alertOwnerOfSyncFailure } from "@/lib/notify/alerts";
@@ -129,6 +129,10 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   const outcomes: ImportOutcome[] = [];
   const invoices: InvoiceImportOutcome[] = [];
   const failures: { report: string; message: string }[] = [];
+  // A Max plan history read of a past period: invoices are left to the normal reads, and a period DPD does not list is an
+  // answer in itself ("not available"), not a failure to retry.
+  const history = (job.payload as { history?: unknown } | null)?.history === true;
+  const notListed: string[] = [];
   // Invoices already stored and adding up (for any franchise in the business: one login can list a sibling franchise's
   // invoices) are not downloaded again; a new invoice is fetched on the first night it is listed. A stored invoice whose lines
   // did not add up is fetched and read again each night, so an improved reading puts it right.
@@ -140,6 +144,7 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   const siblings = (accountFranchises ?? []).map((f) => ({ id: f.id, fdNumber: f.fd_number }));
 
   for (const report of map.reports) {
+    if (history && report.kind === "invoices") continue;
     try {
       // Each report starts from the franchise's landing page.
       await session.openFranchise(franchise.fd_number, date);
@@ -175,6 +180,10 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
       }
     } catch (error) {
       const portalError = error instanceof PortalError ? error : null;
+      if (history && portalError?.step === `${report.id}:${PERIOD_NOT_LISTED}`) {
+        notListed.push(report.label);
+        continue;
+      }
       const plain = portalError?.plainEnglish ?? `The “${report.label}” report could not be collected.`;
       failures.push({ report: report.label, message: plain });
 
@@ -197,6 +206,13 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
     }
   }
 
+  if (history && notListed.length > 0 && outcomes.length === 0 && failures.length === 0) {
+    // DPD's Period drop-down does not go back this far. Recorded, so the period is shown as not available and not asked for again.
+    const message = `${franchise.fd_number}, period containing ${formatUkDate(date)}: DPD does not list this period, so there is nothing to read.`;
+    await logSync(db, job, "info", "history_period_not_listed", message, { reportDate: date, reports: notListed });
+    return { status: "succeeded", message, result: { reportDate: date, history: true, periodListed: false, documents: 0, inserted: 0 } };
+  }
+
   const inserted = outcomes.reduce((n, o) => n + o.inserted, 0);
   const needsReview = outcomes.filter((o) => o.status === "needs_review" || o.status === "failed").length;
   const blockedWrites = session.guard.blocked.length;
@@ -204,7 +220,7 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   // An invoice needs checking by hand only when its own printed totals disagree. One whose totals agree but whose lines could
   // not be read exactly is stored as it stands.
   const invoicesToCheck = invoices.filter((i) => !i.recheck && (i.status !== "stored" || !i.totalsAgree)).length;
-  const result = { reportDate: date, documents: outcomes.length, inserted, needsReview, invoicesStored, invoicesToCheck, failures, blockedRequests: blockedWrites };
+  const result = { reportDate: date, history, documents: outcomes.length, inserted, needsReview, invoicesStored, invoicesToCheck, failures, blockedRequests: blockedWrites };
 
   if (outcomes.length === 0 && invoices.length === 0 && failures.length > 0) {
     await touchConnection(db, job.account_id, { error: failures[0]!.message });

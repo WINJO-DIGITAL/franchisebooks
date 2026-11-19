@@ -7,7 +7,7 @@ import { extractFdNumbers } from "@/lib/onboarding/franchises";
 import type { Browser, BrowserContext, Download, Locator, Page } from "playwright";
 import { londonToday, type ISODate } from "@/lib/dates";
 import { scrubSecrets } from "@/lib/logger";
-import { PortalError } from "./errors";
+import { PortalError, PERIOD_NOT_LISTED } from "./errors";
 import { classifyLoginFailure } from "./login-failure";
 import { ReadOnlyGuard, safeClick, WRITE_ACTION_PATTERN } from "./guard";
 import { findPeriodIndex, parsePeriodText, tableShowsPeriod, yearCandidates } from "./period";
@@ -272,7 +272,7 @@ export class PortalSession {
         await this.chooseOption(selection.periodLabel, (text) => text === texts[at], stepName);
         return;
       }
-      throw new PortalError("layout", stepName, `No reporting period containing ${values.date} was found on the “${report.label}” page. The period may not exist yet.`);
+      throw new PortalError("layout", `${report.id}:${PERIOD_NOT_LISTED}`, `No reporting period containing ${values.date} was found on the “${report.label}” page. The period may not exist yet.`);
     }
     if (selection.mode === "url_param") {
       const url = new URL(this.page.url());

@@ -63,7 +63,7 @@ export default async function DashboardPage() {
   const noFranchises = ctx.franchises.length === 0;
   const noData = data.earnings.length === 0 && data.costs.length === 0;
   const [{ data: dpdConnection }, { count: everRead }] = await Promise.all([
-    ctx.supabase.from("integration_connections").select("config").eq("account_id", accountId).eq("provider", "dpd").maybeSingle(),
+    ctx.supabase.from("integration_connections").select("config, last_success_at").eq("account_id", accountId).eq("provider", "dpd").maybeSingle(),
     // Any DPD payment ever read (not just this pay period), so the checklist does not come back at the start of each period.
     data.earnings.length > 0 ? Promise.resolve({ count: 1 }) : ctx.supabase.from("daily_earnings").select("id", { count: "exact", head: true }).eq("account_id", accountId).limit(1),
   ]);
@@ -75,7 +75,8 @@ export default async function DashboardPage() {
   const setupItems = setupChecklist({
     franchiseCount: ctx.franchises.length,
     hasDpdLogin: dpdSetupReady(dpdConnection?.config),
-    hasEarnings: (everRead ?? 0) > 0,
+    // A successful read counts even when DPD shows no payments (an ended franchise has none), so the step does not ask again.
+    firstReadDone: (everRead ?? 0) > 0 || Boolean(dpdConnection?.last_success_at),
     driverCount: data.driverNames.size,
     driversWithoutRate: driversNeedingRate.length,
     // Pay rates always matter: driver statements and wages are worked out from them, whichever way DPD figures are read.

@@ -5,7 +5,10 @@ import { getStripe, saveSubscription } from "@/lib/billing/stripe";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/notify/email";
 import { describeError, logger, reportError } from "@/lib/logger";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { accountPlan } from "@/lib/billing/plan";
+import { startWorkerRun } from "@/lib/github/dispatch";
+import { queueHistoryReads } from "@/lib/history/backfill";
+import { createAdminClient, type AdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -42,6 +45,7 @@ export async function POST(request: NextRequest) {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       const admin = createAdminClient();
       const userId = await saveSubscription(admin, subscription);
+      await startHistoryOnUpgrade(admin, userId);
       if (subscription.status === "past_due") {
         // Stripe is retrying the card. Tell the paying customer now, so the retry can be fixed in time.
         const { data } = await admin.auth.admin.getUserById(userId);
@@ -59,5 +63,20 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     await reportError(error, { where: "stripe.webhook", eventType: event.type });
     return NextResponse.json({ error: "Could not process the event." }, { status: 500 });
+  }
+}
+
+/**
+ * On Max, start reading the account's history straight away rather than waiting for the evening. A person who has paid but not
+ * set up their business yet has no franchises, so nothing is queued; the first read after set-up starts it instead.
+ */
+async function startHistoryOnUpgrade(admin: AdminClient, userId: string): Promise<void> {
+  try {
+    const { data: profile } = await admin.from("user_profiles").select("account_id").eq("id", userId).eq("role", "owner").maybeSingle();
+    if (!profile?.account_id || (await accountPlan(admin, profile.account_id)) !== "max") return;
+    if ((await queueHistoryReads(admin, profile.account_id)) > 0) await startWorkerRun();
+  } catch (error) {
+    // Not fatal: the nightly schedule queues the history for Max accounts anyway.
+    logger.warn({ error: describeError(error), userId }, "could not start the Max history read");
   }
 }
