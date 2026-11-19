@@ -131,7 +131,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         </dl>
         {rateRows.length > 0 ? (
           <TableWrap>
-            <table className="table">
+            <table className="ledger">
               <thead><tr><th>From</th><th>Paid</th><th className="r">Rate</th><th>Note</th></tr></thead>
               <tbody>
                 {rateRows.map((r) => (
