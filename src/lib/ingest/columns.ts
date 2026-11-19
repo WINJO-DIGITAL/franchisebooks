@@ -18,7 +18,7 @@ export type FuelField =
   | "pricePerLitre" | "net" | "vat" | "total" | "reference";
 
 export type ExpenseField =
-  | "date" | "description" | "supplier" | "category" | "amount" | "reference" | "registration" | "driver";
+  | "date" | "description" | "supplier" | "category" | "amount" | "vat" | "reference" | "registration" | "driver";
 
 const EARNINGS: Record<EarningsField, string[]> = {
   driver: ["driver", "driver name", "name", "courier", "courier name"],
@@ -61,6 +61,7 @@ const EXPENSE: Record<ExpenseField, string[]> = {
   supplier: ["supplier", "merchant", "payee", "vendor", "paid to"],
   category: ["category", "type", "expense type", "expense category"],
   amount: ["amount", "total", "cost", "value", "gross", "gross amount", "total amount"],
+  vat: ["vat", "vat amount", "vat stated"],
   reference: ["reference", "ref", "invoice", "invoice no", "invoice number", "receipt", "transaction id"],
   registration: ["registration", "reg", "vehicle", "vehicle reg", "vehicle registration", "vrn"],
   driver: ["driver", "driver name"],

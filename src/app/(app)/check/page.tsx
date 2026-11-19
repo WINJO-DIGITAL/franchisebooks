@@ -80,7 +80,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
     const check = checkPeriod({
       period,
       payments: earnings.filter((e) => e.franchiseId === f.id).map((e) => e.gross),
-      charges: costs.filter((c) => c.franchiseId === f.id && c.source === "dpd_portal").map((c) => c.amount),
+      charges: costs.filter((c) => c.franchiseId === f.id && c.source === "dpd_portal").map((c) => ({ net: c.amount, vat: c.vat })),
       invoice,
       tolerancePence,
       coverage: coverage.get(f.id),
@@ -128,7 +128,9 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
                 <Stat
                   label="Money Out (DPD Charges)"
                   value={formatGBP(check.charges.net)}
-                  sub="Excluding VAT, as the portal states them."
+                  sub={check.charges.vatStatedOn > 0
+                    ? `Before VAT. VAT as the portal states it: ${formatGBP(check.charges.vatStated)}${check.charges.vatStatedOn < check.charges.count ? ` (on ${check.charges.vatStatedOn} of ${check.charges.count} charges)` : ""}. Including VAT: ${formatGBP(check.charges.gross)}.`
+                    : "Before VAT, as the portal states them. The portal states no VAT on these charges."}
                 />
                 <Stat
                   label="Invoice Total"

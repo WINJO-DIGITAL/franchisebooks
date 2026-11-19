@@ -169,3 +169,36 @@ describe("the DPD portal map", () => {
     ]);
   });
 });
+
+describe("the VAT the portal states on each charge", () => {
+  const map = portalMapSchema.parse(JSON.parse(readFileSync("src/lib/dpd/portal-map.json", "utf8")));
+  const charges = map.reports.find((r) => r.id === "charges")!;
+  const transform = (charges.collect as { transform?: ReturnType<typeof tableTransformSchema.parse> }).transform;
+
+  it("keeps the amount as printed (before VAT) and the stated VAT in its own column", () => {
+    const rows = [
+      ["", "Description", "", "Charge", ""],
+      ["Fixed costs", "Management Fee", "", "£11.47 (excl. £2.29 VAT)", ""],
+      ["Variable costs", "Temporary Van Hire", "", "£79.02 (excl. £15.80 VAT)", ""],
+    ];
+    const out = transformTable(rows, transform, values);
+    expect(out[0]).toEqual(["Category", "Description", "Spacer", "Amount", "Spacer 2", "VAT", "Date"]);
+    expect(out[1]).toEqual(["Fixed costs", "Management Fee", "", "£11.47", "", "2.29", "09/11/2026"]);
+    expect(out[2]).toEqual(["Variable costs", "Temporary Van Hire", "", "£79.02", "", "15.80", "09/11/2026"]);
+  });
+
+  it("leaves the VAT empty, and invents none, when the portal states none for a charge", () => {
+    const rows = [["", "Description", "", "Charge", ""], ["Fixed costs", "Admin Fee", "", "£5.00", ""]];
+    const out = transformTable(rows, transform, values);
+    expect(out[1]).toEqual(["Fixed costs", "Admin Fee", "", "£5.00", "", "", "09/11/2026"]);
+  });
+
+  it("is read through to the expense rows: amount before VAT, and the VAT as stated", async () => {
+    const rows = transformTable([["", "Description", "", "Charge", ""], ["Fixed costs", "Management Fee", "", "£11.47 (excl. £2.29 VAT)", ""], ["Fixed costs", "Admin Fee", "", "£5.00", ""]], transform, values);
+    const csv = rows.map((r) => r.map((c) => (/[",]/.test(c) ? `"${c}"` : c)).join(",")).join("\n");
+    const doc = parseDocument(await extractDocument("charges_FD10001_2026-11-09.csv", new Uint8Array(Buffer.from(`Franchise: FD10001,Report date: 09/11/2026\n${csv}\n`))));
+    expect(doc.documentType).toBe("expense_report");
+    expect(doc.expenses.map((e) => [e.description, e.amount, e.vat])).toEqual([["Management Fee", 1147, 229], ["Admin Fee", 500, null]]);
+  });
+});
+

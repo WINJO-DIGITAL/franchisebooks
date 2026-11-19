@@ -20,7 +20,8 @@ const invoice: CheckInvoice = {
     { description: "Fuel Supplement", amount: 7127 },
   ],
 };
-const charges = [1500, 35199, 24725, 12887]; // management fee, fuel usage, temporary van hire, uniform
+// management fee, fuel usage, temporary van hire, uniform: the amounts before VAT, with the VAT the portal states on each
+const charges = [{ net: 1500, vat: 300 }, { net: 35199, vat: 7040 }, { net: 24725, vat: 4945 }, { net: 12887, vat: 2577 }];
 
 describe("period check", () => {
   it("matches when our daily payments equal the invoice's stop pay, and separates the extras", () => {
@@ -54,11 +55,15 @@ describe("period check", () => {
     expect(c.income.status).toBe("unreadable");
   });
 
-  it("totals the charges exactly as the portal states them, and shows the invoice's own printed figures, with nothing estimated", () => {
+  it("totals the charges before VAT, the VAT the portal states, and the two together: stated figures only", () => {
     const c = checkPeriod({ period, payments: [722286], charges, invoice, tolerancePence: 100 });
-    expect(c.charges.net).toBe(74311); // the charges as listed, excluding VAT
+    expect(c.charges).toEqual({ count: 4, net: 74311, vatStated: 14862, vatStatedOn: 4, gross: 89173 });
     expect(c.invoiceStated).toEqual({ dueDate: "2026-11-13", netTotal: 730336, vatTotal: 146067, invoiceTotal: 876403 }); // as printed
-    expect(c.charges).not.toHaveProperty("vatEstimate");
+  });
+
+  it("adds no VAT for a charge the portal states none for, and says on how many it was stated", () => {
+    const c = checkPeriod({ period, payments: [], charges: [{ net: 1000, vat: 200 }, { net: 500, vat: null }], invoice: null, tolerancePence: 100 });
+    expect(c.charges).toMatchObject({ net: 1500, vatStated: 200, vatStatedOn: 1, gross: 1700 });
   });
 
   it("does not call it a mismatch when the app never read the period: no data is not zero earned", () => {

@@ -448,6 +448,7 @@ export async function storeParsed(db: AdminClient, input: StoreInput): Promise<S
         vehicle_registration: row.registration ?? "",
         source_driver_name: row.driverName ?? "",
         amount: toDb(row.amount),
+        vat_amount: row.vat == null ? "" : toDb(row.vat),
         transaction_ref: row.reference ?? "",
         dedupe_key: `exp|${identity}|${n}`,
         driver_id: driverId ?? "",

@@ -96,7 +96,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         <TableWrap>
           <table className="ledger">
             <thead>
-              <tr><th>Date</th><th>What</th><th className="hidden sm:table-cell">Supplier</th><th className="hidden sm:table-cell">Vehicle</th>{!ctx.franchise ? <th>Franchise</th> : null}<th>Belongs To</th><th className="r">Amount</th><th /></tr>
+              <tr><th>Date</th><th>What</th><th className="hidden sm:table-cell">Supplier</th><th className="hidden sm:table-cell">Vehicle</th>{!ctx.franchise ? <th>Franchise</th> : null}<th>Belongs To</th><th className="r">Amount</th><th className="r hidden sm:table-cell">VAT (Stated)</th><th /></tr>
             </thead>
             <tbody>
               {visible.map((c) => (
@@ -121,6 +121,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                     ) : c.allocation.scope === "franchise" ? "Franchise (general)" : <Badge tone="warn">Unallocated</Badge>}
                   </td>
                   <td className="r num font-semibold">{formatGBP(c.amount)}</td>
+                  <td className="r num hidden sm:table-cell">{c.vat == null ? <span className="text-muted">—</span> : formatGBP(c.vat)}</td>
                   <td className="r whitespace-nowrap">
                     {ctx.canWrite ? (
                       <span className="inline-flex gap-1">
@@ -134,7 +135,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
               ))}
             </tbody>
             <tfoot>
-              <tr><td colSpan={2}>Total shown</td><td className="hidden sm:table-cell" /><td className="hidden sm:table-cell" />{!ctx.franchise ? <td /> : null}<td /><td className="r num">{formatGBP(sumPence(visible.map((c) => c.amount)))}</td><td /></tr>
+              <tr><td colSpan={2}>Total shown</td><td className="hidden sm:table-cell" /><td className="hidden sm:table-cell" />{!ctx.franchise ? <td /> : null}<td /><td className="r num">{formatGBP(sumPence(visible.map((c) => c.amount)))}</td><td className="r num hidden sm:table-cell">{visible.some((c) => c.vat != null) ? formatGBP(sumPence(visible.map((c) => c.vat ?? 0))) : ""}</td><td /></tr>
             </tfoot>
           </table>
         </TableWrap>

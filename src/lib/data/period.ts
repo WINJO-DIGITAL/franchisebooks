@@ -36,6 +36,8 @@ export interface CostDetail extends CostRow {
   allocationNote: string | null;
   litres: number | null;
   pricePerLitre: number | null;
+  /** The VAT the portal states for this charge, added on top of amount. Null when none is stated. */
+  vat: number | null;
 }
 
 export interface EarningDetail extends EarningRow {
@@ -189,7 +191,7 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
     fetchAll(() => {
       let q = db
         .from("expenses")
-        .select("id, franchise_id, category_id, expense_date, description, supplier, vehicle_registration, source_driver_name, amount, transaction_ref, source, imported_file_id")
+        .select("id, franchise_id, category_id, expense_date, description, supplier, vehicle_registration, source_driver_name, amount, vat_amount, transaction_ref, source, imported_file_id")
         .eq("account_id", filter.accountId)
         .eq("is_void", false)
         .gte("expense_date", filter.from)
@@ -217,7 +219,7 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
       description: r.description, supplier: r.supplier, vehicleRegistration: r.vehicle_registration, reference: r.transaction_ref,
       sourceDriverName: r.source_driver_name, source: r.source, importedFileId: r.imported_file_id,
       allocationMethod: info.method, allocationNote: info.note,
-      litres: r.litres == null ? null : Number(r.litres), pricePerLitre: r.price_per_litre == null ? null : Number(r.price_per_litre),
+      litres: r.litres == null ? null : Number(r.litres), pricePerLitre: r.price_per_litre == null ? null : Number(r.price_per_litre), vat: null,
     });
   }
   for (const r of expenseRows) {
@@ -229,7 +231,7 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
       categoryKind: (category?.kind as CostRow["categoryKind"]) ?? "other", allocation: info.allocation,
       description: r.description, supplier: r.supplier, vehicleRegistration: r.vehicle_registration, reference: r.transaction_ref,
       sourceDriverName: r.source_driver_name, source: r.source, importedFileId: r.imported_file_id,
-      allocationMethod: info.method, allocationNote: info.note, litres: null, pricePerLitre: null,
+      allocationMethod: info.method, allocationNote: info.note, litres: null, pricePerLitre: null, vat: r.vat_amount == null ? null : fromDb(r.vat_amount),
     });
   }
   return costs;

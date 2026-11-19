@@ -20,6 +20,11 @@ export interface CheckInvoiceLine {
   amount: Pence;
 }
 
+export interface CheckCharge {
+  net: Pence;
+  vat: Pence | null;
+}
+
 export interface CheckInvoice {
   invoiceNo: string;
   dueDate: ISODate | null;
@@ -35,8 +40,8 @@ export interface PeriodCheckInput {
   period: DpdPeriod;
   /** The franchise's daily payments in the period (DPD totals, pence). */
   payments: Pence[];
-  /** The franchise's DPD charges in the period, excluding VAT. */
-  charges: Pence[];
+  /** The franchise's DPD charges in the period: the amount before VAT, and the VAT the portal states for it (null when none). */
+  charges: CheckCharge[];
   invoice: CheckInvoice | null;
   tolerancePence: Pence;
   /**
@@ -60,15 +65,20 @@ export interface PeriodCheck {
     /** Invoice lines that are not daily payments (Fuel Supplement, C&D App ...). */
     extras: CheckInvoiceLine[];
   };
-  /** The charges the portal lists for the period, excluding VAT as the portal states them. Nothing is added or estimated. */
-  charges: { count: number; net: Pence };
+  /**
+   * The charges the portal lists for the period: the amounts before VAT, the VAT the portal states for them, and the two added
+   * together. Only stated figures are added; a charge with no stated VAT contributes none.
+   */
+  charges: { count: number; net: Pence; vatStated: Pence; vatStatedOn: number; gross: Pence };
   /** The invoice's own printed figures, shown as printed. Null until the invoice is in. No due date or total is worked out. */
   invoiceStated: { dueDate: ISODate | null; netTotal: Pence; vatTotal: Pence; invoiceTotal: Pence } | null;
 }
 
 export function checkPeriod(input: PeriodCheckInput): PeriodCheck {
   const ourPayments = sumPence(input.payments);
-  const net = sumPence(input.charges);
+  const net = sumPence(input.charges.map((c) => c.net));
+  const vatStated = sumPence(input.charges.map((c) => c.vat ?? 0));
+  const vatStatedOn = input.charges.filter((c) => c.vat != null).length;
 
   const invoice = input.invoice;
   let status: IncomeStatus = "waiting";
@@ -95,7 +105,7 @@ export function checkPeriod(input: PeriodCheckInput): PeriodCheck {
 
   return {
     income: { status, ourPayments, invoiceStopPay, difference, extras },
-    charges: { count: input.charges.length, net },
+    charges: { count: input.charges.length, net, vatStated, vatStatedOn, gross: net + vatStated },
     invoiceStated: invoice ? { dueDate: invoice.dueDate, netTotal: invoice.netTotal, vatTotal: invoice.vatTotal, invoiceTotal: invoice.invoiceTotal } : null,
   };
 }

@@ -68,7 +68,10 @@ export interface ParsedExpenseRow {
   description: string;
   supplier: string | null;
   categoryText: string | null;
+  /** As the document states it. For DPD charges this is before VAT. */
   amount: Pence;
+  /** The VAT the document states for the row, added on top of the amount. Null when it states none. */
+  vat: Pence | null;
   reference: string | null;
   registration: string | null;
   driverName: string | null;
@@ -629,6 +632,7 @@ function parseExpenseTable(
       supplier: cell(row, col.supplier) || null,
       categoryText: cell(row, col.category) || null,
       amount,
+      vat: col.vat !== undefined && cell(row, col.vat) !== "" ? parseMoney(cell(row, col.vat)) : null,
       reference: cell(row, col.reference) || null,
       registration: normaliseRegistration(cell(row, col.registration)),
       driverName: cell(row, col.driver) || null,

@@ -86,8 +86,15 @@
           "clean": [
             {
               "column": "Amount",
-              "pattern": "\\s*\\(.*\\)\\s*$",
+              "pattern": "\\s*\\((?!\\s*excl)[^)]*\\)\\s*$",
               "replace": ""
+            }
+          ],
+          "split": [
+            {
+              "column": "Amount",
+              "pattern": "^(?=.*?\\(\\s*excl\\.?\\s*£?\\s*([\\d,]+(?:\\.\\d{2})?)\\s*VAT)\\s*(£?\\s*[\\d,]+(?:\\.\\d{2})?)",
+              "into": ["VAT", "Amount"]
             }
           ],
           "add": [
