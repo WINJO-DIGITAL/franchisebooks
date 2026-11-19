@@ -2,9 +2,8 @@
  * The cross-check for a closed pay period: do our figures agree with what DPD invoices?
  *
  * Money in: the daily Payments we imported, against the stop-pay lines on DPD's self-billed invoice.
- * Money out: the charges we imported (excluding VAT, as the portal states them), with VAT added at 20% as an
- * ESTIMATE (DPD rounds a penny differently on some lines), to compare with the DPD invoice.
- * Due: the self-billed invoice total less the charges, which is what should arrive on the Friday.
+ * Money out: the charges we imported, excluding VAT, exactly as the portal states them.
+ * The invoice's own printed figures (totals, VAT, due date) are shown as printed. Nothing is estimated or worked out.
  *
  * Pure code: no database, no network.
  */
@@ -13,9 +12,7 @@ import { addDays, type ISODate } from "@/lib/dates";
 import { DAILY_PAYMENT_LINE } from "@/lib/ingest/invoice";
 import type { Pence } from "@/lib/money";
 import { sumPence } from "@/lib/money";
-import { invoiceDueDate, type DpdPeriod } from "./periods";
-
-export const VAT_RATE_PERCENT = 20;
+import type { DpdPeriod } from "./periods";
 
 export interface CheckInvoiceLine {
   description: string;
@@ -63,26 +60,15 @@ export interface PeriodCheck {
     /** Invoice lines that are not daily payments (Fuel Supplement, C&D App ...). */
     extras: CheckInvoiceLine[];
   };
-  charges: { count: number; net: Pence; vatEstimate: Pence; grossEstimate: Pence };
-  payable: {
-    dueDate: ISODate;
-    selfBilledGross: Pence | null;
-    chargesGrossEstimate: Pence;
-    /** Self-billed gross less charges. Null until the self-billed invoice is in. Estimate: charge VAT is estimated. */
-    expected: Pence | null;
-  };
-}
-
-/** VAT on one charge at the standard rate, rounded to the penny. */
-export function vatOn(net: Pence): Pence {
-  return Math.round((net * VAT_RATE_PERCENT) / 100);
+  /** The charges the portal lists for the period, excluding VAT as the portal states them. Nothing is added or estimated. */
+  charges: { count: number; net: Pence };
+  /** The invoice's own printed figures, shown as printed. Null until the invoice is in. No due date or total is worked out. */
+  invoiceStated: { dueDate: ISODate | null; netTotal: Pence; vatTotal: Pence; invoiceTotal: Pence } | null;
 }
 
 export function checkPeriod(input: PeriodCheckInput): PeriodCheck {
   const ourPayments = sumPence(input.payments);
   const net = sumPence(input.charges);
-  const vatEstimate = sumPence(input.charges.map(vatOn));
-  const grossEstimate = net + vatEstimate;
 
   const invoice = input.invoice;
   let status: IncomeStatus = "waiting";
@@ -107,15 +93,9 @@ export function checkPeriod(input: PeriodCheckInput): PeriodCheck {
     }
   }
 
-  const selfBilledGross = invoice && invoice.reconciled ? invoice.invoiceTotal : null;
   return {
     income: { status, ourPayments, invoiceStopPay, difference, extras },
-    charges: { count: input.charges.length, net, vatEstimate, grossEstimate },
-    payable: {
-      dueDate: invoice?.dueDate ?? invoiceDueDate(input.period),
-      selfBilledGross,
-      chargesGrossEstimate: grossEstimate,
-      expected: selfBilledGross == null ? null : selfBilledGross - grossEstimate,
-    },
+    charges: { count: input.charges.length, net },
+    invoiceStated: invoice ? { dueDate: invoice.dueDate, netTotal: invoice.netTotal, vatTotal: invoice.vatTotal, invoiceTotal: invoice.invoiceTotal } : null,
   };
 }

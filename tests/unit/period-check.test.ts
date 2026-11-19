@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkPeriod, vatOn, type CheckInvoice } from "@/lib/finance/period-check";
+import { checkPeriod, type CheckInvoice } from "@/lib/finance/period-check";
 
 const period = { start: "2026-10-12", end: "2026-11-08" };
 
@@ -42,30 +42,23 @@ describe("period check", () => {
     expect(c.income.status).toBe("match");
   });
 
-  it("waits when the self-billed invoice is not in yet, and still gives the due date", () => {
+  it("waits when the self-billed invoice is not in yet, and shows no invoice figures", () => {
     const c = checkPeriod({ period, payments: [722286], charges, invoice: null, tolerancePence: 100 });
     expect(c.income.status).toBe("waiting");
     expect(c.income.invoiceStopPay).toBeNull();
-    expect(c.payable.expected).toBeNull();
-    expect(c.payable.dueDate).toBe("2026-11-13"); // five days after the period closes
+    expect(c.invoiceStated).toBeNull(); // no due date or total is worked out for an invoice that is not in
   });
 
   it("does not trust an invoice whose lines could not be read", () => {
     const c = checkPeriod({ period, payments: [722286], charges, invoice: { ...invoice, reconciled: false }, tolerancePence: 100 });
     expect(c.income.status).toBe("unreadable");
-    expect(c.payable.expected).toBeNull();
   });
 
-  it("totals the charges and estimates VAT and the Friday payment, within a penny of DPD's own figures", () => {
+  it("totals the charges exactly as the portal states them, and shows the invoice's own printed figures, with nothing estimated", () => {
     const c = checkPeriod({ period, payments: [722286], charges, invoice, tolerancePence: 100 });
-    expect(c.charges.net).toBe(74311); // DPD invoice: £743.11
-    expect(Math.abs(c.charges.vatEstimate - 14863)).toBeLessThanOrEqual(1); // DPD invoice: £148.63
-    expect(Math.abs((c.payable.expected ?? 0) - 787229)).toBeLessThanOrEqual(1); // remittance: £7,872.29
-  });
-
-  it("works out VAT at 20% to the penny", () => {
-    expect(vatOn(1500)).toBe(300);
-    expect(vatOn(24725)).toBe(4945);
+    expect(c.charges.net).toBe(74311); // the charges as listed, excluding VAT
+    expect(c.invoiceStated).toEqual({ dueDate: "2026-11-13", netTotal: 730336, vatTotal: 146067, invoiceTotal: 876403 }); // as printed
+    expect(c.charges).not.toHaveProperty("vatEstimate");
   });
 
   it("does not call it a mismatch when the app never read the period: no data is not zero earned", () => {

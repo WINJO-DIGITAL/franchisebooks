@@ -126,14 +126,14 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
                   status={<Badge tone={STATUS[check.income.status].tone}>{STATUS[check.income.status].label}</Badge>}
                 />
                 <Stat
-                  label="Money out (DPD charges)"
+                  label="Money Out (DPD Charges)"
                   value={formatGBP(check.charges.net)}
-                  sub={`${formatGBP(check.charges.vatEstimate)} VAT (estimated at 20%) = ${formatGBP(check.charges.grossEstimate)}`}
+                  sub="Excluding VAT, as the portal states them."
                 />
                 <Stat
-                  label={`Due ${formatUkDate(check.payable.dueDate)}`}
-                  value={check.payable.expected == null ? "Waiting for the invoice" : formatGBP(check.payable.expected)}
-                  sub={check.payable.expected == null ? undefined : "Self-billed total less charges. Compare with the remittance advice (it can differ by a penny)."}
+                  label="Invoice Total"
+                  value={check.invoiceStated == null ? "Waiting for the Invoice" : formatGBP(check.invoiceStated.invoiceTotal)}
+                  sub={check.invoiceStated == null ? undefined : `As printed: ${formatGBP(check.invoiceStated.netTotal)} + ${formatGBP(check.invoiceStated.vatTotal)} VAT${check.invoiceStated.dueDate ? `, due ${formatUkDate(check.invoiceStated.dueDate)}` : ""}.`}
                 />
               </div>
 

@@ -21,17 +21,6 @@ export interface DpdPeriod {
 }
 
 /**
- * DPD dates each self-billed invoice on the last day of the billing period and makes it due five days later
- * (checked on six invoices: "for period 12/10/2026 to 08/11/2026", invoice dated 08/11/2026, due 13/11/2026).
- */
-export const INVOICE_DUE_DAYS_AFTER_PERIOD_END = 5;
-
-/** The date DPD's self-billed invoice for a period falls due (the invoice itself is dated on the period's last day). */
-export function invoiceDueDate(period: DpdPeriod): ISODate {
-  return addDays(period.end, INVOICE_DUE_DAYS_AFTER_PERIOD_END);
-}
-
-/**
  * The period report, which tells drivers what they earned, is made as soon as the period closes: the evening
  * after its last day, when the nightly sync has brought in that last day's figures. One day, not the invoice's
  * five-day payment term.
