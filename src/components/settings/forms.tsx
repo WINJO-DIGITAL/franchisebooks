@@ -84,7 +84,7 @@ export function EditFranchiseButton({ franchise }: { franchise: { id: string; fd
   );
 }
 
-export function ScheduleForm({ syncTime, syncEnabled, autoReports, basis }: { syncTime: string; syncEnabled: boolean; autoReports: boolean; basis: string }) {
+export function ScheduleForm({ syncTime, syncEnabled, autoReports }: { syncTime: string; syncEnabled: boolean; autoReports: boolean }) {
   return (
     <ActionForm action={updateSchedule} className="space-y-4">
       {(state) => (<>
@@ -94,9 +94,6 @@ export function ScheduleForm({ syncTime, syncEnabled, autoReports, basis }: { sy
           </Field>
           <Field label="Automatic DPD sync"><Select name="syncEnabled" defaultValue={String(syncEnabled)}><option value="true">On</option><option value="false">Off</option></Select></Field>
           <Field label="Monthly reports"><Select name="autoReports" defaultValue={String(autoReports)}><option value="true">Create automatically after month end</option><option value="false">Only when I ask</option></Select></Field>
-          <Field label="Share revenue between drivers by" hint="Only used to estimate each driver's contribution. Estimated figures are always labelled."><Select name="revenueBasis" defaultValue={basis}>
-            <option value="none">Don&rsquo;t share it out</option><option value="stops">Stops completed</option><option value="parcels">Parcels delivered</option><option value="earnings">DPD earnings</option>
-          </Select></Field>
         </div>
         <SubmitButton>Save</SubmitButton>
       </>)}
@@ -145,7 +142,6 @@ export function AddRevenueButton({ franchises, currentMonth, today }: { franchis
             {period === "month" ? <Field label="Month" error={state.fieldErrors?.month}><Input name="month" type="month" defaultValue={currentMonth} max={currentMonth} required /></Field>
               : <Field label="Day" error={state.fieldErrors?.day}><Input name="day" type="date" defaultValue={today} max={today} required /></Field>}
             <Field label="Amount received from DPD" error={state.fieldErrors?.amount}><div className="relative max-w-xs"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">£</span><Input name="amount" inputMode="decimal" className="num pl-7" required placeholder="0.00" /></div></Field>
-            <Field label="Is this figure confirmed?" hint="Choose “estimate” if it is a forecast. Profit is labelled accordingly."><Select name="status" defaultValue="confirmed"><option value="confirmed">Confirmed (from a statement or invoice)</option><option value="estimated">Estimate</option></Select></Field>
             <Field label="Note (optional)"><Input name="description" maxLength={300} /></Field>
             <SubmitButton>Save Revenue</SubmitButton>
           </>)}

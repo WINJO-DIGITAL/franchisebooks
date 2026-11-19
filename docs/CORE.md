@@ -24,3 +24,5 @@ An accountant or a driver must be able to put the app's figures next to the port
 ## Wording style
 
 Headings, page and section titles, menu items, buttons and table headers use **Title Case** ("Data & Integrations", "Add Franchise", "Daily Payments"). Small words (a, an, the, and, of, to, in, on, for) stay lower case unless first or last; acronyms and codes (DPD, FD42102, PDF) keep their capitals. Paragraphs, hints and form field labels stay in normal sentence case. To apply this to new text, run `python3 scripts/title-case.py --apply`.
+9. **DPD figures are the franchise's income, never a driver's pay.** A driver sees only the pay rate set for them; with no rate the pay is blank. The app has no estimate setting: revenue entries are always confirmed, and revenue is never shared out between drivers.
+10. **Earlier periods are read from the portal, not typed in.** Back-filling queues the same read-only sync for an earlier pay period, and the duplicate rules mean a repeat read adds only what is new.

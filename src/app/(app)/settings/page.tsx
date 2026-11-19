@@ -63,7 +63,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         {ctx.isOwner ? <Panel className="mt-3"><AddFranchiseForm /></Panel> : null}
       </Section>
 
-      <Section id="revenue" title="Franchise Revenue" description="What DPD pays the franchise. This is kept separate from driver pay, and profit is only shown once revenue has been entered. Estimates are always labelled.">
+      <Section id="revenue" title="Franchise Revenue" description="What DPD pays the franchise. This is kept separate from driver pay, and profit is only shown once revenue has been entered.">
         {ctx.isOwner && optionFranchises.length > 0 ? <div className="mb-3"><AddRevenueButton franchises={optionFranchises} currentMonth={month} today={ctx.today} /></div> : null}
         {revenue.length === 0 ? <Panel className="text-sm text-muted">No revenue entered yet. Until it is, the dashboard and reports show costs but not profit.</Panel> : (
           <TableWrap>
@@ -88,7 +88,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
       <Section title="Schedule and Reports">
         <Panel>
-          {ctx.isOwner && s ? <ScheduleForm syncTime={s.sync_time_local} syncEnabled={s.sync_enabled} autoReports={s.auto_monthly_reports} basis={s.revenue_allocation_basis} /> : (
+          {ctx.isOwner && s ? <ScheduleForm syncTime={s.sync_time_local} syncEnabled={s.sync_enabled} autoReports={s.auto_monthly_reports} /> : (
             <DefinitionList items={[["Evening sync", s ? `${s.sync_time_local.slice(0, 5)} UK time` : "—"], ["Automatic monthly reports", s?.auto_monthly_reports ? "On" : "Off"]]} />
           )}
         </Panel>

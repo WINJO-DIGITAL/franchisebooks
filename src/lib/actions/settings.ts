@@ -45,7 +45,6 @@ const revenueSchema = z.object({
   month: z.string().optional(),
   day: z.string().optional(),
   amount: moneyAmount,
-  status: z.enum(["confirmed", "estimated"]),
   kind: z.enum(["payment", "credit_note"]).default("payment"),
   description: optionalText(300),
 });
@@ -68,11 +67,11 @@ export async function addRevenue(_prev: ActionState, formData: FormData): Promis
   }
   const { error } = await ctx.supabase.from("revenue_entries").insert({
     account_id: ctx.accountId, franchise_id: d.franchiseId, period_start: start, period_end: end,
-    amount: toDb(d.amount) as unknown as number, status: d.status, description: revenueDescription(d.kind, d.description), created_by: ctx.userId,
+    amount: toDb(d.amount) as unknown as number, status: "confirmed", description: revenueDescription(d.kind, d.description), created_by: ctx.userId,
   });
   if (error) return dbFailure(error, "The revenue could not be saved. Nothing was changed.");
   revalidatePath("/", "layout");
-  return ok(d.kind === "credit_note" ? `Credit note of ${formatGBP(d.amount)} saved as ${d.status}. It counts as money in.` : `Revenue of ${formatGBP(d.amount)} saved as ${d.status}.`);
+  return ok(d.kind === "credit_note" ? `Credit note of ${formatGBP(d.amount)} saved. It counts as money in.` : `Revenue of ${formatGBP(d.amount)} saved.`);
 }
 
 export async function voidRevenue(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -98,7 +97,6 @@ export async function updateSchedule(_prev: ActionState, formData: FormData): Pr
       syncTime: z.string().refine((v) => parseTimeToMinutes(v) != null, "Enter a time, for example 20:30."),
       syncEnabled: z.enum(["true", "false"]),
       autoReports: z.enum(["true", "false"]),
-      revenueBasis: z.enum(["none", "stops", "parcels", "earnings"]),
     }),
     formData,
   );
@@ -106,7 +104,8 @@ export async function updateSchedule(_prev: ActionState, formData: FormData): Pr
   const d = parsed.data;
   const { error } = await ctx.supabase.from("app_settings").update({
     sync_time_local: d.syncTime, sync_enabled: d.syncEnabled === "true", auto_monthly_reports: d.autoReports === "true",
-    revenue_allocation_basis: d.revenueBasis, updated_by: ctx.userId,
+    // The app shows DPD figures as stated; it never shares revenue out between drivers.
+    revenue_allocation_basis: "none", updated_by: ctx.userId,
   }).eq("account_id", ctx.accountId);
   if (error) return dbFailure(error);
   revalidatePath("/", "layout");

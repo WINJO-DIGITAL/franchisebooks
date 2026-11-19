@@ -118,6 +118,8 @@ describe("monthly report generation", () => {
   let r: TestAccount;
   beforeAll(async () => {
     r = await createTestAccount("Report Account");
+    // These tests cover the "DPD figures are driver pay" meaning, which the app still supports. New accounts default to route income.
+    await sql("update public.app_settings set earnings_meaning = 'driver_pay' where account_id = $1", [r.accountId]);
     const file = await createFile(r.accountId, r.franchiseId);
     await ingestEarnings(file, [
       earningsRow(r, { report_date: "2026-10-05", gross_earnings: "200.00", net_earnings: "200.00" }),
