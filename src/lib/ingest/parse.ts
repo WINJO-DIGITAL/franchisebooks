@@ -508,9 +508,10 @@ function parseFuelTable(
 ): { rows: ParsedFuelRow[]; totalsVerified: boolean | null } {
   const { columns: col } = mapFuelColumns(header);
   const out: ParsedFuelRow[] = [];
-  // Figures in the app are net of VAT (docs/FINANCE.md). Prefer a stated net amount over a gross total.
+  // Figures in the app are before VAT (docs/FINANCE.md). Use the stated net amount; if only a total is stated,
+  // take the stated VAT off it (£18.00 total with £3.00 VAT is £15.00 before VAT). Never assume a VAT rate.
   const costIndex = col.net ?? col.total;
-  const totalsIndex = col.net ?? col.total;
+  const netFromTotal = col.net === undefined && col.total !== undefined && col.vat !== undefined;
   if (costIndex === undefined) {
     issues.push({ level: "error", message: "The fuel table has no total cost column." });
     confidence.limit(0);
@@ -521,23 +522,20 @@ function parseFuelTable(
     confidence.limit(0);
     return { rows: out, totalsVerified: null };
   }
-  if (col.net !== undefined) {
-    if (col.total !== undefined) {
-      issues.push({ level: "info", message: "The document states both a net (ex-VAT) amount and a total; the net amount has been used as the cost." });
-    }
-  } else {
-    issues.push({ level: "warning", message: "Only a total (possibly including VAT) was found; it has been used as the cost because no net amount was stated." });
-    confidence.limit(0.9);
+  if (col.net === undefined && col.vat === undefined) {
+    issues.push({ level: "warning", message: "Only a total was found and no VAT is stated, so the amount before VAT is not known. It has been held for a person to check." });
+    confidence.limit(0.8);
   }
+  let grossSum = 0;
 
   let totalsVerified: boolean | null = null;
   for (const { row, line } of rows) {
     const nonEmpty = row.filter((c) => c.trim() !== "").length;
     if (nonEmpty === 0) continue;
     if (isTotalsRow(row)) {
-      const stated = parseMoney(cell(row, totalsIndex));
+      const stated = parseMoney(cell(row, costIndex));
       if (stated != null) {
-        const actual = out.reduce((a, r) => a + r.total, 0);
+        const actual = netFromTotal ? grossSum : out.reduce((a, r) => a + r.total, 0);
         const ok = stated === actual;
         totalsVerified = (totalsVerified ?? true) && ok;
         if (!ok) issues.push({ level: "error", row: line, message: `The total on the document is ${formatGBP(stated)} but the rows read add up to ${formatGBP(actual)}.` });
@@ -553,12 +551,28 @@ function parseFuelTable(
       }
       continue;
     }
-    const total = parseMoney(totalText);
+    const stated = parseMoney(totalText);
     const date = col.date !== undefined ? parseUkDate(dateText) : reportDate;
-    if (total == null || !date) {
-      issues.push({ level: "error", row: line, message: `Line ${line} was not imported: ${total == null ? `amount "${totalText}"` : `date "${dateText}"`} could not be read.` });
+    if (stated == null || !date) {
+      issues.push({ level: "error", row: line, message: `Line ${line} was not imported: ${stated == null ? `amount "${totalText}"` : `date "${dateText}"`} could not be read.` });
       confidence.limit(0.5);
       continue;
+    }
+    let total = stated;
+    if (netFromTotal) {
+      const vatText = cell(row, col.vat);
+      const vat = parseMoney(vatText);
+      if (vatText === "") {
+        issues.push({ level: "warning", row: line, message: `Line ${line}: only a total is stated, with no VAT, so the amount before VAT is not known. It has been held for a person to check.` });
+        confidence.limit(0.8);
+      } else if (vat == null || Math.abs(vat) > Math.abs(stated)) {
+        issues.push({ level: "error", row: line, message: `Line ${line} was not imported: VAT "${vatText}" ${vat == null ? "could not be read" : "is more than the total"}.` });
+        confidence.limit(0.5);
+        continue;
+      } else {
+        total = (stated - vat) as Pence;
+      }
+      grossSum += stated;
     }
     const litres = parseDecimal(cell(row, col.litres), 3);
     let ppl = parseDecimal(cell(row, col.pricePerLitre).replace(/^£/, "").replace(/p$/i, ""), 4);
@@ -586,6 +600,28 @@ function parseFuelTable(
 }
 
 // ── Expenses ────────────────────────────────────────────────────────────────
+
+/**
+ * Reads an amount that states its VAT in brackets, such as "£15.00 (excl. £3.00 VAT)" or "£18.00 (incl. £3.00 VAT)".
+ * Both are simple stated figures: excluding means the amount is before VAT; including means the amount before VAT
+ * is the figure minus the stated VAT. Either way £15.00 before VAT plus £3.00 VAT is £18.00. No rate is ever assumed.
+ * Returns null when the text has no such bracket; returns a problem when a figure cannot be read or the figures
+ * contradict each other (stated VAT larger than an including-VAT figure).
+ */
+export function readStatedVat(text: string): { amount: Pence | null; vat: Pence | null; problem?: string } | null {
+  const m = /^(.*?)\s*\(\s*(excl(?:uding)?|exc|ex|incl(?:uding)?|inc)\.?\s*(?:VAT\s*)?(?:of\s*)?([^()]*?)\s*(?:VAT)?\s*\)\s*$/i.exec(text.trim());
+  if (!m) return null;
+  const figure = parseMoney(m[1]);
+  const vat = parseMoney(m[3]);
+  if (figure == null || vat == null || vat < 0) {
+    return { amount: null, vat: null, problem: `the amount "${text}" could not be read.` };
+  }
+  if (!/^inc/i.test(m[2]!)) return { amount: figure, vat };
+  if (figure < 0 || vat > figure) {
+    return { amount: null, vat: null, problem: `"${text}" states more VAT than the amount it is included in.` };
+  }
+  return { amount: (figure - vat) as Pence, vat };
+}
 
 function parseExpenseTable(
   header: string[],
@@ -624,21 +660,33 @@ function parseExpenseTable(
       }
       continue;
     }
-    const amount = parseMoney(amountText);
+    const description = cell(row, col.description) || `line ${line}`;
+    const stated = readStatedVat(amountText);
+    const amount = stated ? stated.amount : parseMoney(amountText);
     const date = col.date !== undefined ? parseUkDate(dateText) : reportDate;
+    if (stated?.problem) {
+      issues.push({ level: "error", row: line, message: `Line ${line} (${description}) was not imported: ${stated.problem}` });
+      confidence.limit(0.5);
+      continue;
+    }
     if (amount == null || !date) {
       issues.push({ level: "error", row: line, message: `Line ${line} was not imported: ${amount == null ? `amount "${amountText}"` : `date "${dateText}"`} could not be read.` });
       confidence.limit(0.5);
       continue;
     }
     const vatText = col.vat !== undefined ? cell(row, col.vat) : "";
-    let vat: Pence | null = null;
+    let vat: Pence | null = stated ? stated.vat : null;
     if (vatText !== "") {
-      vat = parseMoney(vatText);
-      if (vat == null) {
-        const description = cell(row, col.description) || `line ${line}`;
+      const columnVat = parseMoney(vatText);
+      if (columnVat == null) {
         issues.push({ level: "error", row: line, message: `Line ${line} (${description}): VAT "${vatText}" could not be read, so it was not stored.` });
         confidence.limit(0.5);
+      } else if (stated && stated.vat !== columnVat) {
+        issues.push({ level: "error", row: line, message: `Line ${line} (${description}) was not imported: the VAT column says ${formatGBP(columnVat)} but the amount says ${formatGBP(stated.vat!)}.` });
+        confidence.limit(0.5);
+        continue;
+      } else {
+        vat = columnVat;
       }
     }
     out.push({

@@ -70,11 +70,15 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
   const invoiceNo = /Invoice\s*no:?\s*([A-Z]{1,3}\d{5,})/i.exec(text)?.[1];
   const fdNumber = /FD\s*number:?\s*(FD\d{4,6})/i.exec(text)?.[1];
   const invoiceDate = parseUkDate(/Invoice\s*date:?\s*(\d{2}\/\d{2}\/\d{4})/i.exec(text)?.[1]);
-  const dueDate = parseUkDate(/Due\s*date:?\s*(\d{2}\/\d{2}\/\d{4})/i.exec(text)?.[1]);
+  const dueText = /Due\s*date:?\s*(\d{2}\/\d{2}\/\d{4})/i.exec(text)?.[1];
+  const dueDate = parseUkDate(dueText);
+  // Dates are UK day-first. A printed date that is not a real day (such as 31/02/2026) is reported, never swapped round.
+  if (dueText && !dueDate) problems.push(`The due date "${dueText}" is not a real date.`);
   const period = /period\s+(\d{2}\/\d{2}\/\d{4})\s+to\s+(\d{2}\/\d{2}\/\d{4})/i.exec(text);
   const periodStart = parseUkDate(period?.[1]);
   const periodEnd = parseUkDate(period?.[2]);
   if (!invoiceNo || !fdNumber || !invoiceDate || !periodStart || !periodEnd) return null;
+  if (periodEnd < periodStart) return null;
 
   // Lines sit between the table heading and the VAT analysis.
   const bodyStart = text.search(/Description\s+Quantity/i);

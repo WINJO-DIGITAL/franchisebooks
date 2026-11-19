@@ -149,8 +149,9 @@ describe("fuel report", () => {
     const doc = await parse("fuel.csv", fuelCsv(rows, { fdNumber: "FD-TEST-1", totals: true }));
     expect(doc.documentType).toBe("fuel_report");
     expect(doc.totalsVerified).toBe(true);
-    expect(doc.confidence).toBe(0.9);
-    expect(doc.issues.some((i) => i.level === "warning" && /VAT|net/i.test(i.message))).toBe(true);
+    // Only a total and no VAT stated: the amount before VAT is not known, so a person checks it.
+    expect(doc.confidence).toBe(0.8);
+    expect(doc.issues.some((i) => i.level === "warning" && /no VAT is stated/i.test(i.message))).toBe(true);
     expect(doc.fuel).toHaveLength(2);
     expect(doc.fuel[0]).toMatchObject({
       date: "2026-11-12", time: "06:41", registration: "AB12CDE", driverName: "Alex Example", supplier: "Synthetic Services, M1",

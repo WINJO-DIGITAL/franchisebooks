@@ -86,7 +86,7 @@
           "clean": [
             {
               "column": "Amount",
-              "pattern": "\\s*\\((?!\\s*(?:excl|ex\\b|incl|including|VAT))[^)]*\\)\\s*$",
+              "pattern": "\\s*\\((?!\\s*(?:excl|exc\\b|ex\\b|incl|inc\\b|including|VAT))[^)]*\\)\\s*$",
               "replace": ""
             }
           ],

@@ -2,9 +2,9 @@
  * Stores one DPD self-billed invoice (a PDF from the portal's Invoices page) in dpd_invoices.
  *
  * The invoice's own arithmetic decides whether it is trusted: "reconciled" means its lines add up to its net total.
- * The invoice is a reference for the period check, never a second copy of the daily payments. Extra lines that are
- * not already in those payments (Fuel Supplement, C&D App, and similar) are only counted when the invoice is
- * reconciled. An unreadable or unreconciled invoice is still stored with its problems, so it can be checked
+ * The invoice is a reference for the period check, never income (docs/CORE.md rules 2 and 3). Extra lines that are
+ * not in the daily payments (Fuel Supplement, C&D App, and similar) are listed on the Period Check but never added
+ * to income. An unreadable or unreconciled invoice is still stored with its problems, so it can be checked
  * rather than silently dropped.
  */
 

@@ -49,13 +49,21 @@ describe("transaction charges: stated VAT (synthetic portal cells)", () => {
     expect(out[1]).toEqual(["Fixed costs", "Admin Fee", "", "£5.00", "", "", "09/11/2026"]);
   });
 
-  it("does not treat an “incl. VAT” cell as an excluding-VAT amount", () => {
-    // The portal states charges before VAT. A cell that says the figure includes VAT is not the same thing.
+  it("leaves an “incl. VAT” cell whole so the parser can take the stated VAT off it", () => {
     const out = chargesRaw(["Fixed costs|Mystery Fee||£13.76 (incl. £2.29 VAT)|"]);
-    const amountCell = out[1]![3]!;
-    const vatCell = out[1]![5]!;
-    expect(vatCell).toBe("");
-    expect(amountCell).not.toBe("£13.76"); // the including-VAT figure must not be stored as the before-VAT amount
+    expect(out[1]![3]).toBe("£13.76 (incl. £2.29 VAT)");
+    expect(out[1]![5]).toBe("");
+  });
+
+  it("keeps a charge's own date when the table has one, and fills the period start only when it is blank", () => {
+    const transform = { ...chargesTransform!, headers: ["Category", "Description", "Spacer", "Amount", "Spacer 2", "Date"] };
+    const out = transformTable(
+      [["", "Description", "", "Charge", "", "Date"], ["Fixed costs", "Management Fee", "", "£11.47 (excl. £2.29 VAT)", "", "12/11/2026"], ["Fixed costs", "Admin Fee", "", "£5.00", "", ""]],
+      transform, period,
+    );
+    expect(out[0]).toEqual(["Category", "Description", "Spacer", "Amount", "Spacer 2", "Date", "VAT"]);
+    expect(out[1]![5]).toBe("12/11/2026");
+    expect(out[2]![5]).toBe("09/11/2026");
   });
 });
 
@@ -73,6 +81,47 @@ describe("transaction charges: through to parsed expense rows", () => {
       ["Management Fee", 1147, 229],
       ["Admin Fee", 500, null],
     ]);
+  });
+
+  it("£15 before VAT and £3 VAT is £18, whichever way the portal words it", async () => {
+    const rows = chargesRaw([
+      "Fixed costs|Excl Fee||£15.00 (excl. £3.00 VAT)|",
+      "Fixed costs|Excluding Fee||£15.00 (excluding £3.00 VAT)|",
+      "Fixed costs|Ex Fee||£15.00 (ex £3.00 VAT)|",
+      "Fixed costs|Incl Fee||£18.00 (incl. £3.00 VAT)|",
+      "Fixed costs|Including Fee||£18.00 (including VAT £3.00)|",
+    ]);
+    const doc = await parseCharges(rows);
+    expect(doc.expenses.map((e) => [e.description, e.amount, e.vat, e.amount + (e.vat ?? 0)])).toEqual([
+      ["Excl Fee", 1500, 300, 1800],
+      ["Excluding Fee", 1500, 300, 1800],
+      ["Ex Fee", 1500, 300, 1800],
+      ["Incl Fee", 1500, 300, 1800],
+      ["Including Fee", 1500, 300, 1800],
+    ]);
+    expect(doc.issues.filter((i) => i.level !== "info")).toEqual([]);
+    expect(doc.confidence).toBeGreaterThanOrEqual(AUTO_IMPORT_THRESHOLD);
+  });
+
+  it("reads the stated VAT in an uploaded file's amount cell too", async () => {
+    const doc = await parseCharges([
+      ["Category", "Description", "Amount", "Date"],
+      ["Fixed costs", "Management Fee", "£18.00 (incl. £3.00 VAT)", "09/11/2026"],
+    ]);
+    expect(doc.expenses.map((e) => [e.amount, e.vat])).toEqual([[1500, 300]]);
+  });
+
+  it("holds a charge whose printed figures contradict each other", async () => {
+    const doc = await parseCharges([
+      ["Category", "Description", "Amount", "VAT", "Date"],
+      ["Fixed costs", "Too Much VAT", "£2.00 (incl. £3.00 VAT)", "", "09/11/2026"],
+      ["Fixed costs", "Two VATs", "£15.00 (excl. £3.00 VAT)", "4.00", "09/11/2026"],
+      ["Fixed costs", "Garbled", "£15.00 (excl. £3.0? VAT)", "", "09/11/2026"],
+      ["Fixed costs", "Same VAT Twice", "£15.00 (excl. £3.00 VAT)", "3.00", "09/11/2026"],
+    ]);
+    expect(doc.expenses.map((e) => [e.description, e.amount, e.vat])).toEqual([["Same VAT Twice", 1500, 300]]);
+    expect(doc.issues.filter((i) => i.level === "error")).toHaveLength(3);
+    expect(doc.confidence).toBeLessThan(AUTO_IMPORT_THRESHOLD);
   });
 
   it("flags a VAT cell that cannot be read, instead of silently storing “no VAT”", async () => {
@@ -101,14 +150,41 @@ describe("fuel reports: net of VAT (docs/FINANCE.md)", () => {
     expect(doc.issues.some((i) => i.level !== "info" && /used as the cost/.test(i.message) && /total|gross/i.test(i.message) && !/net/i.test(i.message))).toBe(false);
   });
 
-  it("warns when only a gross/total is present, so VAT may be included in the cost", async () => {
+  it("holds a file with only a total and no VAT for a person, and never assumes 20%", async () => {
     const csv = [
       "Date,Registration,Litres,PPL,Total",
       "12/11/2026,AB12 CDE,52.31,1.459,76.30",
     ].join("\n");
     const doc = await parseCsv("fuel.csv", csv);
     expect(doc.fuel[0]?.total).toBe(7630);
-    expect(doc.issues.some((i) => i.level !== "info" && /VAT|gross|net/i.test(i.message))).toBe(true);
+    expect(doc.confidence).toBeLessThan(AUTO_IMPORT_THRESHOLD);
+    expect(doc.issues.some((i) => i.level === "warning" && /no VAT is stated/i.test(i.message))).toBe(true);
+  });
+
+  it("takes the stated VAT off a total when no net is given: £18.00 total with £3.00 VAT is £15.00", async () => {
+    const csv = [
+      "Date,Registration,Litres,VAT,Total",
+      "12/11/2026,AB12 CDE,10.00,3.00,18.00",
+      "13/11/2026,AB12 CDE,20.00,6.00,36.00",
+      "Total,,,9.00,54.00",
+    ].join("\n");
+    const doc = await parseCsv("fuel.csv", csv);
+    expect(doc.fuel.map((f) => f.total)).toEqual([1500, 3000]);
+    expect(doc.totalsVerified).toBe(true);
+    expect(doc.confidence).toBeGreaterThanOrEqual(AUTO_IMPORT_THRESHOLD);
+    expect(doc.issues.filter((i) => i.level !== "info")).toEqual([]);
+  });
+
+  it("holds a row with a total but a blank VAT cell, and refuses VAT larger than the total", async () => {
+    const csv = [
+      "Date,Registration,Litres,VAT,Total",
+      "12/11/2026,AB12 CDE,10.00,,18.00",
+      "13/11/2026,AB12 CDE,10.00,30.00,18.00",
+    ].join("\n");
+    const doc = await parseCsv("fuel.csv", csv);
+    expect(doc.fuel.map((f) => f.total)).toEqual([1800]);
+    expect(doc.confidence).toBeLessThan(AUTO_IMPORT_THRESHOLD);
+    expect(doc.issues.some((i) => i.level === "error" && /more than the total/.test(i.message))).toBe(true);
   });
 });
 
@@ -143,6 +219,30 @@ describe("self-billed invoice text (synthetic OCR-style fixtures)", () => {
     const text = sample.replace("Invoice date: 08/11/2026", "Invoice date: 11/08/2026");
     const inv = parseSelfBilledInvoice(text)!;
     expect(inv.invoiceDate).toBe("2026-08-11");
+  });
+});
+
+describe("dates: UK day first, ISO as written, impossible dates flagged", () => {
+  it("reads ISO dates as written and flags a date that is not a real day", async () => {
+    const csv = "Franchise: FD10001,Report date: 09/11/2026\nCategory,Description,Amount,Date\nFixed costs,ISO Fee,£5.00,2026-11-09\nFixed costs,Impossible Fee,£5.00,31/02/2026\nFixed costs,UK Fee,£5.00,09/11/2026\n";
+    const doc = await parseCsv("charges_FD10001_2026-11-09.csv", csv);
+    expect(doc.expenses.map((e) => [e.description, e.date])).toEqual([["ISO Fee", "2026-11-09"], ["UK Fee", "2026-11-09"]]);
+    expect(doc.issues.some((i) => i.level === "error" && /31\/02\/2026/.test(i.message))).toBe(true);
+    expect(doc.confidence).toBeLessThan(AUTO_IMPORT_THRESHOLD);
+  });
+
+  it("does not swap day and month round when the day is over 12 in US order", async () => {
+    const csv = "Franchise: FD10001,Report date: 09/11/2026\nCategory,Description,Amount,Date\nFixed costs,US Fee,£5.00,11/25/2026\n";
+    const doc = await parseCsv("charges_FD10001_2026-11-09.csv", csv);
+    expect(doc.expenses).toEqual([]);
+    expect(doc.issues.some((i) => i.level === "error" && /11\/25\/2026/.test(i.message))).toBe(true);
+  });
+
+  it("reports an invoice due date that is not a real day instead of guessing", () => {
+    const sample = readFileSync("tests/fixtures/dpd-invoice-ocr.txt", "utf8");
+    const inv = parseSelfBilledInvoice(sample.replace("Due date: 13/11/2026", "Due date: 31/02/2026"))!;
+    expect(inv.dueDate).toBeNull();
+    expect(inv.problems.some((p) => /31\/02\/2026/.test(p))).toBe(true);
   });
 });
 

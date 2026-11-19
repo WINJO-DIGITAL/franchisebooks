@@ -66,9 +66,15 @@ export function transformTable(rows: string[][], transform: TableTransform | und
     });
   }
 
-  // 5. Constant columns.
+  // 5. Constant columns. If the table already has the column (for example a charge with its own date), a row's own
+  // value is kept and the constant only fills a blank cell.
   for (const rule of transform?.add ?? []) {
     const value = fillTemplate(rule.value, values);
+    const existing = header.findIndex((cell) => same(cell, rule.header));
+    if (existing >= 0) {
+      data = data.map((row) => row.map((cell, i) => (i === existing && cell.trim() === "" ? value : cell)));
+      continue;
+    }
     header.push(rule.header);
     data = data.map((row) => [...row, value]);
   }
