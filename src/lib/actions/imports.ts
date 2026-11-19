@@ -37,6 +37,8 @@ export async function uploadDocuments(_prev: ActionState, formData: FormData): P
       const outcome = await importDocument(admin, {
         accountId: ctx.accountId, source: "manual_upload", filename: file.name, mimeType: file.type || null,
         bytes: new Uint8Array(await file.arrayBuffer()), franchiseHintId, uploadedBy: ctx.userId,
+        // A login limited to some franchises may only import into those.
+        allowedFranchiseIds: ctx.allFranchises ? null : ctx.franchises.map((f) => f.id),
       });
       lines.push(outcome.message);
       if (outcome.status === "needs_review" || outcome.status === "failed") problems++;

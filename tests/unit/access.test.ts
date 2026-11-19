@@ -37,3 +37,19 @@ describe("reportScopeProblem", () => {
     expect(reportScopeProblem({ role: "viewer", allFranchises: true, visibleFranchiseIds: [], franchiseId: null })).toBe("There is nothing to report on yet.");
   });
 });
+
+describe("upload access", () => {
+  it("finds rows going to franchises the login does not cover", async () => {
+    const { franchisesOutsideAccess } = await import("@/lib/access");
+    expect(franchisesOutsideAccess(["n", "n"], ["n"])).toEqual([]);
+    expect(franchisesOutsideAccess(["n", "s", "s"], ["n"])).toEqual(["s"]);
+    expect(franchisesOutsideAccess(["n", ""], ["n"])).toEqual([null]);
+    expect(franchisesOutsideAccess(["s", null], null)).toEqual([]);
+  });
+  it("explains the refusal in plain words", async () => {
+    const { outsideAccessMessage } = await import("@/lib/access");
+    expect(outsideAccessMessage("a.pdf", ["FD-2"])).toBe("“a.pdf” is for FD-2, which your login doesn't cover. Ask the owner to upload it. Nothing was imported.");
+    expect(outsideAccessMessage("a.pdf", ["FD-2", "FD-3"])).toContain("is for FD-2 and FD-3,");
+    expect(outsideAccessMessage("a.pdf", [])).toContain("Choose your franchise when uploading");
+  });
+});

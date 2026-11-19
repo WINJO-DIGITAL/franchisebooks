@@ -11,6 +11,7 @@
  */
 
 import "server-only";
+import { franchisesOutsideAccess, outsideAccessMessage } from "@/lib/access";
 import { sha256Hex } from "@/lib/crypto";
 import { loadRoster, type Roster } from "@/lib/data/roster";
 import { formatUkDate, formatUkDateTime, type ISODate } from "@/lib/dates";
@@ -38,6 +39,15 @@ export interface ImportInput {
   franchiseHintId?: string | null;
   uploadedBy?: string | null;
   importJobId?: string | null;
+  /** Franchises the uploader covers, for a login limited to some franchises. Missing or null means every franchise. */
+  allowedFranchiseIds?: string[] | null;
+}
+
+/** Thrown before anything is stored when a file's rows would go to a franchise the uploader does not cover. */
+class OutsideAccess extends Error {
+  constructor(readonly franchiseIds: (string | null)[]) {
+    super("The file is for a franchise the uploader does not cover.");
+  }
 }
 
 export interface ImportOutcome {
@@ -194,6 +204,22 @@ async function processFile(db: AdminClient, input: ProcessInput): Promise<Import
     parsed.issues.push({ level: "info", message: "The document names a different franchise from the one selected; the franchise named in the document was used." });
   }
 
+  // A login limited to some franchises may only import into those. Refuse the whole file, and store nothing, otherwise.
+  const refuse = async (franchiseIds: (string | null)[]): Promise<ImportOutcome> => {
+    const fdNumbers = franchiseIds.flatMap((id) => roster.franchises.filter((f) => f.id === id).map((f) => f.fdNumber));
+    const message = outsideAccessMessage(input.filename, fdNumbers);
+    const { data: file } = await db.from("imported_files").select("storage_path").eq("id", input.fileId).maybeSingle();
+    if (file?.storage_path) await db.storage.from("source-documents").remove([file.storage_path]);
+    await db.from("imported_files").update({
+      document_type: parsed.documentType, parser: PARSER_VERSION, franchise_id: franchiseIds.find((id) => id) ?? null,
+      status: "failed", status_message: message, processed_at: new Date().toISOString(),
+    }).eq("id", input.fileId);
+    await log(db, input, "warning", "file_refused", message, { fileId: input.fileId, uploadedBy: input.uploadedBy ?? null, franchiseIds });
+    return { fileId: input.fileId, status: "failed", documentType: parsed.documentType, message, inserted: 0, unchanged: 0, conflicts: 0, issues: parsed.issues };
+  };
+  const allowed = input.allowedFranchiseIds ?? null;
+  if (franchiseId && franchisesOutsideAccess([franchiseId], allowed).length > 0) return refuse([franchiseId]);
+
   const common = {
     document_type: parsed.documentType,
     parser: PARSER_VERSION,
@@ -257,7 +283,13 @@ async function processFile(db: AdminClient, input: ProcessInput): Promise<Import
     );
   }
 
-  const stored = await storeParsed(db, { accountId: input.accountId, fileId: input.fileId, franchiseId, parsed, roster });
+  let stored: Awaited<ReturnType<typeof storeParsed>>;
+  try {
+    stored = await storeParsed(db, { accountId: input.accountId, fileId: input.fileId, franchiseId, parsed, roster, allowedFranchiseIds: allowed });
+  } catch (error) {
+    if (error instanceof OutsideAccess) return refuse(error.franchiseIds);
+    throw error;
+  }
   const status = stored.conflicts > 0 ? "needs_review" : "imported";
   const dateText = parsed.dateFrom
     ? parsed.dateFrom === parsed.dateTo ? ` for ${formatUkDate(parsed.dateFrom)}` : ` for ${formatUkDate(parsed.dateFrom)} to ${formatUkDate(parsed.dateTo)}`
@@ -291,6 +323,8 @@ interface StoreInput {
   franchiseId: string | null;
   parsed: ParsedDocument;
   roster: Roster;
+  /** See ImportInput.allowedFranchiseIds. Rows going anywhere else stop the whole file before anything is stored. */
+  allowedFranchiseIds?: string[] | null;
 }
 
 interface StoreResult {
@@ -418,6 +452,8 @@ export async function storeParsed(db: AdminClient, input: StoreInput): Promise<S
           : driverId ? "Driver named on the fuel report" : "",
       };
     });
+    const outsideFuel = franchisesOutsideAccess(rows.map((r) => r.franchise_id), input.allowedFranchiseIds ?? null);
+    if (outsideFuel.length > 0) throw new OutsideAccess(outsideFuel);
     const { data, error } = await db.rpc("ingest_fuel", { p_file_id: input.fileId, p_rows: rows as unknown as JsonObject });
     if (error) throw new Error(`Storing fuel transactions failed: ${error.message}`);
     apply(data);
@@ -458,6 +494,8 @@ export async function storeParsed(db: AdminClient, input: StoreInput): Promise<S
           : driverId ? "Driver named on the expense report" : "",
       };
     });
+    const outsideExpenses = franchisesOutsideAccess(rows.map((r) => r.franchise_id), input.allowedFranchiseIds ?? null);
+    if (outsideExpenses.length > 0) throw new OutsideAccess(outsideExpenses);
     const { data, error } = await db.rpc("ingest_expenses", { p_file_id: input.fileId, p_rows: rows as unknown as JsonObject });
     if (error) throw new Error(`Storing expenses failed: ${error.message}`);
     apply(data);

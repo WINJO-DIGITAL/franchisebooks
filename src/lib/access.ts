@@ -39,3 +39,24 @@ export function reportScopeProblem(input: {
   if (input.role !== "owner" && input.visibleFranchiseIds.length === 0) return "There is nothing to report on yet.";
   return null;
 }
+
+/**
+ * For an upload by a login that covers only some franchises: the franchises the file's rows would go to that the login
+ * does not cover. An empty franchise ("") means a row with no franchise, which only full-access logins may add.
+ * `allowed` null means the login covers every franchise, so nothing is outside.
+ */
+export function franchisesOutsideAccess(rowFranchiseIds: (string | null)[], allowed: string[] | null): (string | null)[] {
+  if (!allowed) return [];
+  const outside = new Set<string | null>();
+  for (const id of rowFranchiseIds) if (!id || !allowed.includes(id)) outside.add(id || null);
+  return [...outside];
+}
+
+/** The message shown when an upload names franchises outside the login's access. */
+export function outsideAccessMessage(filename: string, fdNumbers: string[]): string {
+  if (fdNumbers.length === 0) {
+    return `“${filename}” could not be matched to one of your franchises, and your login doesn't cover the others. Choose your franchise when uploading, or ask the owner to upload it. Nothing was imported.`;
+  }
+  const list = fdNumbers.length === 1 ? fdNumbers[0] : `${fdNumbers.slice(0, -1).join(", ")} and ${fdNumbers[fdNumbers.length - 1]}`;
+  return `“${filename}” is for ${list}, which your login doesn't cover. Ask the owner to upload it. Nothing was imported.`;
+}
