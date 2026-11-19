@@ -92,15 +92,13 @@ describe("trusting what the invoice itself states", () => {
     expect(inv.netTotal + inv.vatTotal).toBe(inv.invoiceTotal);
   });
 
-  it("corrects a misread VAT figure from the net and total when they are consistent with 20% VAT", () => {
-    // Net 6,058.41 and total 7,270.09 are consistent with 20% VAT (1,211.68); the VAT line has been read as 1,219.68.
+  it("never invents a VAT figure: a misread VAT stays as printed and is flagged, not substituted", () => {
+    // Net 6,058.41 and total 7,270.09, but the VAT line reads 1,219.68. The app keeps what the invoice shows and flags it.
     const text = sample.replace("TotalexcVAT £7,303.36", "TotalexcVAT £6,058.41").replace("Invoice total £8,764.03", "Invoice total £7,270.09").replace("VAT £1,460.67", "VAT £1,219.68");
     const inv = parseSelfBilledInvoice(text)!;
-    expect(inv.netTotal).toBe(605841);
-    expect(inv.invoiceTotal).toBe(727009);
-    expect(inv.vatTotal).toBe(121168);
-    expect(inv.totalsAgree).toBe(true);
-    expect(inv.problems).not.toContain("Net plus VAT is not the invoice total.");
+    expect(inv.vatTotal).toBe(121968);
+    expect(inv.totalsAgree).toBe(false);
+    expect(inv.reconciled).toBe(false);
   });
 
   it("does not hide totals that really disagree", () => {
@@ -109,7 +107,7 @@ describe("trusting what the invoice itself states", () => {
     expect(inv.problems).toContain("Net plus VAT is not the invoice total.");
   });
 
-  it("still stores an invoice whose totals agree when its lines cannot be read, so nothing is wrongly flagged", () => {
+  it("counts an invoice whose printed totals agree even when its lines cannot be read", () => {
     const noLines = sample.replace(/Description Quantity[\s\S]*?Vat analysis/i, "Vat analysis");
     const inv = parseSelfBilledInvoice(noLines)!;
     expect(inv.lines).toHaveLength(0);

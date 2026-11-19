@@ -37,9 +37,6 @@ export interface ParsedInvoice {
   problems: string[];
 }
 
-/** UK VAT at the standard rate: the printed total of a self-billed invoice is its net total plus 20%. */
-const STANDARD_VAT_PERCENT = 20;
-
 /**
  * Whether the invoice number read from the picture is the number the portal lists. Character recognition mixes up look-alikes
  * ("S" for a 9 or a 5, "O" for 0, "I" or "l" for 1, "B" for 8, "Z" for 2), so a letter read where the portal has one of its
@@ -140,18 +137,13 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
   }
   const lines: InvoiceLine[] = draft.map((d, i) => ({ description: d.description, quantity: d.quantity, rate: d.rate, amount: chosen[i]!, vatCode: d.vatCode }));
   const linesSum = sumOf(chosen);
-  // The VAT figure is the smallest number on the invoice and the likeliest to be misread. When the net total and the invoice
-  // total are consistent with 20% VAT (to the penny, as DPD rounds it), the VAT is the difference between them, not the misread.
-  let vatFinal = vatTotal;
-  if (netTotal + vatFinal !== invoiceTotal) {
-    const expected = netTotal + Math.round((netTotal * STANDARD_VAT_PERCENT) / 100);
-    if (Math.abs(expected - invoiceTotal) <= 1) vatFinal = invoiceTotal - netTotal;
-  }
-  const totalsAgree = netTotal + vatFinal === invoiceTotal;
+  // Only the figures printed on the invoice are used. A VAT figure that does not match the printed totals is reported as it
+  // stands, never replaced with a figure the invoice does not show.
+  const totalsAgree = netTotal + vatTotal === invoiceTotal;
   const reconciled = lines.length > 0 && linesSum === netTotal && totalsAgree;
   if (lines.length === 0) problems.push("No invoice lines could be read.");
   else if (linesSum !== netTotal) problems.push(`The lines add up to ${linesSum / 100} but the invoice states ${netTotal / 100} excluding VAT.`);
   if (!totalsAgree) problems.push("Net plus VAT is not the invoice total.");
 
-  return { invoiceNo, fdNumber, invoiceDate, dueDate, periodStart, periodEnd, lines, netTotal, vatTotal: vatFinal, invoiceTotal, reconciled, totalsAgree, problems };
+  return { invoiceNo, fdNumber, invoiceDate, dueDate, periodStart, periodEnd, lines, netTotal, vatTotal, invoiceTotal, reconciled, totalsAgree, problems };
 }
