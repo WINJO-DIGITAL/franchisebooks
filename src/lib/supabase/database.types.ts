@@ -189,14 +189,14 @@ isOneToOne: false
                   ]
                 },"user_billing": {
                   Row: {
-                    "cancel_at_period_end": boolean,"current_period_end": string | null,"status": string,"stripe_customer_id": string | null,"stripe_subscription_id": string | null,"updated_at": string,"user_id": string
+                    "cancel_at_period_end": boolean,"current_period_end": string | null,"plan": string,"status": string,"stripe_customer_id": string | null,"stripe_subscription_id": string | null,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id": string
+                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"plan"?: string,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
+                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"plan"?: string,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: []
                 },"unreadable_documents": {

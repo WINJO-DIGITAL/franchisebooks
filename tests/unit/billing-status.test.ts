@@ -20,7 +20,7 @@ describe("billing access", () => {
 describe("reading a Stripe subscription", () => {
   it("takes the paying user from the checkout metadata and the period end from the subscription", () => {
     const row = billingRowFromSubscription({ id: "sub_1", status: "active", customer: "cus_1", metadata: { user_id: "u1" }, current_period_end: 1_800_000_000 });
-    expect(row).toEqual({ userId: "u1", stripeCustomerId: "cus_1", stripeSubscriptionId: "sub_1", status: "active", currentPeriodEnd: new Date(1_800_000_000 * 1000).toISOString(), cancelAtPeriodEnd: false });
+    expect(row).toEqual({ userId: "u1", stripeCustomerId: "cus_1", stripeSubscriptionId: "sub_1", status: "active", currentPeriodEnd: new Date(1_800_000_000 * 1000).toISOString(), cancelAtPeriodEnd: false, plan: "standard" });
   });
 
   it("reads the period end from the item on newer Stripe versions, and an expanded customer", () => {

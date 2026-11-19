@@ -75,6 +75,8 @@ export const env = {
   stripeSecretKey: () => optional("STRIPE_SECRET_KEY"),
   stripeWebhookSecret: () => optional("STRIPE_WEBHOOK_SECRET"),
   stripePriceId: () => optional("STRIPE_PRICE_ID"),
+  /** The Max plan (£99 a month). Optional: without it only the Standard plan is offered. */
+  stripeMaxPriceId: () => optional("STRIPE_MAX_PRICE_ID"),
   /** When true, the app asks for a paid subscription. Off by default so turning billing on is a deliberate step. */
   billingEnforced: () => optional("BILLING_ENFORCED") === "true",
   logLevel: () => optional("LOG_LEVEL") ?? "info",

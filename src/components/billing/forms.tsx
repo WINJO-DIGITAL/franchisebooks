@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import { openBillingPortal, startCheckout } from "@/lib/actions/billing";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 
-export function SubscribeForm({ price }: { price: number }) {
+export function SubscribeForm({ plan, price }: { plan: "standard" | "max"; price: number }) {
   return (
-    <ActionForm action={startCheckout} className="mt-6">
-      <SubmitButton className="w-full" pendingLabel="Opening the Payment Page…">Subscribe for £{price} a month</SubmitButton>
+    <ActionForm action={startCheckout}>
+      <input type="hidden" name="plan" value={plan} />
+      <SubmitButton className="w-full" variant={plan === "max" ? "secondary" : "primary"} pendingLabel="Opening the Payment Page…">
+        Subscribe for £{price} a month
+      </SubmitButton>
     </ActionForm>
   );
 }

@@ -2,7 +2,7 @@ import "server-only";
 import Stripe from "stripe";
 import { env } from "@/lib/env";
 import type { AdminClient } from "@/lib/supabase/admin";
-import { billingRowFromSubscription, type SubscriptionLike } from "./status";
+import { billingRowFromSubscription, type Plan, type SubscriptionLike } from "./status";
 
 export class BillingNotConfigured extends Error {
   constructor() {
@@ -17,7 +17,7 @@ export function getStripe(): Stripe | null {
 
 /** Records a Stripe subscription against the user who pays. Safe to repeat: the same subscription gives the same row. */
 export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): Promise<string> {
-  const row = billingRowFromSubscription(sub);
+  const row = billingRowFromSubscription(sub, env.stripeMaxPriceId());
   let userId = row.userId;
   if (!userId) {
     const { data } = await db.from("user_billing").select("user_id").eq("stripe_customer_id", row.stripeCustomerId).maybeSingle();
@@ -32,6 +32,7 @@ export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): 
       status: row.status,
       current_period_end: row.currentPeriodEnd,
       cancel_at_period_end: row.cancelAtPeriodEnd,
+      plan: row.plan,
     },
     { onConflict: "user_id" },
   );
@@ -39,10 +40,10 @@ export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): 
   return userId;
 }
 
-/** A Stripe Checkout page for the monthly plan. The user's id travels with it so the webhook knows who paid. */
-export async function createCheckoutUrl(db: AdminClient, user: { id: string; email: string }): Promise<string> {
+/** A Stripe Checkout page for the chosen monthly plan. The user's id travels with it so the webhook knows who paid. */
+export async function createCheckoutUrl(db: AdminClient, user: { id: string; email: string }, plan: Plan = "standard"): Promise<string> {
   const stripe = getStripe();
-  const price = env.stripePriceId();
+  const price = plan === "max" ? env.stripeMaxPriceId() : env.stripePriceId();
   if (!stripe || !price) throw new BillingNotConfigured();
   const { data: existing } = await db.from("user_billing").select("stripe_customer_id").eq("user_id", user.id).maybeSingle();
   const base = env.appUrl();
@@ -52,7 +53,7 @@ export async function createCheckoutUrl(db: AdminClient, user: { id: string; ema
     client_reference_id: user.id,
     ...(existing?.stripe_customer_id ? { customer: existing.stripe_customer_id } : { customer_email: user.email }),
     subscription_data: { metadata: { user_id: user.id } },
-    metadata: { user_id: user.id },
+    metadata: { user_id: user.id, plan },
     allow_promotion_codes: true,
     success_url: `${base}/subscribe?checkout=done`,
     cancel_url: `${base}/subscribe?checkout=cancelled`,

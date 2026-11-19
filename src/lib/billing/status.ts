@@ -4,8 +4,16 @@
 
 export type BillingStatus = "incomplete" | "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "paused" | "comped";
 
-/** The price, for display only; the amount charged is the Stripe price set in STRIPE_PRICE_ID. */
-export const PLAN_PRICE_GBP = 49;
+/** The plans. The amount charged is the Stripe price set in STRIPE_PRICE_ID (Standard) or STRIPE_MAX_PRICE_ID (Max). */
+export const PLANS = ["standard", "max"] as const;
+export type Plan = (typeof PLANS)[number];
+
+/** Prices shown to people, for display only. */
+export const PLAN_PRICE_GBP: Record<Plan, number> = { standard: 49, max: 99 };
+
+export function planFromPriceId(priceId: string | null | undefined, maxPriceId: string | null | undefined): Plan {
+  return priceId && maxPriceId && priceId === maxPriceId ? "max" : "standard";
+}
 
 /** Statuses that let a person use the app. past_due is included: Stripe is still retrying the card. */
 const ACCESS: ReadonlySet<string> = new Set(["active", "trialing", "past_due", "comped"]);
@@ -33,7 +41,7 @@ export interface SubscriptionLike {
   /** Older API versions put this on the subscription... */
   current_period_end?: number;
   /** ...newer ones on each item. */
-  items?: { data: { current_period_end?: number }[] };
+  items?: { data: { current_period_end?: number; price?: { id: string } }[] };
 }
 
 export interface BillingRow {
@@ -44,9 +52,10 @@ export interface BillingRow {
   status: BillingStatus;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  plan: Plan;
 }
 
-export function billingRowFromSubscription(sub: SubscriptionLike): BillingRow {
+export function billingRowFromSubscription(sub: SubscriptionLike, maxPriceId?: string | null): BillingRow {
   const end = sub.current_period_end ?? sub.items?.data[0]?.current_period_end ?? null;
   return {
     userId: sub.metadata?.user_id || null,
@@ -55,5 +64,6 @@ export function billingRowFromSubscription(sub: SubscriptionLike): BillingRow {
     status: normaliseStatus(sub.status),
     currentPeriodEnd: end == null ? null : new Date(end * 1000).toISOString(),
     cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
+    plan: planFromPriceId(sub.items?.data[0]?.price?.id, maxPriceId),
   };
 }

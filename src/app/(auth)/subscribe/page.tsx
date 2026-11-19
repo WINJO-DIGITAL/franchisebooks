@@ -40,6 +40,7 @@ export default async function SubscribePage({ searchParams }: { searchParams: Pr
   }
 
   const configured = Boolean(env.stripeSecretKey() && env.stripePriceId());
+  const maxConfigured = Boolean(env.stripeSecretKey() && env.stripeMaxPriceId());
   const justPaid = params.checkout === "done";
 
   if (justPaid) return <ConfirmingPayment />;
@@ -47,16 +48,32 @@ export default async function SubscribePage({ searchParams }: { searchParams: Pr
   return (
     <>
       <h1 className="text-2xl font-semibold tracking-tight">Choose Your Plan</h1>
-      <p className="mt-2 text-sm text-muted">One plan, one price. Your DPD earnings, expenses and driver pay, worked out for you every day.</p>
-      <p className="mt-5 text-3xl font-semibold tracking-tight">£{PLAN_PRICE_GBP}<span className="text-base font-normal text-muted"> a month</span></p>
-      <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
-        <li>Every franchise on your account included</li>
-        <li>Syncs with the DPD portal every night</li>
-        <li>Driver pay, expenses and a period report, ready for payday</li>
-        <li>Cancel any time</li>
-      </ul>
+      <p className="mt-2 text-sm text-muted">Your DPD earnings, expenses and driver pay, worked out for you every day. Every franchise on your account is included in either plan.</p>
       {params.checkout === "cancelled" ? <div className="mt-4"><Notice tone="warn" title="Payment Was Not Completed" detail="No charge was made. You can try again whenever you are ready." /></div> : null}
-      {configured ? <SubscribeForm price={PLAN_PRICE_GBP} /> : <div className="mt-6"><Notice tone="warn" title="Payments Are Not Switched on Yet" detail="Please check back shortly." /></div>}
+
+      <section className="mt-6 rounded-xl border border-line p-4">
+        <p className="text-sm font-semibold text-ink">Standard</p>
+        <p className="mt-2 text-2xl font-semibold tracking-tight">£{PLAN_PRICE_GBP.standard}<span className="text-base font-normal text-muted"> a month</span></p>
+        <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
+          <li>Syncs with the DPD portal every night</li>
+          <li>Driver pay, expenses and a period report, ready for payday</li>
+          <li>Cancel any time</li>
+        </ul>
+        {configured ? <div className="mt-4"><SubscribeForm plan="standard" price={PLAN_PRICE_GBP.standard} /></div> : <div className="mt-4"><Notice tone="warn" title="Payments Are Not Switched on Yet" detail="Please check back shortly." /></div>}
+      </section>
+
+      {maxConfigured ? (
+        <section className="mt-4 rounded-xl border border-line p-4">
+          <p className="text-sm font-semibold text-ink">Max</p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight">£{PLAN_PRICE_GBP.max}<span className="text-base font-normal text-muted"> a month</span></p>
+          <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
+            <li>Everything in Standard</li>
+            <li>Your DPD figures back over the current and previous tax year</li>
+            <li>Long-run trends, driver performance and rate checks</li>
+          </ul>
+          <div className="mt-4"><SubscribeForm plan="max" price={PLAN_PRICE_GBP.max} /></div>
+        </section>
+      ) : null}
     </>
   );
 }

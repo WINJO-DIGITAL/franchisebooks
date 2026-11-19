@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { BillingNotConfigured, createCheckoutUrl, createPortalUrl } from "@/lib/billing/stripe";
 import { subscribeAudience } from "@/lib/billing/audience";
+import type { Plan } from "@/lib/billing/status";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -12,16 +13,17 @@ const MEMBER_MESSAGE = "Your business's subscription is paid by its owner, so th
 const NOT_CONFIGURED = "Payments are not switched on yet. Please try again shortly.";
 
 /** Sends the signed-in person to Stripe to pay for the monthly plan. */
-export async function startCheckout(_prev: ActionState, _formData: FormData): Promise<ActionState> {
+export async function startCheckout(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/login");
   const audience = await subscribeAudience(supabase, data.user.id);
   if (audience === "driver") redirect("/my");
   if (audience === "member") return fail(MEMBER_MESSAGE);
+  const plan: Plan = formData.get("plan") === "max" ? "max" : "standard";
   let url: string;
   try {
-    url = await createCheckoutUrl(createAdminClient(), { id: data.user.id, email: data.user.email ?? "" });
+    url = await createCheckoutUrl(createAdminClient(), { id: data.user.id, email: data.user.email ?? "" }, plan);
   } catch (error) {
     if (error instanceof BillingNotConfigured) return fail(NOT_CONFIGURED);
     return fail("We could not open the payment page. Please try again.", error instanceof Error ? error.message : null);
@@ -30,7 +32,7 @@ export async function startCheckout(_prev: ActionState, _formData: FormData): Pr
 }
 
 /** Opens Stripe's page for changing the card or cancelling. Only the person who pays has a subscription to manage. */
-export async function openBillingPortal(_prev: ActionState, _formData: FormData): Promise<ActionState> {
+export async function openBillingPortal(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/login");

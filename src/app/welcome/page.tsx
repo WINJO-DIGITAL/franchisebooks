@@ -28,7 +28,7 @@ const FEATURES = [
 
 const FAQ = [
   { q: "Is my DPD login safe?", a: "It is encrypted before it is stored and only the app can read it. The connection can only look and download. It is built so it can never change or submit anything in the DPD portal." },
-  { q: "How many franchises can I add?", a: `As many as you run. The price is per account, not per franchise: £${PLAN_PRICE_GBP} a month.` },
+  { q: "How many franchises can I add?", a: `As many as you run. The price is per account, not per franchise: £${PLAN_PRICE_GBP.standard} a month.` },
   { q: "What if DPD asks for a verification code?", a: "The nightly read stops rather than trying to get round it, and tells you. You can still upload reports by hand." },
   { q: "Can I cancel?", a: "Yes, any time, from the Settings page. You keep access until the end of the period you have paid for." },
 ];
@@ -116,7 +116,7 @@ export default function WelcomePage() {
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Link href="/signup" className={`${buttonClass("primary", "lg")} w-full shadow-sm sm:w-auto`}>
-                  Get started for £{PLAN_PRICE_GBP} a month <ArrowRight className="size-4" aria-hidden />
+                  Get started for £{PLAN_PRICE_GBP.standard} a month <ArrowRight className="size-4" aria-hidden />
                 </Link>
                 <Link href="#how" className={`${buttonClass("secondary", "lg")} w-full sm:w-auto`}>See how it works</Link>
               </div>
@@ -172,7 +172,7 @@ export default function WelcomePage() {
               <div className="h-1 bg-accent" aria-hidden />
               <div className="p-6 sm:p-8">
                 <p className="text-sm font-medium text-muted">Per account</p>
-                <p className="mt-1 text-5xl font-semibold tracking-tight">£{PLAN_PRICE_GBP}<span className="ml-1 text-lg font-normal text-muted">a month</span></p>
+                <p className="mt-1 text-5xl font-semibold tracking-tight">£{PLAN_PRICE_GBP.standard}<span className="ml-1 text-lg font-normal text-muted">a month</span></p>
                 <ul className="mt-6 space-y-3 text-[0.9375rem]">
                   {["Every franchise on your account", "Nightly sync with the DPD portal", "Driver pay, expenses and a report for every period", "Cancel any time"].map((t) => (
                     <li key={t} className="flex items-start gap-3">
@@ -206,7 +206,7 @@ export default function WelcomePage() {
           <div className="rounded-3xl bg-ink px-6 py-12 text-center text-white sm:px-12 sm:py-16">
             <h2 id="cta-title" className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Spend Payday on the Business, Not the Spreadsheet.</h2>
             <p className="mx-auto mt-3 max-w-xl text-white/70">Connect DPD once, and your figures are ready every night.</p>
-            <Link href="/signup" className={`${buttonClass("primary", "lg")} mt-8 w-full sm:w-auto`}>Get started for £{PLAN_PRICE_GBP} a month <ArrowRight className="size-4" aria-hidden /></Link>
+            <Link href="/signup" className={`${buttonClass("primary", "lg")} mt-8 w-full sm:w-auto`}>Get started for £{PLAN_PRICE_GBP.standard} a month <ArrowRight className="size-4" aria-hidden /></Link>
           </div>
         </section>
       </main>
