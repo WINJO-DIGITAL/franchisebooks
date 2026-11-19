@@ -9,21 +9,21 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ## Outstanding
 
 ### You (owner) to do
-- [ ] Check the Resend domain `mail.winjodigital.co.uk` shows "verified" (it was still pending).
-- [ ] Add on Vercel (`matthewai`): `STRIPE_SECRET_KEY` (restricted test key), `RESEND_API_KEY` (send-only key), `EMAIL_FROM` (`hello@mail.winjodigital.co.uk`).
-- [ ] In Stripe test mode, turn on the customer portal.
-- [ ] Decide whether £49 includes VAT, then set the price and the legal wording.
-- [ ] Fill in the contact email and VAT wording on the privacy and terms pages, and get them reviewed.
-- [ ] Turn on sign-ups in Supabase (Authentication settings) when ready to take customers.
-- [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise).
-- [ ] Confirm with your accountant how credit notes should be treated (currently: money in, labelled).
-- [ ] Say "merge" when the working branch has new changes to take live.
+- [ ] Say "merge" when the working branch has new changes to take live (you).
+- [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
+- [ ] Add on Vercel (`matthewai`): `STRIPE_SECRET_KEY` (restricted test key), `RESEND_API_KEY` (send-only key), `EMAIL_FROM` (`hello@mail.winjodigital.co.uk`) (you).
+- [ ] In Stripe test mode, turn on the customer portal (you).
+- [ ] Decide whether £49 includes VAT, then set the price and the legal wording (you).
+- [ ] Fill in the contact email and VAT wording on the privacy and terms pages, and get them reviewed (you).
+- [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise) (you).
+- [ ] Confirm with your accountant how credit notes should be treated (currently: money in, labelled) (you).
+- [ ] Press Sync DPD once, then check a new run appears in GitHub Actions, to prove `GITHUB_SYNC_TOKEN` works (you).
+- [ ] Delete the unused GitHub secrets `DPD_USERNAME` and `DPD_PASSWORD` (you).
+- [ ] Give the assistant an email address to send a test driver invitation to (you).
 
 ### Assistant to do
-- [ ] Re-check the Resend domain and send a test invitation once it verifies.
-- [ ] Test the Stripe webhook and checkout end to end in test mode once the Vercel keys are set.
-- [ ] Run the database, integration and end-to-end test suites against a local stack (CI runs them on push).
-- [ ] Test a driver invitation and login end to end.
+- [ ] Test the Stripe checkout and webhook end to end in test mode once the Vercel keys are set (assistant).
+- [ ] Test a driver invitation and login end to end once there is a test address (assistant).
 
 ## Current implementation (summary)
 - Next.js app with Supabase (Postgres, RLS) and a background worker that reads DPD with headless Chromium.
@@ -36,9 +36,9 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - The DPD read depends on DPD's current page layout; a layout change stops reads until the portal map is updated.
 
 ## Test results (latest run on this branch)
-- Unit tests: 363 passing. Typecheck, lint and production build clean.
-- Database and integration tests: not run here (need a local Supabase stack).
-- End-to-end tests: not run since the redesign and rename (needs the full local stack).
+- Unit tests: 376 passing. Typecheck, lint and production build clean.
+- Database tests: 55 passing. Integration tests: 49 passing (against a local Supabase stack).
+- End-to-end tests: all passing (159 run, the rest are skipped by design) against the local stack and a production build.
 
 ## Log of finished work (not a checklist)
 - Fuel importer fix, pay per day or per stop, period reports on Mondays, shared DPD setup, encrypted logins (merged to main).
@@ -57,3 +57,8 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - Getting-started panel on the dashboard (only the steps still to do).
 - Credit notes recorded as labelled money in; franchise vehicle recorded; each day's stop rate checked against the sliding scale on the Period check page.
 - Driver login: drivers see only their own days and pay at /my; owner invites and removes access from the driver page; database keeps driver logins and business users separate (tests in tests/db/security.test.ts).
+- Duplicate driver payments fixed: the importer treats `DR27903` and `ref:dr27903` as one driver (migration `20261118001100`), and re-syncing was checked not to add rows.
+- Sign-up accepts several DPD logins (up to 5), each with optional name and FD numbers; a login added at sign-up or in Settings starts a GitHub run straight away.
+- Drivers named on a DPD report are added automatically and linked to their franchise; the set-up panel no longer asks for franchises or drivers by hand.
+- A DPD sign-in that does not complete now says why (wrong password, password change or new terms waiting, locked login) instead of "layout may have changed".
+- Local database, integration and browser tests run and brought up to date.
