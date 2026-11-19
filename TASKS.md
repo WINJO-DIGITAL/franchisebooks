@@ -11,7 +11,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ### You (owner) to do
 - [ ] Say "merge" when the working branch has new changes to take live (you).
 - [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
-- [ ] Add on Vercel (`matthewai`): `STRIPE_SECRET_KEY` (restricted test key), `RESEND_API_KEY` (send-only key), `EMAIL_FROM` (`hello@mail.winjodigital.co.uk`) (you).
+- [ ] Add `STRIPE_SECRET_KEY` on Vercel (`matthewai`, Settings → Environment Variables, Sensitive, Production): a restricted **test-mode** key from Stripe → Developers → API keys (you).
 - [ ] In Stripe test mode, turn on the customer portal (you).
 - [ ] Decide whether £49 includes VAT, then set the price and the legal wording (you).
 - [ ] Fill in the contact email and VAT wording on the privacy and terms pages, and get them reviewed (you).
