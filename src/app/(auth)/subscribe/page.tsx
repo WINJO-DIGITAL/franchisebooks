@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { ConfirmingPayment } from "@/components/billing/confirming-payment";
+import { PaymentConfirmed } from "@/components/billing/payment-confirmed";
 import { SubscribeForm } from "@/components/billing/forms";
 import { Notice } from "@/components/ui/bits";
 import { subscribeAudience } from "@/lib/billing/audience";
@@ -20,7 +21,10 @@ export default async function SubscribePage({ searchParams }: { searchParams: Pr
   const { data: allowed } = await supabase.rpc("billing_allows_access");
   if (allowed) {
     const { data: profile } = await supabase.from("user_profiles").select("id").eq("id", data.user.id).maybeSingle();
-    redirect(profile ? "/" : "/onboarding");
+    const nextHref = profile ? "/" : "/onboarding";
+    // Just back from Stripe: show the confirmation first, then move on.
+    if (params.checkout === "done") return <PaymentConfirmed nextHref={nextHref} />;
+    redirect(nextHref);
   }
 
   // Drivers never pay, and managers or viewers are covered by their business owner's subscription.
