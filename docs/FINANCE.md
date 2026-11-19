@@ -37,10 +37,12 @@ The business is VAT registered, so every figure in the app is **net of VAT**: VA
 
 * **Income:** the DPD Payments figures are net. DPD's self-billed invoice adds 20% VAT on top. Checked on the FD42102 invoice for 12/10/2026 to 08/11/2026: net £7,303.36, VAT £1,460.67, total £8,764.03.
 * **Charges:** DPD's Transaction Charges are imported excluding VAT (the portal shows "£11.47 (excl. £2.29 VAT)": £11.47 is before VAT and £2.29 is the VAT added on top). The stated VAT is stored beside the amount (`expenses.vat_amount`) and shown as a breakdown: before VAT, stated VAT, including VAT. It is never estimated; a charge with no VAT stated has none.
+* **Other VAT wordings on a charge:** "(excluding £3.00 VAT)" and "(ex £3.00 VAT)" read the same as "(excl. £3.00 VAT)". "£18.00 (incl. £3.00 VAT)" is read as £15.00 before VAT plus £3.00 stated VAT: simple arithmetic on stated figures, no rate assumed. A figure that cannot be read, or stated VAT larger than the amount that includes it, is held for a person.
+* **Fuel:** the stated net amount is the cost. If only a total is stated with its VAT, the cost is the total less that VAT. If only a total is stated and no VAT, the file is held for a person to check (below the auto-import threshold); 20% is never assumed.
 * **How to read a DPD self-billed invoice:** every line amount and "Total exc VAT" are **excluding VAT**. VAT (20%) is shown separately in the VAT analysis, and "Invoice total" is net plus VAT. The VAT shown is the business's output tax due to HMRC. Each invoice names its period ("for period 12/10/2026 to 08/11/2026"), the FD number, an invoice date and a due date.
 * **Invoice dates:** the invoice is dated on the last day of the four-week period and falls due five days later (six invoices checked, all the same). The invoice date is the last day of the billing period ("for period 12/10/2026 to 08/11/2026"); the next period starts the day after. Drivers need to know what they earned as soon as the period closes, so the automatic period report is made the evening after its last day (once the nightly sync has brought in that day), not on the due date. Change `REPORT_DELAY_DAYS_AFTER_PERIOD_END` in `src/lib/finance/periods.ts` if that needs to move.
-* **Not yet in income:** the invoice also carries a *Fuel Supplement* (£71.27 that period) and a *C&D App* line (£9.23). They are not in the daily Payments rows, so income is a little under the invoice net. Everything else on the invoice ties to the daily figures exactly: weekday, Saturday and Sunday stops and pay, and excess parcels.
-* **Same-day entries:** DPD can list two entries for one driver, route and day (for example a second run). They are added together, since the ledger holds one row per driver, route and day. A row that repeats with identical figures is treated as a likely double-listing and held for checking.
+* **Invoice extras are not income:** the invoice also carries a *Fuel Supplement* (£71.27 that period) and a *C&D App* line (£9.23). They are not in the daily Payments rows. Under `docs/CORE.md` rules 2 and 3 income is the daily Payments only, so these extras are never added to income; the Period Check lists them beside the cross-check so the small gap between our payments and the invoice net is explained. Everything else on the invoice ties to the daily figures exactly: weekday, Saturday and Sunday stops and pay, and excess parcels.
+* **Same-day entries:** DPD can list two entries for one driver, route and day (for example a second run) with different figures. They are added together, since the ledger holds one row per driver, route and day. An entry that repeats with exactly the same figures for the same driver, route and day is the same row read twice (`docs/CORE.md` rule 5), so it is held for a person to check rather than added.
 
 ## Driver wages (day rates)
 
@@ -54,12 +56,9 @@ The business is VAT registered, so every figure in the app is **net of VAT**: VA
 
 Revenue entries are per franchise, per month or per day, with status *confirmed* or *estimated*, and sit inside one calendar month (a database constraint) so reports never have to apportion them. If the real DPD documents turn out to carry franchise revenue, it can be imported into the same table.
 
-## Open question
-
-Whether DPD's "daily earnings" statement is what a driver is paid (a cost to you) or what DPD pays the franchise for the driver's work is not known — no real document has been seen. The app follows the brief (driver earnings = cost; revenue entered separately). If that is wrong for your arrangement it changes which table the statement feeds, not the rest of the logic.
-
 ## Dates and money
 
+* Numeric dates on documents are read day first (UK): `11/08/2026` is 11 August. ISO dates (`2026-08-11`) are read as written. A date that is not a real day (`31/02/2026`) is flagged, never swapped round.
 * Business dates are UK calendar days, carried as `YYYY-MM-DD`, never as
   timestamps, so a day can never shift with the server's timezone or
   daylight-saving changes.

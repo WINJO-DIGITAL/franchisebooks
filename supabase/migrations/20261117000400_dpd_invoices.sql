@@ -2,6 +2,7 @@
 -- Every amount is excluding VAT except invoice_total (net plus VAT).
 -- Lines that the daily Payments already contain (stop pay, excess parcels) are kept here too; the app counts only the
 -- extra lines (Fuel Supplement, C&D App, anything new) as "other DPD payments", dated at the period start.
+-- Superseded on 19/11/2026 by docs/CORE.md rules 2 and 3: extras are listed on the Period Check and never counted as income.
 create table public.dpd_invoices (
   id             uuid primary key default gen_random_uuid(),
   account_id     uuid not null references public.accounts (id) on delete restrict,
