@@ -9,6 +9,8 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ## Outstanding
 
 ### You (owner) to do
+- [ ] Check the `STRIPE_SECRET_KEY` on Vercel starts with `sk_test_` or `rk_test_` (test mode). The key saved for the assistant's sandbox was a LIVE key, so replace it if Vercel has the same one (you).
+- [ ] Remove the saved `api.stripe.com` credential from the assistant's environment settings, because it is a live key (you).
 - [ ] Say "merge" when the working branch has new changes to take live (you).
 - [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
 - [ ] Add `STRIPE_SECRET_KEY` on Vercel (`matthewai`, Settings → Environment Variables, Sensitive, Production): a restricted **test-mode** key from Stripe → Developers → API keys (you).
