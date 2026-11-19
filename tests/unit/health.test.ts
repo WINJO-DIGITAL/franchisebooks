@@ -24,6 +24,7 @@ describe("GET /api/health", () => {
     expect(body.checks).toEqual({ app: "ok", database: "ok" });
     expect(JSON.stringify(body)).not.toContain("anon-key-value");
     expect(JSON.stringify(body)).not.toContain("db.test");
+    expect(body).not.toHaveProperty("version");
     expect(fetchMock.mock.calls[0]![0]).toBe("http://db.test:54321/auth/v1/health");
   });
 

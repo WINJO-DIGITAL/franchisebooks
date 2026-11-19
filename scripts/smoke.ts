@@ -44,6 +44,16 @@ const checks: Check[] = [
     },
   },
   {
+    name: "robots.txt and sitemap.xml are public",
+    async run() {
+      for (const path of ["/robots.txt", "/sitemap.xml"]) {
+        const r = await get(path);
+        expect(r.status === 200, `${path}: expected 200, got ${r.status}`);
+      }
+      return "ok";
+    },
+  },
+  {
     name: "Sign-in page loads",
     async run() {
       const r = await get("/login");

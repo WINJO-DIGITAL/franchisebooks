@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/welcome", "/privacy", "/terms", "/cookies", "/auth", "/api/cron", "/api/dropbox/webhook", "/api/stripe/webhook", "/api/health"];
+const PUBLIC_PATHS = ["/login", "/signup", "/welcome", "/privacy", "/terms", "/cookies", "/auth", "/api/cron", "/api/dropbox/webhook", "/api/stripe/webhook", "/api/health", "/robots.txt", "/sitemap.xml"];
+
+/** Pages and endpoints anyone may open without signing in. */
+export function isPublicPath(path: string): boolean {
+  return PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+}
 
 /** Refreshes the Supabase session cookie and sends signed-out visitors to the login page. */
 export async function updateSession(request: NextRequest) {
@@ -23,7 +28,7 @@ export async function updateSession(request: NextRequest) {
 
   const { data } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+  const isPublic = isPublicPath(path);
 
   // The front page: visitors who are not signed in see the sales page at "/"; signed-in users get their dashboard.
   if (!data.user && path === "/") {

@@ -3,7 +3,7 @@
  *
  * Public (see PUBLIC_PATHS in the session proxy) and deliberately minimal: it
  * says whether the app is up and whether the database answers, and never
- * returns configuration values, keys, row data or error details.
+ * returns configuration values, keys, the code version, row data or error details.
  *
  *   GET /api/health  → 200 {"status":"ok"|"degraded", ...}   503 when the database is unreachable
  */
@@ -39,7 +39,6 @@ export async function GET() {
       status,
       checks: { app: "ok", database },
       time: new Date().toISOString(),
-      version: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
     },
     { status: database === "failed" ? 503 : 200, headers: { "cache-control": "no-store" } },
   );
