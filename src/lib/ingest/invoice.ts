@@ -113,8 +113,16 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
     }
   }
 
-  const netTotal = money(new RegExp(String.raw`Total\s*exc\s*VAT\s*(${MONEY})`, "i").exec(text)?.[1]);
-  const vatTotal = money(new RegExp(String.raw`(?:^|\s)VAT\s*(${MONEY})\s*$`, "im").exec(text)?.[1]);
+  const netTotal = money(new RegExp(String.raw`Total\s*ex(?:cl(?:uding)?|c)?\.?\s*VAT\s*(${MONEY})`, "i").exec(text)?.[1]);
+  // A line such as "Total excl VAT £7,303.36" ends with "VAT £7,303.36" but that figure is the net total, not the VAT.
+  let vatTotal: Pence | null = null;
+  const vatRe = new RegExp(String.raw`(?:^|\s)VAT\s*(${MONEY})\s*$`, "gim");
+  for (const match of text.matchAll(vatRe)) {
+    const line = text.slice(text.lastIndexOf("\n", match.index) + 1, (match.index ?? 0) + match[0].length);
+    if (/total\s*ex(?:cl(?:uding)?|c)?\.?\s*VAT/i.test(line)) continue;
+    vatTotal = money(match[1]);
+    if (vatTotal != null) break;
+  }
   const invoiceTotal = money(new RegExp(String.raw`Invoice\s*total\s*(${MONEY})`, "i").exec(text)?.[1]);
   if (netTotal == null || vatTotal == null || invoiceTotal == null) return null;
 

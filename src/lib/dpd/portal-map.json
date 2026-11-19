@@ -86,14 +86,14 @@
           "clean": [
             {
               "column": "Amount",
-              "pattern": "\\s*\\((?!\\s*excl)[^)]*\\)\\s*$",
+              "pattern": "\\s*\\((?!\\s*(?:excl|ex\\b|incl|including|VAT))[^)]*\\)\\s*$",
               "replace": ""
             }
           ],
           "split": [
             {
               "column": "Amount",
-              "pattern": "^(?=.*?\\(\\s*excl\\.?\\s*£?\\s*([\\d,]+(?:\\.\\d{2})?)\\s*VAT)\\s*(£?\\s*[\\d,]+(?:\\.\\d{2})?)",
+              "pattern": "^(?=.*?\\(\\s*(?:excl(?:uding)?|ex)\\.?\\s*(?:VAT\\s*)?£?\\s*([\\d,]+(?:\\.\\d{2})?)\\s*(?:VAT)?)\\s*(£?\\s*[\\d,]+(?:\\.\\d{2})?)",
               "into": ["VAT", "Amount"]
             }
           ],

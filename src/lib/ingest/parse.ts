@@ -508,8 +508,10 @@ function parseFuelTable(
 ): { rows: ParsedFuelRow[]; totalsVerified: boolean | null } {
   const { columns: col } = mapFuelColumns(header);
   const out: ParsedFuelRow[] = [];
-  const totalIndex = col.total ?? col.net;
-  if (totalIndex === undefined) {
+  // Figures in the app are net of VAT (docs/FINANCE.md). Prefer a stated net amount over a gross total.
+  const costIndex = col.net ?? col.total;
+  const totalsIndex = col.net ?? col.total;
+  if (costIndex === undefined) {
     issues.push({ level: "error", message: "The fuel table has no total cost column." });
     confidence.limit(0);
     return { rows: out, totalsVerified: null };
@@ -519,9 +521,13 @@ function parseFuelTable(
     confidence.limit(0);
     return { rows: out, totalsVerified: null };
   }
-  if (col.total === undefined) {
-    issues.push({ level: "warning", message: "Only an amount before VAT was found; it has been used as the cost." });
-    confidence.limit(0.8);
+  if (col.net !== undefined) {
+    if (col.total !== undefined) {
+      issues.push({ level: "info", message: "The document states both a net (ex-VAT) amount and a total; the net amount has been used as the cost." });
+    }
+  } else {
+    issues.push({ level: "warning", message: "Only a total (possibly including VAT) was found; it has been used as the cost because no net amount was stated." });
+    confidence.limit(0.9);
   }
 
   let totalsVerified: boolean | null = null;
@@ -529,7 +535,7 @@ function parseFuelTable(
     const nonEmpty = row.filter((c) => c.trim() !== "").length;
     if (nonEmpty === 0) continue;
     if (isTotalsRow(row)) {
-      const stated = parseMoney(cell(row, totalIndex));
+      const stated = parseMoney(cell(row, totalsIndex));
       if (stated != null) {
         const actual = out.reduce((a, r) => a + r.total, 0);
         const ok = stated === actual;
@@ -538,7 +544,7 @@ function parseFuelTable(
       }
       continue;
     }
-    const totalText = cell(row, totalIndex);
+    const totalText = cell(row, costIndex);
     const dateText = cell(row, col.date);
     if (totalText === "" || (col.date !== undefined && dateText === "")) {
       if (nonEmpty >= 3) {
@@ -625,6 +631,16 @@ function parseExpenseTable(
       confidence.limit(0.5);
       continue;
     }
+    const vatText = col.vat !== undefined ? cell(row, col.vat) : "";
+    let vat: Pence | null = null;
+    if (vatText !== "") {
+      vat = parseMoney(vatText);
+      if (vat == null) {
+        const description = cell(row, col.description) || `line ${line}`;
+        issues.push({ level: "error", row: line, message: `Line ${line} (${description}): VAT "${vatText}" could not be read, so it was not stored.` });
+        confidence.limit(0.5);
+      }
+    }
     out.push({
       line,
       date,
@@ -632,7 +648,7 @@ function parseExpenseTable(
       supplier: cell(row, col.supplier) || null,
       categoryText: cell(row, col.category) || null,
       amount,
-      vat: col.vat !== undefined && cell(row, col.vat) !== "" ? parseMoney(cell(row, col.vat)) : null,
+      vat,
       reference: cell(row, col.reference) || null,
       registration: normaliseRegistration(cell(row, col.registration)),
       driverName: cell(row, col.driver) || null,
