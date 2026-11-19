@@ -37,7 +37,7 @@ export default async function DashboardPage() {
   const reportDates = [...new Set(data.earnings.map((e) => e.date))].sort();
   const latestDay = reportDates[reportDates.length - 1] ?? today;
   const dayIsToday = latestDay === today;
-  const daySummary = summarisePeriod({ ...data, from: latestDay, to: latestDay, revenue: data.revenue.filter((r) => r.periodStart === r.periodEnd) }).combined;
+  const daySummary = summarisePeriod({ ...data, from: latestDay, to: latestDay, revenue: data.revenue.filter((r) => r.periodStart === r.periodEnd), otherPayments: [] }).combined;
   const monthSummary = summarisePeriod({ ...data, from: monthStart, to: today });
   const m = monthSummary.combined;
   // In "route_income" mode the imported DPD payments are income to the business, and wages come from day rates.
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
           {routeIncome ? (
             <>
               <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-                <Stat label="Income" size="lg" value={m.revenueStatus === "unavailable" ? "—" : formatGBP(m.revenueTotal)} sub="From DPD payments" />
+                <Stat label="Income" size="lg" value={m.revenueStatus === "unavailable" ? "—" : formatGBP(m.revenueTotal)} sub={m.otherDpdPayments > 0 ? `DPD payments + ${formatGBP(m.otherDpdPayments)} invoice extras` : "From DPD payments"} />
                 <Stat
                   label="Wages"
                   value={m.wagesComplete ? formatGBP(m.wages) : `${formatGBP(m.wages)}+`}

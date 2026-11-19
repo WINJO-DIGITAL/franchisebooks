@@ -41,7 +41,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
           <Panel>
             {routeIncome ? (
               <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-                <Stat size="lg" label="Income" value={formatGBP(t.incomeFromDpd)} sub="From DPD payments" />
+                <Stat size="lg" label="Income" value={formatGBP(t.incomeFromDpd)} sub={t.otherDpdPayments > 0 ? `DPD payments + ${formatGBP(t.otherDpdPayments)} invoice extras` : "From DPD payments"} />
                 <Stat label="Wages" value={t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`} sub={t.wagesComplete ? "Day rate × days worked" : `${t.driversMissingRate} ${t.driversMissingRate === 1 ? "driver has" : "drivers have"} no day rate`} />
                 <Stat label="Drivers working" value={String(t.driverCount)} />
                 <Stat label="Stops" value={t.stops.toLocaleString("en-GB")} sub={`${t.parcels.toLocaleString("en-GB")} parcels`} />
@@ -79,6 +79,13 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                 ))}
               </tbody>
               <tfoot>
+                {/* Invoice lines the daily Payments do not contain, so the total matches what DPD paid. Dated at the period start. */}
+                {data.otherPayments.map((o) => (
+                  <tr key={o.id}>
+                    <td>{o.label} <span className="text-xs font-normal text-muted">invoice {o.invoiceNo}</span></td>{showFranchise ? <td className="hidden sm:table-cell">{franchiseName.get(o.franchiseId) ?? ""}</td> : null}<td className="hidden sm:table-cell" /><td className="hidden sm:table-cell" />
+                    <td className="r num">{formatGBP(o.amount)}</td><td className="hidden sm:table-cell" /><td />
+                  </tr>
+                ))}
                 <tr>
                   <td>Total</td>{showFranchise ? <td className="hidden sm:table-cell" /> : null}<td className="hidden sm:table-cell" /><td className="r num hidden sm:table-cell">{t.stops.toLocaleString("en-GB")}</td>
                   <td className="r num">{formatGBP(t.incomeFromDpd)}</td><td className="hidden sm:table-cell" /><td className="r num">{t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`}</td>
