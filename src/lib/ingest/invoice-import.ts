@@ -53,6 +53,16 @@ export async function importSelfBilledInvoice(
   },
 ): Promise<InvoiceImportOutcome> {
   const { invoice, text } = await readSelfBilledInvoicePdf(input.bytes);
+  return storeReadInvoice(db, input, invoice, text);
+}
+
+/** The part of importSelfBilledInvoice after the PDF has been read: decide, store, and keep what needs keeping. */
+export async function storeReadInvoice(
+  db: AdminClient,
+  input: Parameters<typeof importSelfBilledInvoice>[1],
+  invoice: ParsedInvoice | null,
+  text: string,
+): Promise<InvoiceImportOutcome> {
   let franchiseId = input.franchiseId;
   let fdNumber = input.fdNumber;
   let status = classifyInvoice(invoice, input.fdNumber);
@@ -102,6 +112,8 @@ export async function importSelfBilledInvoice(
       lines: invoice.lines as unknown as JsonObject[],
       reconciled: invoice.reconciled && invoiceNumbersMatch(invoiceNo, invoice.invoiceNo),
       problems: problems as unknown as JsonObject[],
+      kind: invoice.kind,
+      refers_to: invoice.refersTo as unknown as JsonObject[],
     },
     { onConflict: "account_id,invoice_no", ignoreDuplicates: true },
   );
@@ -112,7 +124,11 @@ export async function importSelfBilledInvoice(
   const reconciled = invoice.reconciled && numberOk;
   const totalsAgree = invoice.totalsAgree && numberOk;
   const diagnosticsPath = totalsAgree ? null : await keepRecognisedText(db, input.accountId, invoiceNo, text);
-  const message = reconciled
+  const message = reconciled && invoice.kind === "support_payment"
+    ? `Support payment ${invoiceNo} for ${fdNumber}${elsewhere} stored (dated ${invoice.invoiceDate}).`
+    : reconciled && invoice.kind === "vat_only"
+      ? `VAT-only invoice ${invoiceNo} for ${fdNumber}${elsewhere} stored: VAT added to ${invoice.refersTo.map((r) => r.invoiceNo).join(", ")}.`
+    : reconciled
     ? `Invoice ${invoiceNo} for ${fdNumber}${elsewhere} stored (${invoice.periodStart} to ${invoice.periodEnd}).`
     : totalsAgree
       // The printed totals agree, so the invoice is stored as it stands; only its line detail could not be read exactly.

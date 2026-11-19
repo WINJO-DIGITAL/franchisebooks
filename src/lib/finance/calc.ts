@@ -106,11 +106,14 @@ export type RevenueAllocationBasis = "none" | "stops" | "parcels" | "earnings";
 export interface OtherPaymentRow {
   id: string;
   franchiseId: string;
-  /** Start of the invoice's billing period, so it lands in the period it belongs to. */
+  /** Start of the invoice's billing period, so it lands in the period it belongs to; for a one-off support payment, its invoice date. */
   date: ISODate;
   /** What it is, for example "Fuel Supplement". */
   label: string;
+  /** Excluding VAT. */
   amount: Pence;
+  /** VAT DPD paid on it, for display only (income is counted excluding VAT). Set for one-off support payments. */
+  vat?: Pence;
   invoiceNo: string;
 }
 

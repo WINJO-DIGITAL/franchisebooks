@@ -1,0 +1,13 @@
+Self Billed VAT Only Invoice
+EXAMPLE TRANSPORT Invoice to - DPDgroup UK Ltd Invoice no: FVI17562
+SERVICES LTD
+2nd Floor College House Roebuck Lane FD number: FD75486
+1 Example Road, Smethwick Invoice date: 11/10/2026
+Exampletown West Midlands Due date: 16/10/2026
+AB1 2CD B661BY ODF VAT reg: GB000000000
+For the adjustment of VAT on the following invoice(s)
+Doc ref Doc date VAT reg VAT Rate Net VAT
+FI1020123 14/09/2026 GB000000000 S 20% £500.00 £100.00
+Total exc VAT £0.00
+VAT £100.00
+Invoice total £100.00

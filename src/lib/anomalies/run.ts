@@ -41,7 +41,7 @@ export async function runAnomalyScan(
     loadCosts(db, filter),
     loadCovers(db, filter),
     fetchAll(() => db.from("review_items").select("id, franchise_id, title, detail, payload, created_at").eq("account_id", accountId).eq("kind", "source_conflict").eq("status", "open").order("id")),
-    fetchAll(() => db.from("dpd_invoices").select("id, franchise_id, invoice_no, period_start, period_end, reconciled, lines, created_at").eq("account_id", accountId).gte("created_at", `${range.from}T00:00:00Z`).order("id")),
+    fetchAll(() => db.from("dpd_invoices").select("id, franchise_id, invoice_no, period_start, period_end, reconciled, lines, created_at").eq("account_id", accountId).eq("kind", "period").gte("created_at", `${range.from}T00:00:00Z`).order("id")),
   ]);
   // The first and last day of daily payments we hold for each franchise, so an invoice for a period we never read is not
   // compared with a "£0" that only means we have no data.

@@ -137,14 +137,14 @@ isOneToOne: false
                   ]
                 },"dpd_invoices": {
                   Row: {
-                    "account_id": string,"created_at": string,"due_date": string | null,"franchise_id": string,"id": string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems": NonNullable<Json>,"reconciled": boolean,"vat_total": number
+                    "account_id": string,"created_at": string,"due_date": string | null,"franchise_id": string,"id": string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems": NonNullable<Json>,"reconciled": boolean,"vat_total": number,"kind": string,"refers_to": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"due_date"?: string | null,"franchise_id": string,"id"?: string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems"?: NonNullable<Json>,"reconciled": boolean,"vat_total": number
+                    "account_id": string,"created_at"?: string,"due_date"?: string | null,"franchise_id": string,"id"?: string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems"?: NonNullable<Json>,"reconciled": boolean,"vat_total": number,"kind"?: string,"refers_to"?: NonNullable<Json>
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"due_date"?: string | null,"franchise_id"?: string,"id"?: string,"invoice_date"?: string,"invoice_no"?: string,"invoice_total"?: number,"lines"?: NonNullable<Json>,"net_total"?: number,"period_end"?: string,"period_start"?: string,"problems"?: NonNullable<Json>,"reconciled"?: boolean,"vat_total"?: number
+                    "account_id"?: string,"created_at"?: string,"due_date"?: string | null,"franchise_id"?: string,"id"?: string,"invoice_date"?: string,"invoice_no"?: string,"invoice_total"?: number,"lines"?: NonNullable<Json>,"net_total"?: number,"period_end"?: string,"period_start"?: string,"problems"?: NonNullable<Json>,"reconciled"?: boolean,"vat_total"?: number,"kind"?: string,"refers_to"?: NonNullable<Json>
                   }
                   Relationships: [
                     {

@@ -19,7 +19,29 @@ export interface InvoiceLine {
   vatCode: "S" | "Z" | "E" | null;
 }
 
+/**
+ * What kind of DPD document it is:
+ * - "period": the usual self-billed invoice for a four-week billing period.
+ * - "support_payment": a one-off self-billed "Support Payment" (such as "Business start" when a franchise opens). It has no
+ *   billing period, so it is dated on its invoice date.
+ * - "vat_only": a "Self Billed VAT Only Invoice", which adds VAT to earlier invoices (listed by their document numbers) once
+ *   the business is VAT registered. Its net is shown for reference only; it adds VAT, never more net income.
+ */
+export type InvoiceKind = "period" | "support_payment" | "vat_only";
+
+/** An earlier invoice a VAT-only invoice adds VAT to. */
+export interface VatReference {
+  invoiceNo: string;
+  docDate: ISODate | null;
+  /** The earlier invoice's net, for reference. */
+  net: Pence;
+  vat: Pence;
+}
+
 export interface ParsedInvoice {
+  kind: InvoiceKind;
+  /** For a VAT-only invoice: the invoices it adds VAT to. Empty otherwise. */
+  refersTo: VatReference[];
   invoiceNo: string;
   fdNumber: string;
   invoiceDate: ISODate;
@@ -100,7 +122,15 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
   const period = /period\s+(\d{2}\/\d{2}\/\d{4})\s+to\s+(\d{2}\/\d{2}\/\d{4})/i.exec(text);
   const periodStart = parseUkDate(period?.[1]);
   const periodEnd = parseUkDate(period?.[2]);
-  if (!invoiceNo || !fdNumber || !invoiceDate || !periodStart || !periodEnd) return null;
+  if (!invoiceNo || !fdNumber || !invoiceDate) return null;
+  // One-off documents have no billing period; they are read on their own terms.
+  if (!period) {
+    const header = { invoiceNo, fdNumber, invoiceDate, dueDate, problems };
+    if (/V\s?AT\s+only\s+invoice|adjustment\s+of\s+V\s?AT/i.test(text)) return parseVatOnly(text, header);
+    if (/support\s*payment/i.test(text)) return parseSupportPayment(text, header);
+    return null;
+  }
+  if (!periodStart || !periodEnd) return null;
   if (periodEnd < periodStart) return null;
 
   // Lines sit between the table heading and the VAT analysis.
@@ -140,17 +170,7 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
     }
   }
 
-  const netTotal = money(new RegExp(String.raw`Total\s*ex(?:cl(?:uding)?|c)?\.?\s*VAT\s*(${MONEY})`, "i").exec(text)?.[1]);
-  // A line such as "Total excl VAT £7,303.36" ends with "VAT £7,303.36" but that figure is the net total, not the VAT.
-  let vatTotal: Pence | null = null;
-  const vatRe = new RegExp(String.raw`(?:^|\s)VAT\s*(${MONEY})\s*$`, "gim");
-  for (const match of text.matchAll(vatRe)) {
-    const line = text.slice(text.lastIndexOf("\n", match.index) + 1, (match.index ?? 0) + match[0].length);
-    if (/total\s*ex(?:cl(?:uding)?|c)?\.?\s*VAT/i.test(line)) continue;
-    vatTotal = money(match[1]);
-    if (vatTotal != null) break;
-  }
-  const invoiceTotal = money(new RegExp(String.raw`Invoice\s*total\s*(${MONEY})`, "i").exec(text)?.[1]);
+  const { netTotal, vatTotal, invoiceTotal } = printedTotals(text);
   if (netTotal == null || vatTotal == null || invoiceTotal == null) return null;
 
   // Pick, for every line with more than one possible reading, the combination that adds up to the invoice's own net total.
@@ -180,5 +200,96 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
   else if (linesSum !== netTotal) problems.push(`The lines add up to ${linesSum / 100} but the invoice states ${netTotal / 100} excluding VAT.`);
   if (!totalsAgree) problems.push("Net plus VAT is not the invoice total.");
 
-  return { invoiceNo, fdNumber, invoiceDate, dueDate, periodStart, periodEnd, lines, netTotal, vatTotal, invoiceTotal, reconciled, totalsAgree, problems };
+  return { kind: "period", refersTo: [], invoiceNo, fdNumber, invoiceDate, dueDate, periodStart, periodEnd, lines, netTotal, vatTotal, invoiceTotal, reconciled, totalsAgree, problems };
+}
+
+/** The printed "Total exc VAT", "VAT" and "Invoice total", each null when not printed. */
+function printedTotals(text: string): { netTotal: Pence | null; vatTotal: Pence | null; invoiceTotal: Pence | null } {
+  const netTotal = money(new RegExp(String.raw`Total\s*ex(?:cl(?:uding)?|c)?\.?\s*VAT\s*(${MONEY})`, "i").exec(text)?.[1]);
+  // A line such as "Total excl VAT £7,303.36" ends with "VAT £7,303.36" but that figure is the net total, not the VAT.
+  let vatTotal: Pence | null = null;
+  const vatRe = new RegExp(String.raw`(?:^|\s)VAT\s*(${MONEY})\s*$`, "gim");
+  for (const match of text.matchAll(vatRe)) {
+    const line = text.slice(text.lastIndexOf("\n", match.index) + 1, (match.index ?? 0) + match[0].length);
+    if (/total\s*ex(?:cl(?:uding)?|c)?\.?\s*VAT/i.test(line)) continue;
+    vatTotal = money(match[1]);
+    if (vatTotal != null) break;
+  }
+  const invoiceTotal = money(new RegExp(String.raw`Invoice\s*total\s*(${MONEY})`, "i").exec(text)?.[1]);
+  return { netTotal, vatTotal, invoiceTotal };
+}
+
+type Header = { invoiceNo: string; fdNumber: string; invoiceDate: ISODate; dueDate: ISODate | null; problems: string[] };
+
+/**
+ * A one-off "Support Payment" self-billed invoice, such as "Business start 1 £500.00 £500.00". There is no billing period,
+ * so it is dated on its invoice date. When it prints no VAT (the business was not VAT registered: "VAT reg: n/a"), its VAT
+ * is nil and the invoice total is its net.
+ */
+function parseSupportPayment(text: string, h: Header): ParsedInvoice | null {
+  const problems = [...h.problems];
+  const bodyStart = text.search(/Description\s+Quantity/i);
+  const bodyEnd = text.search(/V\s?AT\s+analysis|Invoice\s*total|Total\s*ex/i);
+  const body = bodyStart >= 0 ? text.slice(bodyStart, bodyEnd > bodyStart ? bodyEnd : undefined) : "";
+  const rows = body.split("\n").map((l) => l.trim()).filter(Boolean).slice(1);
+  // Description, quantity, rate, an optional VAT code, amount.
+  const lineRe = /^(.*?[A-Za-z].*?)\s+(\d+|[|Il])\s+(£?[\d,]+\.\d{2}|Various)\s+(?:([SZEO0])s?\s+)?(-?£?[\d,]+\.\d{2})$/;
+  const lines: InvoiceLine[] = [];
+  for (const row of rows) {
+    const m = lineRe.exec(row);
+    if (!m) continue;
+    const amount = money(m[5]!.replace(/^£/, ""));
+    if (amount == null) { problems.push(`Could not read the amount on "${row}".`); continue; }
+    const code = (m[4] ?? "").toUpperCase();
+    lines.push({
+      description: m[1]!.trim(), quantity: /^\d+$/.test(m[2]!) ? Number(m[2]) : 1, rate: m[3]!, amount,
+      vatCode: code === "S" || code === "Z" || code === "E" ? code : null,
+    });
+  }
+  const printed = printedTotals(text);
+  if (printed.invoiceTotal == null) return null;
+  const linesSum = lines.reduce((n, l) => n + l.amount, 0);
+  // No VAT printed: nil VAT (only figures the invoice shows are used; nothing is worked out at 20%).
+  const vatTotal = printed.vatTotal ?? 0;
+  const netTotal = printed.netTotal ?? printed.invoiceTotal - vatTotal;
+  const totalsAgree = netTotal + vatTotal === printed.invoiceTotal;
+  const reconciled = lines.length > 0 && linesSum === netTotal && totalsAgree;
+  if (lines.length === 0) problems.push("No invoice lines could be read.");
+  else if (linesSum !== netTotal) problems.push(`The lines add up to ${linesSum / 100} but the invoice states ${netTotal / 100} excluding VAT.`);
+  if (!totalsAgree) problems.push("Net plus VAT is not the invoice total.");
+  return {
+    kind: "support_payment", refersTo: [], invoiceNo: h.invoiceNo, fdNumber: h.fdNumber, invoiceDate: h.invoiceDate, dueDate: h.dueDate,
+    periodStart: h.invoiceDate, periodEnd: h.invoiceDate, lines, netTotal, vatTotal, invoiceTotal: printed.invoiceTotal, reconciled, totalsAgree, problems,
+  };
+}
+
+/**
+ * A "Self Billed VAT Only Invoice": VAT added to earlier invoices, one row each ("FI1020123 14/09/2026 GB... S 20% £500.00
+ * £100.00"). The rows' net is the earlier invoice's, for reference; the invoice's own net total is nil. Dated on its
+ * invoice date.
+ */
+function parseVatOnly(text: string, h: Header): ParsedInvoice | null {
+  const problems = [...h.problems];
+  const refersTo: VatReference[] = [];
+  const rowRe = /^\s*(F[A-Z]{0,2}\d{5,})\s+(\d{2}\/\d{2}\/\d{4})\b.*?(-?£?[\d,]+\.\d{2})\s+(-?£?[\d,]+\.\d{2})\s*$/gim;
+  for (const m of text.matchAll(rowRe)) {
+    if (m[1]!.toUpperCase() === h.invoiceNo) continue;
+    const net = money(m[3]!.replace(/£/, ""));
+    const vat = money(m[4]!.replace(/£/, ""));
+    if (net == null || vat == null) { problems.push(`Could not read the amounts for ${m[1]}.`); continue; }
+    refersTo.push({ invoiceNo: m[1]!.toUpperCase(), docDate: parseUkDate(m[2]) ?? null, net, vat });
+  }
+  const { netTotal, vatTotal, invoiceTotal } = printedTotals(text);
+  if (netTotal == null || vatTotal == null || invoiceTotal == null) return null;
+  const refsVat = refersTo.reduce((n, r) => n + r.vat, 0);
+  const totalsAgree = netTotal + vatTotal === invoiceTotal;
+  const reconciled = refersTo.length > 0 && refsVat === vatTotal && netTotal === 0 && totalsAgree;
+  if (refersTo.length === 0) problems.push("No earlier invoices could be read from the VAT table.");
+  else if (refsVat !== vatTotal) problems.push(`The VAT rows add up to ${refsVat / 100} but the invoice states VAT of ${vatTotal / 100}.`);
+  if (netTotal !== 0) problems.push("A VAT-only invoice should have no net amount.");
+  if (!totalsAgree) problems.push("Net plus VAT is not the invoice total.");
+  return {
+    kind: "vat_only", refersTo, invoiceNo: h.invoiceNo, fdNumber: h.fdNumber, invoiceDate: h.invoiceDate, dueDate: h.dueDate,
+    periodStart: h.invoiceDate, periodEnd: h.invoiceDate, lines: [], netTotal, vatTotal, invoiceTotal, reconciled, totalsAgree, problems,
+  };
 }

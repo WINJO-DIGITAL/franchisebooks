@@ -93,3 +93,28 @@ test.describe("documents the sync could not read (synthetic demo data)", () => {
     expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
   });
 });
+
+test.describe("one-off DPD payments (synthetic demo data)", () => {
+  test("a support payment and its VAT-only invoice show as one income line in their pay period", async ({ page }) => {
+    expect(process.env.NEXT_PUBLIC_SUPABASE_URL).toMatch(/^http:\/\/(127\.0\.0\.1|localhost):/);
+    const { createClient } = await import("@supabase/supabase-js");
+    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+    const { data: franchise } = await admin.from("franchises").select("id, account_id").eq("fd_number", "FD-DEMO-1").single();
+    const base = { account_id: franchise!.account_id, franchise_id: franchise!.id, reconciled: true, problems: [] };
+    await admin.from("dpd_invoices").upsert([
+      { ...base, invoice_no: "FI-DEMO-SP1", kind: "support_payment", invoice_date: "2026-09-13", due_date: "2026-09-18", period_start: "2026-09-13", period_end: "2026-09-13",
+        net_total: 500, vat_total: 0, invoice_total: 500, lines: [{ description: "Business start", quantity: 1, rate: "£500.00", amount: 50000, vatCode: null }], refers_to: [] },
+      { ...base, invoice_no: "FVI-DEMO-1", kind: "vat_only", invoice_date: "2026-10-11", due_date: "2026-10-16", period_start: "2026-10-11", period_end: "2026-10-11",
+        net_total: 0, vat_total: 100, invoice_total: 100, lines: [], refers_to: [{ invoiceNo: "FI-DEMO-SP1", docDate: "2026-09-14", net: 50000, vat: 10000 }] },
+    ], { onConflict: "account_id,invoice_no" });
+
+    await page.goto("/earnings?period=2026-08-17");
+    const line = page.getByRole("row", { name: /DPD business start support payment/ });
+    await expect(line).toBeVisible();
+    await expect(line).toContainText("£500.00 + £100.00 VAT = £600.00");
+    await expect(line).toContainText("FI-DEMO-SP1 + FVI-DEMO-1");
+    // The VAT-only invoice's own period has no second £500.
+    await page.goto("/earnings?period=2026-09-14");
+    await expect(page.getByText("DPD business start support payment")).toHaveCount(0);
+  });
+});

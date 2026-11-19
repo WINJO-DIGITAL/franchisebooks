@@ -354,14 +354,18 @@ export interface OtherPaymentDetail extends OtherPaymentRow {
  * Extra DPD payments: invoice lines that are not already in the daily Payments (Fuel Supplement, C&D App and anything
  * else new), dated at the invoice period's start. Stop pay, excess parcels and the other daily lines are skipped, so
  * nothing is counted twice. Only reconciled invoices (lines add up to the printed net) are used.
+ *
+ * One-off support payments (such as Business start) are income too, dated on their invoice date. A VAT-only invoice that
+ * DPD sends later for one of them is shown with it as one payment (net plus VAT); it never adds more net income.
  */
 export async function loadOtherPayments(db: Db, filter: PeriodFilter): Promise<OtherPaymentDetail[]> {
   const rows = await fetchAll(() => {
     let q = db
       .from("dpd_invoices")
-      .select("id, franchise_id, invoice_no, invoice_date, period_start, period_end, lines, reconciled")
+      .select("id, franchise_id, invoice_no, invoice_date, period_start, period_end, lines, reconciled, kind, net_total, vat_total, refers_to")
       .eq("account_id", filter.accountId)
       .eq("reconciled", true)
+      .neq("kind", "vat_only")
       .gte("period_start", filter.from)
       .lte("period_start", filter.to)
       .order("period_start")
@@ -371,16 +375,53 @@ export async function loadOtherPayments(db: Db, filter: PeriodFilter): Promise<O
     if (hidden) q = q.or(hidden);
     return q;
   });
-  return otherPaymentsFromInvoices(rows);
+  // VAT-only invoices are few; they are matched to the payments they add VAT to, whatever date they carry.
+  const vatOnly = rows.some((r) => r.kind === "support_payment")
+    ? await fetchAll(() => db.from("dpd_invoices").select("id, franchise_id, invoice_no, invoice_date, period_start, period_end, lines, reconciled, kind, net_total, vat_total, refers_to")
+      .eq("account_id", filter.accountId).eq("kind", "vat_only").eq("reconciled", true).order("id"))
+    : [];
+  return otherPaymentsFromInvoices([...rows, ...vatOnly]);
+}
+
+type InvoiceRowForPayments = {
+  id: string; franchise_id: string; invoice_no: string; invoice_date: string; period_start: string; period_end: string; lines: unknown;
+  kind?: string | null; net_total?: number | string | null; vat_total?: number | string | null; refers_to?: unknown;
+};
+
+/** "Business start" → "DPD business start support payment". */
+export function supportPaymentLabel(descriptions: string[]): string {
+  const named = descriptions.map((d) => d.trim()).filter(Boolean);
+  if (named.length === 1) return `DPD ${named[0]!.toLowerCase()} support payment`;
+  return named.length ? `DPD support payment (${named.join(", ")})` : "DPD support payment";
 }
 
 /** Pure part of loadOtherPayments, so it can be tested without a database. */
-export function otherPaymentsFromInvoices(rows: {
-  id: string; franchise_id: string; invoice_no: string; invoice_date: string; period_start: string; period_end: string; lines: unknown;
-}[]): OtherPaymentDetail[] {
+export function otherPaymentsFromInvoices(rows: InvoiceRowForPayments[]): OtherPaymentDetail[] {
   const out: OtherPaymentDetail[] = [];
+  const vatFor = new Map<string, { vat: Pence; invoiceNos: string[] }>();
   for (const r of rows) {
+    if (r.kind !== "vat_only" || !Array.isArray(r.refers_to)) continue;
+    for (const ref of r.refers_to as { invoiceNo?: string; vat?: number }[]) {
+      if (!ref.invoiceNo || typeof ref.vat !== "number") continue;
+      const key = `${r.franchise_id}|${ref.invoiceNo}`;
+      const sofar = vatFor.get(key) ?? { vat: 0 as Pence, invoiceNos: [] };
+      vatFor.set(key, { vat: (sofar.vat + ref.vat) as Pence, invoiceNos: [...sofar.invoiceNos, r.invoice_no] });
+    }
+  }
+  for (const r of rows) {
+    if (r.kind === "vat_only") continue;
     const lines = Array.isArray(r.lines) ? (r.lines as { description?: string; amount?: number }[]) : [];
+    if (r.kind === "support_payment") {
+      const extra = vatFor.get(`${r.franchise_id}|${r.invoice_no}`);
+      const vat = (fromDb(r.vat_total ?? 0) + (extra?.vat ?? 0)) as Pence;
+      out.push({
+        id: r.id, franchiseId: r.franchise_id, date: r.invoice_date as ISODate,
+        label: supportPaymentLabel(lines.map((l) => l.description ?? "")), amount: fromDb(r.net_total ?? 0),
+        vat, invoiceNo: [r.invoice_no, ...(extra?.invoiceNos ?? [])].join(" + "),
+        invoiceDate: r.invoice_date as ISODate, periodEnd: r.period_end as ISODate,
+      });
+      continue;
+    }
     lines.forEach((l, i) => {
       if (!l.description || typeof l.amount !== "number" || DAILY_PAYMENT_LINE.test(l.description)) return;
       out.push({

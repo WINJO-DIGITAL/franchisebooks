@@ -170,7 +170,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   const stopPay = t.incomeFromDpd - t.otherDpdPayments;
   const statement: [string, string, string, boolean][] = routeIncome ? [
     ["Stop pay from DPD", money(stopPay), "from the daily payment reports", false],
-    ...(t.otherDpdPayments > 0 ? [["Other DPD payments", money(t.otherDpdPayments), "Fuel Supplement, C&D App", false] as [string, string, string, boolean]] : []),
+    ...(t.otherDpdPayments > 0 ? [["Other DPD payments", money(t.otherDpdPayments), otherPaymentsNote(report.otherPayments), false] as [string, string, string, boolean]] : []),
     ["Total income", t.revenueStatus === "unavailable" ? "None" : money(t.revenueTotal), STATUS_TEXT[t.revenueStatus]!, true],
     ["less Driver wages", plus(money(t.wages), t.wagesComplete), t.wagesComplete ? "" : `${t.driversMissingRate} driver${t.driversMissingRate === 1 ? " has" : "s have"} no day rate`, false],
     ["less DPD charges and other expenses", money(t.otherExpenses), "", false],
@@ -355,4 +355,12 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   }
   doc.end();
   return finished;
+}
+
+/** What the "Other DPD payments" line is made of, in a few words: "Fuel Supplement, C&D App, DPD business start support payment". */
+export function otherPaymentsNote(payments: MonthlyReport["otherPayments"]): string {
+  if (!payments?.length) return "Fuel Supplement, C&D App";
+  const labels = [...new Set(payments.map((p) => p.label))];
+  const text = labels.join(", ");
+  return text.length > 70 ? `${text.slice(0, 67)}...` : text;
 }

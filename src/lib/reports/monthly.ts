@@ -78,6 +78,8 @@ export interface MonthlyReport {
   drivers: ReportDriver[];
   /** Every driver-day in the period, for the day-by-day section. Optional so older reports still render. */
   dailyPayments?: ReportDailyPayment[];
+  /** DPD payments outside the daily Payments (Fuel Supplement, C&D App, one-off support payments). Optional for older reports. */
+  otherPayments?: { label: string; amount: number; vat?: number; invoiceNo: string }[];
   categories: CategoryTotal[];
   adjustments: ReportAdjustment[];
   unusual: ReportAlert[];
@@ -181,6 +183,7 @@ export async function buildMonthlyReport(db: Db, input: { accountId: string; mon
     franchises: scoped.filter((f) => f.franchiseId).map((f) => ({ ...f, label: label.get(f.franchiseId!) ?? "" })),
     drivers,
     dailyPayments,
+    otherPayments: data.otherPayments.map((o) => ({ label: o.label, amount: o.amount, ...(o.vat ? { vat: o.vat } : {}), invoiceNo: o.invoiceNo })),
     categories: totals.categories,
     adjustments,
     unusual: relevant.filter((a) => !MISSING_TYPES.has(a.anomaly_type)).map(toAlert),

@@ -40,6 +40,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
         .select("franchise_id, invoice_no, due_date, net_total, vat_total, invoice_total, reconciled, lines")
         .eq("account_id", ctx.accountId)
         .eq("period_start", period.start)
+        .eq("kind", "period")
         .order("id");
       if (ctx.franchiseId) q = q.eq("franchise_id", ctx.franchiseId);
       const hiddenFilter = hiddenFranchiseFilter(ctx);
