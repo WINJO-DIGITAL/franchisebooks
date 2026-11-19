@@ -65,8 +65,9 @@ alter table public.driver_statements enable row level security;
 alter table public.driver_statements force row level security;
 create policy driver_statements_read on public.driver_statements for select to authenticated
   using (account_id = (select app_private.current_account_id()) and app_private.can_access_franchise(franchise_id));
-revoke all on public.driver_statements from anon;
-revoke insert, update, delete, truncate on public.driver_statements from authenticated;
+-- Signed-in users may only read (through the policy above); the server writes.
+revoke all on public.driver_statements from anon, authenticated;
+grant select on public.driver_statements to authenticated;
 create trigger audit after insert or update or delete on public.driver_statements for each row execute function app_private.audit_row();
 
 -- ── Fuel: keep the VAT a fuel file states ────────────────────────────────────────────────────────────────────────

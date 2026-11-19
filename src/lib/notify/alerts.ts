@@ -43,6 +43,12 @@ export async function sendAlert(
   now: Date = new Date(),
 ): Promise<AlertResult> {
   if (!alert.to) return "no_recipient";
+  // Where email is not set up (for example a worker without RESEND_API_KEY), only log it and leave the slot unclaimed, so a
+  // server that can send email still sends this alert.
+  if (!env.resendApiKey() || !env.emailFrom()) {
+    logger.warn({ alert: alert.key }, `alert not emailed (email is not set up here): ${alert.subject}`);
+    return "not_sent";
+  }
   const since = new Date(now.getTime() - 24 * 60 * 60_000).toISOString();
   const { count } = await db.from("alert_log").select("alert_key", { count: "exact", head: true }).gte("sent_at", since);
   if ((count ?? 0) >= DAILY_ALERT_CAP) return "capped";
@@ -50,6 +56,8 @@ export async function sendAlert(
   const { error } = await db.from("alert_log").insert({ alert_key: alert.key, bucket: alert.bucket, recipient: alert.to, sent_at: now.toISOString() });
   if (error) return error.code === "23505" ? "duplicate" : "not_sent";
   const sent = await sendEmail({ to: alert.to, subject: alert.subject, text: alert.text });
+  // Not delivered: give the slot back so the next attempt can try again.
+  if (!sent) await db.from("alert_log").delete().eq("alert_key", alert.key).eq("bucket", alert.bucket);
   return sent ? "sent" : "not_sent";
 }
 

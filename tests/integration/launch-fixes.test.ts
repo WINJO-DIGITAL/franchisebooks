@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { checkMissedSync, ensureNightlyWorkerRun, syncNight } from "@/lib/jobs/nightly";
 import { enqueueJob } from "@/lib/jobs/queue";
 import { runJob } from "@/lib/jobs/run";
@@ -111,16 +111,53 @@ describe("nightly sync start and the 23:00 check", () => {
   });
 });
 
+// Email set up with a stand-in provider: nothing leaves the machine.
+function withEmail(ok: boolean) {
+  process.env.RESEND_API_KEY = "test-key";
+  process.env.EMAIL_FROM = "Franchise Books <alerts@example.test>";
+  // Only the email provider is stood in for; the database client keeps using the real fetch.
+  const realFetch = globalThis.fetch;
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) =>
+    String(input instanceof Request ? input.url : input).startsWith("https://api.resend.com/")
+      ? new Response("{}", { status: ok ? 200 : 500 })
+      : realFetch(input, init));
+  vi.stubGlobal("fetch", fetchMock);
+  return { calls: () => fetchMock.mock.calls.filter(([u]) => String(u).startsWith("https://api.resend.com/")).length };
+}
+function withoutEmail() {
+  delete process.env.RESEND_API_KEY;
+  delete process.env.EMAIL_FROM;
+  vi.unstubAllGlobals();
+}
+
 describe("alert emails are rate-limited", () => {
   it("sends the same alert once per time slot", async () => {
     const key = `test-alert:${t.accountId}`;
-    const first = await sendAlert(db, { key, bucket: "2026-11-19T20", to: "owner@example.test", subject: "Test", text: "Test" });
-    const second = await sendAlert(db, { key, bucket: "2026-11-19T20", to: "owner@example.test", subject: "Test", text: "Test" });
-    // Email sending is not set up in tests, so the first is recorded but "not sent"; the repeat is stopped as a duplicate.
-    expect(["sent", "not_sent"]).toContain(first);
-    expect(second).toBe("duplicate");
-    expect(await sendAlert(db, { key, bucket: "2026-11-19T20", to: null, subject: "Test", text: "Test" })).toBe("no_recipient");
-    await sql("delete from public.alert_log where alert_key = $1", [key]);
+    const fetchMock = withEmail(true);
+    try {
+      expect(await sendAlert(db, { key, bucket: "2026-11-19T20", to: "owner@example.test", subject: "Test", text: "Test" })).toBe("sent");
+      expect(await sendAlert(db, { key, bucket: "2026-11-19T20", to: "owner@example.test", subject: "Test", text: "Test" })).toBe("duplicate");
+      expect(fetchMock.calls()).toBe(1);
+      expect(await sendAlert(db, { key, bucket: "2026-11-19T20", to: null, subject: "Test", text: "Test" })).toBe("no_recipient");
+    } finally {
+      withoutEmail();
+      await sql("delete from public.alert_log where alert_key = $1", [key]);
+    }
+  });
+
+  it("only logs where email is not set up, and gives the slot back when sending fails, so another server can still send it", async () => {
+    const key = `test-alert-unsent:${t.accountId}`;
+    withoutEmail();
+    expect(await sendAlert(db, { key, bucket: "b1", to: "owner@example.test", subject: "Test", text: "Test" })).toBe("not_sent");
+    expect(await sql("select 1 from public.alert_log where alert_key = $1", [key])).toHaveLength(0);
+    withEmail(false);
+    try {
+      expect(await sendAlert(db, { key, bucket: "b1", to: "owner@example.test", subject: "Test", text: "Test" })).toBe("not_sent");
+      expect(await sql("select 1 from public.alert_log where alert_key = $1", [key])).toHaveLength(0);
+    } finally {
+      withoutEmail();
+      await sql("delete from public.alert_log where alert_key = $1", [key]);
+    }
   });
 });
 
@@ -130,11 +167,13 @@ describe("error alerts to ALERT_EMAIL", () => {
     delete process.env.ALERT_EMAIL;
     expect(await alertAdminOfError(detail, { where: "test" })).toBe("no_recipient");
     process.env.ALERT_EMAIL = "admin@example.test";
+    withEmail(true);
     try {
-      expect(["sent", "not_sent"]).toContain(await alertAdminOfError(detail, { where: "test" }));
+      expect(await alertAdminOfError(detail, { where: "test" })).toBe("sent");
       expect(await alertAdminOfError(detail, { where: "test" })).toBe("duplicate");
     } finally {
       delete process.env.ALERT_EMAIL;
+      withoutEmail();
       await sql("delete from public.alert_log where alert_key = $1", [errorAlertKey(detail, { where: "test" })]);
     }
   });
