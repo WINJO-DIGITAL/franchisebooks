@@ -47,6 +47,7 @@ const revenueSchema = z.object({
   amount: moneyAmount,
   status: z.enum(["confirmed", "estimated"]),
   kind: z.enum(["payment", "credit_note"]).default("payment"),
+  driverId: z.string().optional(),
   description: optionalText(300),
 });
 
@@ -69,6 +70,8 @@ export async function addRevenue(_prev: ActionState, formData: FormData): Promis
   const { error } = await ctx.supabase.from("revenue_entries").insert({
     account_id: ctx.accountId, franchise_id: d.franchiseId, period_start: start, period_end: end,
     amount: toDb(d.amount) as unknown as number, status: d.status, description: revenueDescription(d.kind, d.description), created_by: ctx.userId,
+    // A credit note that corrects a driver's pay is linked to that driver; a payment or other revenue has no driver.
+    driver_id: d.kind === "credit_note" && d.driverId ? d.driverId : null,
   });
   if (error) return dbFailure(error, "The revenue could not be saved. Nothing was changed.");
   revalidatePath("/", "layout");

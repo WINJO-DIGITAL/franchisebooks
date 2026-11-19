@@ -129,9 +129,10 @@ export function AlertSettingsForm({ values, defaults }: { values: Record<string,
   );
 }
 
-export function AddRevenueButton({ franchises, currentMonth, today }: { franchises: Option[]; currentMonth: string; today: string }) {
+export function AddRevenueButton({ franchises, drivers, currentMonth, today }: { franchises: Option[]; drivers: Option[]; currentMonth: string; today: string }) {
   const [open, setOpen] = useState(false);
   const [period, setPeriod] = useState<"month" | "day">("month");
+  const [kind, setKind] = useState<"payment" | "credit_note">("payment");
   return (
     <>
       <Button onClick={() => setOpen(true)}>Add revenue</Button>
@@ -139,7 +140,8 @@ export function AddRevenueButton({ franchises, currentMonth, today }: { franchis
         <ActionForm action={addRevenue} className="space-y-4" resetOnSuccess onSuccess={() => setOpen(false)}>
           {(state) => (<>
             <Field label="Franchise" error={state.fieldErrors?.franchiseId}><Select name="franchiseId" defaultValue={franchises.length === 1 ? franchises[0]!.id : ""} required><option value="" disabled>Choose…</option>{franchises.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</Select></Field>
-            <Field label="What is this?" hint="A credit note from DPD, whether money back or against a charge, is money in for you."><Select name="kind" defaultValue="payment"><option value="payment">A payment from DPD</option><option value="credit_note">A credit note from DPD</option></Select></Field>
+            <Field label="What is this?" hint="A credit note from DPD, whether money back or against a charge, is money in for you."><Select name="kind" value={kind} onChange={(e) => setKind(e.target.value as "payment" | "credit_note")}><option value="payment">A payment from DPD</option><option value="credit_note">A credit note from DPD</option></Select></Field>
+            {kind === "credit_note" ? <Field label="Driver it corrects" hint="The driver whose pay DPD got wrong. It is shown on their page for this period." error={state.fieldErrors?.driverId}><Select name="driverId" defaultValue=""><option value="">Not for one driver</option>{drivers.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}</Select></Field> : null}
             <Field label="Covers"><Select name="period" value={period} onChange={(e) => setPeriod(e.target.value as "month" | "day")}><option value="month">A whole month</option><option value="day">One day</option></Select></Field>
             {period === "month" ? <Field label="Month" error={state.fieldErrors?.month}><Input name="month" type="month" defaultValue={currentMonth} max={currentMonth} required /></Field>
               : <Field label="Day" error={state.fieldErrors?.day}><Input name="day" type="date" defaultValue={today} max={today} required /></Field>}

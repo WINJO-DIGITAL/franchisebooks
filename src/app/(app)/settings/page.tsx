@@ -23,13 +23,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const ctx = await getContext();
   const { supabase, accountId } = ctx;
   const month = monthOf(ctx.today);
-  const [settings, franchises, categories, revenue, audit] = await Promise.all([
+  const [settings, franchises, categories, revenue, audit, driverRows] = await Promise.all([
     supabase.from("app_settings").select("sync_time_local, sync_timezone, sync_enabled, auto_monthly_reports, revenue_allocation_basis, anomaly_config").eq("account_id", accountId).maybeSingle(),
     fetchAll(() => supabase.from("franchises").select("id, fd_number, name, depot, is_active, dpd_login_id, vehicle_type, vehicle_size, vehicle_fuel").eq("account_id", accountId).order("fd_number")),
     fetchAll(() => supabase.from("expense_categories").select("id, name, kind, is_system, is_active").eq("account_id", accountId).order("sort_order").order("id")),
     loadRevenue(supabase, { accountId, from: monthRange(addMonths(month, -12)).start, to: ctx.today }),
     ctx.canWrite ? supabase.from("audit_logs").select("id, action, entity_table, created_at, after").order("id", { ascending: false }).limit(8) : Promise.resolve({ data: [] }),
+    fetchAll(() => supabase.from("drivers").select("id, display_name").eq("account_id", accountId).eq("is_active", true).order("display_name")),
   ]);
+  const driverOptions = driverRows.map((d) => ({ id: d.id, label: d.display_name }));
   const s = settings.data;
   const dpdSaved = ctx.isOwner ? await hasDpdLogin(createAdminClient(), accountId) : false;
   const listedLogins = ctx.isOwner ? await listDpdLogins(createAdminClient(), accountId) : [];
@@ -66,7 +68,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </Section>
 
       <Section id="revenue" title="Franchise revenue" description="What DPD pays the franchise. This is kept separate from driver pay, and profit is only shown once revenue has been entered. Estimates are always labelled.">
-        {ctx.isOwner && optionFranchises.length > 0 ? <div className="mb-3"><AddRevenueButton franchises={optionFranchises} currentMonth={month} today={ctx.today} /></div> : null}
+        {ctx.isOwner && optionFranchises.length > 0 ? <div className="mb-3"><AddRevenueButton franchises={optionFranchises} drivers={driverOptions} currentMonth={month} today={ctx.today} /></div> : null}
         {revenue.length === 0 ? <Panel className="text-sm text-muted">No revenue entered yet. Until it is, the dashboard and reports show costs but not profit.</Panel> : (
           <TableWrap>
             <table className="ledger">

@@ -701,14 +701,14 @@ isOneToOne: false
                   ]
                 },"revenue_entries": {
                   Row: {
-                    "account_id": string,"amount": number,"created_at": string,"created_by": string | null,"description": string | null,"franchise_id": string,"id": string,"imported_file_id": string | null,"is_void": boolean,"period_end": string,"period_start": string,"source": string,"status": string,"void_reason": string | null,"voided_at": string | null,"voided_by": string | null
+                    "account_id": string,"amount": number,"created_at": string,"created_by": string | null,"description": string | null,"driver_id": string | null,"franchise_id": string,"id": string,"imported_file_id": string | null,"is_void": boolean,"period_end": string,"period_start": string,"source": string,"status": string,"void_reason": string | null,"voided_at": string | null,"voided_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"amount": number,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"franchise_id": string,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"period_end": string,"period_start": string,"source"?: string,"status"?: string,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
+                    "account_id": string,"amount": number,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"driver_id"?: string | null,"franchise_id": string,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"period_end": string,"period_start": string,"source"?: string,"status"?: string,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"amount"?: number,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"franchise_id"?: string,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"period_end"?: string,"period_start"?: string,"source"?: string,"status"?: string,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
+                    "account_id"?: string,"amount"?: number,"created_at"?: string,"created_by"?: string | null,"description"?: string | null,"driver_id"?: string | null,"franchise_id"?: string,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"period_end"?: string,"period_start"?: string,"source"?: string,"status"?: string,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
                   }
                   Relationships: [
                     {
