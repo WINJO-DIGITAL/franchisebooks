@@ -32,7 +32,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const historyFrom = monthRange(addMonths(month, -3)).start;
   const filter = { accountId: ctx.accountId, from: historyFrom, to: ctx.today, driverId: id };
 
-  const [assignmentsResult, earnings, adjustments, costs, settings, conflicts, rateResult, creditResult] = await Promise.all([
+  const [assignmentsResult, earnings, adjustments, costs, settings, conflicts, rateResult] = await Promise.all([
     ctx.supabase.from("driver_assignments").select("id, franchise_id, route, vehicle_registration, start_date, end_date").eq("driver_id", id).order("start_date", { ascending: false }),
     loadEarnings(ctx.supabase, filter),
     loadAdjustments(ctx.supabase, filter),
@@ -40,9 +40,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
     ctx.supabase.from("app_settings").select("anomaly_config").eq("account_id", ctx.accountId).maybeSingle(),
     ctx.supabase.from("review_items").select("payload").eq("kind", "source_conflict").eq("status", "open"),
     ctx.supabase.from("driver_day_rates").select("id, day_rate, effective_from, note, pay_basis").eq("driver_id", id).order("effective_from", { ascending: false }),
-    ctx.supabase.from("revenue_entries").select("id, amount, period_start, period_end, status, description").eq("driver_id", id).eq("is_void", false).gte("period_start", historyFrom).order("period_start", { ascending: false }),
   ]);
-  const creditNotes = creditResult.data ?? [];
   const rateRows = rateResult.data ?? [];
   const dayRates: DayRate[] = rateRows.map((r) => ({ driverId: id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from, basis: r.pay_basis === "stop" ? "stop" : "day" }));
   const assignments = assignmentsResult.data ?? [];
@@ -217,25 +215,6 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         )}
       </Section>
 
-      {creditNotes.length > 0 ? (
-        <Section title="Credit notes from DPD" description="DPD corrections to this driver's pay, by period. Shown here as money in for the business.">
-          <TableWrap>
-            <table className="ledger">
-              <thead><tr><th>Period</th><th>Status</th><th>Note</th><th className="r">Amount</th></tr></thead>
-              <tbody>
-                {creditNotes.map((c) => (
-                  <tr key={c.id}>
-                    <td className="num whitespace-nowrap">{formatUkDateLong(c.period_start)}{c.period_end !== c.period_start ? ` to ${formatUkDateLong(c.period_end)}` : ""}</td>
-                    <td>{c.status === "estimated" ? "Estimate" : "Confirmed"}</td>
-                    <td>{(c.description ?? "").replace(/^Credit note: ?/, "") || "Credit note"}</td>
-                    <td className="r num font-medium">{formatGBP(fromDb(c.amount))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableWrap>
-        </Section>
-      ) : null}
       <Section title="Pay adjustments" description="Last 3 months" actions={<LinkButton href="/adjustments" variant="quiet" size="sm">All adjustments</LinkButton>}>
         {adjustments.length === 0 ? <EmptyState title="No adjustments" /> : (
           <TableWrap>
