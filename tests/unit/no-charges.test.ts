@@ -6,6 +6,9 @@ describe("a Transaction Charges page with nothing on it", () => {
     expect(pageSaysNoCharges("Transaction Charges Routes FD78797 Total £0.00")).toBe(true);
     expect(pageSaysNoCharges("Transaction Charges No charges found for this period")).toBe(true);
     expect(pageSaysNoCharges("Transaction Charges Total 0.00")).toBe(true);
+    expect(pageSaysNoCharges("Transaction Charges No payment")).toBe(true);
+    expect(pageSaysNoCharges("Transaction Charges No payments due")).toBe(true);
+    expect(pageSaysNoCharges("Transaction Charges Nothing is due")).toBe(true);
   });
   it("is NOT a zero for an unfamiliar page, so a changed layout still raises an error", () => {
     expect(pageSaysNoCharges("Welcome back Loading Sign out")).toBe(false);

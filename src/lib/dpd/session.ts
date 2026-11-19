@@ -30,7 +30,7 @@ export interface CollectedDocument {
 
 /** The page's own words say there are no charges: a zero total, or a "no records" style message. Pure, so it can be tested. */
 export function pageSaysNoCharges(body: string): boolean {
-  const saysNone = /\b(no (transaction )?(charges|records|transactions|results|data)|nothing to show|none found)\b/i.test(body);
+  const saysNone = /\b(no (transaction )?(charges|records|transactions|results|data)|no payments?( (due|made|found|to show))?|nothing (to show|is due|due to pay|to pay)|none found)\b/i.test(body);
   const totalZero = /\btotal\b[^£\d]{0,20}£?\s?0(\.00)?(?![\d.,])/i.test(body);
   return saysNone || totalZero;
 }
