@@ -1,0 +1,5 @@
+# Known throw-away test values (CI database key, a fake JWT in the logger test). Not real secrets.
+.github/workflows/ci.yml:generic-api-key:18
+4970e3bcc5eac984d2b4b197550698f4123bb573:tests/unit/logger.test.ts:jwt:36
+d7260928341ae137c6c21ba271fced8abf6693f4:.github/workflows/ci.yml:generic-api-key:18
+tests/unit/logger.test.ts:jwt:36
