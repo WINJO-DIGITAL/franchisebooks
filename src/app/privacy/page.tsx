@@ -7,7 +7,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy notice" updated="18 November 2026">
       <h2>Who we are</h2>
-      <p>Franchise Books is a product of Winjo Digital. Winjo Digital decides how your information is used, so it is the controller under UK data protection law. Contact: [contact email to be added before publication].</p>
+      <p>Franchise Books is a product of WINJO DIGITAL, a sole trader trading as WINJO DIGITAL (Nitisat Sirisom), of 3 Knoxwood Close, Thornton-Cleveleys, FY5 3UP. WINJO DIGITAL decides how your information is used, so it is the controller under UK data protection law. Contact: hello@winjodigital.co.uk.</p>
       <h2>What we collect</h2>
       <ul>
         <li>Your account details: name, email address and business name.</li>
