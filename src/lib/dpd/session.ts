@@ -28,6 +28,13 @@ export interface CollectedDocument {
   sourceRef: string;
 }
 
+/** The page's own words say there are no charges: a zero total, or a "no records" style message. Pure, so it can be tested. */
+export function pageSaysNoCharges(body: string): boolean {
+  const saysNone = /\b(no (transaction )?(charges|records|transactions|results|data)|nothing to show|none found)\b/i.test(body);
+  const totalZero = /\btotal\b[^£\d]{0,20}£?\s?0(\.00)?(?![\d.,])/i.test(body);
+  return saysNone || totalZero;
+}
+
 const CAPTCHA_SELECTOR = 'iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], .g-recaptcha, .h-captcha, [data-sitekey]';
 
 function escapeRegExp(text: string): string {
@@ -340,6 +347,7 @@ export class PortalSession {
     await tables.first().waitFor({ state: "attached", timeout: 20_000 }).catch(() => undefined);
     const tableCount = await tables.count();
     if (tableCount === 0) {
+      if (await this.noChargesShown(report)) return [];
       throw new PortalError("layout", `${report.id}:table`, `The table on the “${report.label}” page was not found. The portal layout may have changed.`);
     }
     const readTable = (index: number) =>
@@ -354,7 +362,12 @@ export class PortalSession {
         const heading = (tableRows.find((r) => r.length >= 3) ?? []).join("|");
         if (!headerPattern || headerPattern.test(heading)) wanted.push(tableRows);
       }
-      if (wanted.length === 0) throw new PortalError("layout", `${report.id}:table`, `No table on the “${report.label}” page matched the expected headings. The portal layout may have changed.`);
+      if (wanted.length === 0) {
+        // A franchise with no transaction charges has no charges table at all: DPD shows a zero total or "no records". That is a true
+        // zero (other accounts pay for the franchise's running costs), not a failed read.
+        if (await this.noChargesShown(report)) return [];
+        throw new PortalError("layout", `${report.id}:table`, `No table on the “${report.label}” page matched the expected headings. The portal layout may have changed.`);
+      }
     } else {
       wanted.push(await readTable(0));
     }
@@ -373,6 +386,21 @@ export class PortalSession {
     const lines = [`Franchise: ${fd},Report date: ${dd}/${mm}/${yyyy}`, ...rows.filter((r) => r.length > 0).map((r) => r.map(csvCell).join(","))];
     return [{ filename: `${stem}.csv`, mimeType: "text/csv", bytes: new Uint8Array(Buffer.from(lines.join("\r\n") + "\r\n", "utf8")), sourceRef }];
   }
+
+  /**
+   * True when the Transaction Charges page for this franchise says there are no charges: a total of zero, or a "no records"
+   * style message, and no charge rows. Anything else (an unfamiliar page) is NOT treated as zero, so a changed layout still
+   * raises an error rather than silently recording no charges.
+   */
+  private async noChargesShown(report: PortalReport): Promise<boolean> {
+    if (report.id !== "charges") return false;
+    const body = (await this.page.locator("body").innerText().catch(() => "")).replace(/\s+/g, " ").slice(0, 4000);
+    if (!pageSaysNoCharges(body)) return false;
+    // Keep the page's own words in the sync log, so the zero can be checked against the portal when needed.
+    this.noChargesEvidence = body.slice(0, 300);
+    return true;
+  }
+  private noChargesEvidence: string | null = null;
 
   /**
    * Self-billed invoices for one franchise: every invoice row in the current year (and last year in January) whose
