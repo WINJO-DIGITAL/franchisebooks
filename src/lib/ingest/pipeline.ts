@@ -21,7 +21,7 @@ import type { JsonObject } from "@/lib/supabase/json";
 import { runAnomalyScan } from "@/lib/anomalies/run";
 import type { DocumentType } from "./columns";
 import { extractDocument } from "./extract";
-import { driverKeyFor, matchCategory, matchDriver, matchDriverByVehicle, matchFranchise } from "./match";
+import { driverKeyFor, matchCategory, matchDriver, matchDriverByVehicle, matchFranchise, stripFdPrefix } from "./match";
 import { AUTO_IMPORT_THRESHOLD, parseDocument, PARSER_VERSION, type ParsedDocument, type ParseIssue } from "./parse";
 
 export type ImportSource = "dpd_portal" | "dropbox" | "manual_upload";
@@ -292,6 +292,34 @@ interface StoreResult {
   unallocated: number;
 }
 
+/**
+ * Adds a driver found on a DPD report: a new driver record, linked to the franchise they drove for from that date, and
+ * remembered in the roster so later rows (and later files) match them. Used for drivers DPD names but the account has not
+ * registered yet.
+ */
+async function addDriverFromReport(
+  db: AdminClient,
+  accountId: string,
+  roster: Roster,
+  row: { franchiseId: string; name: string; ref: string | null; date: ISODate },
+): Promise<string> {
+  // DPD sometimes puts the franchise number in front of the name ("FD42102 Jane Smith"); the name is the driver.
+  const name = stripFdPrefix(row.name).trim() || "Unnamed driver";
+  const ref = row.ref?.trim() ? row.ref.trim().toUpperCase() : null;
+  const { data: created, error } = await db.from("drivers").insert({ account_id: accountId, display_name: name.slice(0, 120), dpd_driver_ref: ref }).select("id").single();
+  if (error || !created) throw new Error(`Could not add driver ${name}: ${error?.message ?? "no id returned"}`);
+  const { error: assignError } = await db.from("driver_assignments").insert({ account_id: accountId, driver_id: created.id, franchise_id: row.franchiseId, start_date: row.date });
+  if (assignError) throw new Error(`Could not link driver ${name} to the franchise: ${assignError.message}`);
+  roster.drivers.push({
+    id: created.id,
+    displayName: name,
+    dpdRef: ref,
+    aliases: [],
+    assignments: [{ franchiseId: row.franchiseId, startDate: row.date, endDate: null, vehicleRegistration: null }],
+  });
+  return created.id;
+}
+
 /** Matches parsed rows to drivers and writes them through the transactional ingest functions. */
 export async function storeParsed(db: AdminClient, input: StoreInput): Promise<StoreResult> {
   const { parsed, roster, franchiseId } = input;
@@ -306,13 +334,21 @@ export async function storeParsed(db: AdminClient, input: StoreInput): Promise<S
   if (parsed.documentType === "earnings_report") {
     if (!franchiseId) throw new Error("An earnings report cannot be stored without a franchise");
     const unmatched = new Set<string>();
-    const rows = parsed.earnings.map((row) => {
+    // Drivers named on a DPD report are added automatically the first time they appear, so nobody has to register them by hand.
+    const addedThisFile = new Map<string, string>();
+    const rows = [];
+    for (const row of parsed.earnings) {
       const match = matchDriver({ ref: row.driverRef, name: row.driverName, franchiseId, date: row.date }, roster.drivers);
       const driverKey = driverKeyFor(row.driverRef, row.driverName);
-      if (!match.driverId) unmatched.add(driverKey);
-      return {
+      let driverId = match.driverId;
+      if (!driverId && !match.ambiguous) {
+        driverId = addedThisFile.get(driverKey) ?? (await addDriverFromReport(db, input.accountId, roster, { franchiseId, name: row.driverName, ref: row.driverRef, date: row.date }));
+        addedThisFile.set(driverKey, driverId);
+      }
+      if (!driverId) unmatched.add(driverKey);
+      rows.push({
         franchise_id: franchiseId,
-        driver_id: match.driverId ?? "",
+        driver_id: driverId ?? "",
         source_driver_name: row.driverName,
         source_driver_ref: row.driverRef ?? "",
         driver_key: driverKey,
@@ -331,8 +367,8 @@ export async function storeParsed(db: AdminClient, input: StoreInput): Promise<S
         additional_payments: toDb(row.additional),
         net_earnings: row.net == null ? "" : toDb(row.net),
         confidence: String(parsed.confidence),
-      };
-    });
+      });
+    }
     const { data, error } = await db.rpc("ingest_earnings", { p_file_id: input.fileId, p_rows: rows as unknown as JsonObject });
     if (error) throw new Error(`Storing earnings failed: ${error.message}`);
     apply(data);
