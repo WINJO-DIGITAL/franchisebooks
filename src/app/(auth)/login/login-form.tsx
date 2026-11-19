@@ -16,9 +16,9 @@ export function LoginForm({ next }: { next: string }) {
             <Field label="Email address" error={state.fieldErrors?.email}>
               <Input name="email" type="email" autoComplete="email" required />
             </Field>
-            <SubmitButton className="w-full" pendingLabel="Sending…">Email me a reset link</SubmitButton>
+            <SubmitButton className="w-full" pendingLabel="Sending…">Email Me a Reset Link</SubmitButton>
             <button type="button" className="block w-full text-center text-sm text-accent underline-offset-2 hover:underline" onClick={() => setMode("signin")}>
-              Back to sign in
+              Back to Sign In
             </button>
           </>
         )}
@@ -37,9 +37,9 @@ export function LoginForm({ next }: { next: string }) {
           <Field label="Password" error={state.fieldErrors?.password}>
             <Input name="password" type="password" autoComplete="current-password" required />
           </Field>
-          <SubmitButton className="w-full" pendingLabel="Signing in…">Sign in</SubmitButton>
+          <SubmitButton className="w-full" pendingLabel="Signing In…">Sign In</SubmitButton>
           <button type="button" className="block w-full text-center text-sm text-accent underline-offset-2 hover:underline" onClick={() => setMode("reset")}>
-            Forgotten your password?
+            Forgotten Your Password?
           </button>
         </>
       )}

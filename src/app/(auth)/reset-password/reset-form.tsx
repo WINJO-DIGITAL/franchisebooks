@@ -15,7 +15,7 @@ export function ResetForm() {
           <Field label="Type it again" error={state.fieldErrors?.confirm}>
             <Input name="confirm" type="password" autoComplete="new-password" required />
           </Field>
-          <SubmitButton className="w-full">Save new password</SubmitButton>
+          <SubmitButton className="w-full">Save New Password</SubmitButton>
         </>
       )}
     </ActionForm>

@@ -115,7 +115,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       </Section>
 
       <Section
-        title="Pay rate and wage"
+        title="Pay Rate and Wage"
         description="The wage is the pay rate in force on each day worked, added up: a day rate pays once per day worked, a stop rate pays for every stop. Changing the rate never alters wages already worked."
         actions={ctx.canWrite ? <SetDayRateForm driverId={id} today={ctx.today} /> : null}
       >
@@ -140,12 +140,12 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
             </table>
           </TableWrap>
         ) : (
-          <EmptyState title="No pay rate set yet">Set what this driver is paid per day worked or per stop. Wages cannot be worked out until a rate is set.</EmptyState>
+          <EmptyState title="No Pay Rate Set Yet">Set what this driver is paid per day worked or per stop. Wages cannot be worked out until a rate is set.</EmptyState>
         )}
       </Section>
 
       {ctx.isOwner ? (
-        <Section title="Driver login" description="Let this driver sign in and see only their own days and pay. They never see the franchise's income, expenses or other drivers.">
+        <Section title="Driver Login" description="Let this driver sign in and see only their own days and pay. They never see the franchise's income, expenses or other drivers.">
           <Panel>
             {driverLink ? (
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -159,12 +159,12 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         </Section>
       ) : null}
 
-      <Section title="Daily payments" description="Each day as DPD shows it on the Payments page: stops, parcels, what they paid, route and mileage. Days imported before these details were read show a dash until the next sync fills them in.">
-        {earnings.length === 0 ? <EmptyState title="No daily payments yet">They appear once a DPD report naming this driver has been imported.</EmptyState> : (
+      <Section title="Daily Payments" description="Each day as DPD shows it on the Payments page: stops, parcels, what they paid, route and mileage. Days imported before these details were read show a dash until the next sync fills them in.">
+        {earnings.length === 0 ? <EmptyState title="No Daily Payments Yet">They appear once a DPD report naming this driver has been imported.</EmptyState> : (
           <TableWrap>
             <table className="ledger">
               <thead>
-                <tr><th>Date</th><th className="r">Stops</th><th className="r hidden sm:table-cell">Total parcels</th><th className="r hidden md:table-cell">Excess parcels</th><th className="r hidden sm:table-cell">Stop pay</th><th className="r hidden md:table-cell">Per stop</th><th className="r hidden md:table-cell">Parcel pay</th><th className="r">Total</th><th className="hidden sm:table-cell">Route</th><th className="r hidden md:table-cell">Mileage</th></tr>
+                <tr><th>Date</th><th className="r">Stops</th><th className="r hidden sm:table-cell">Total Parcels</th><th className="r hidden md:table-cell">Excess Parcels</th><th className="r hidden sm:table-cell">Stop Pay</th><th className="r hidden md:table-cell">Per Stop</th><th className="r hidden md:table-cell">Parcel Pay</th><th className="r">Total</th><th className="hidden sm:table-cell">Route</th><th className="r hidden md:table-cell">Mileage</th></tr>
               </thead>
               <tbody>
                 {[...earnings].reverse().slice(0, 45).map((e) => (
@@ -187,12 +187,12 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         )}
       </Section>
 
-      <Section title="Earnings history" description="Last 45 days. DPD figures are shown exactly as imported; adjustments are separate.">
-        {recent.length === 0 ? <EmptyState title="No earnings recorded yet">Earnings appear here once a DPD report naming this driver has been imported.</EmptyState> : (
+      <Section title="Earnings History" description="Last 45 days. DPD figures are shown exactly as imported; adjustments are separate.">
+        {recent.length === 0 ? <EmptyState title="No Earnings Recorded Yet">Earnings appear here once a DPD report naming this driver has been imported.</EmptyState> : (
           <TableWrap>
             <table className="ledger">
               <thead>
-                <tr><th>Date</th><th className="r">Parcels</th><th className="r">Stops</th><th>Stop pattern</th><th className="r">DPD earnings</th><th className="r">Adjustments</th><th className="r">Final pay</th></tr>
+                <tr><th>Date</th><th className="r">Parcels</th><th className="r">Stops</th><th>Stop Pattern</th><th className="r">DPD Earnings</th><th className="r">Adjustments</th><th className="r">Final Pay</th></tr>
               </thead>
               <tbody>
                 {recent.map((d) => {
@@ -215,11 +215,11 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         )}
       </Section>
 
-      <Section title="Pay adjustments" description="Last 3 months" actions={<LinkButton href="/adjustments" variant="quiet" size="sm">All adjustments</LinkButton>}>
-        {adjustments.length === 0 ? <EmptyState title="No adjustments" /> : (
+      <Section title="Pay Adjustments" description="Last 3 months" actions={<LinkButton href="/adjustments" variant="quiet" size="sm">All Adjustments</LinkButton>}>
+        {adjustments.length === 0 ? <EmptyState title="No Adjustments" /> : (
           <TableWrap>
             <table className="ledger">
-              <thead><tr><th>For date</th><th>Type</th><th>Reason</th><th className="r">Amount</th></tr></thead>
+              <thead><tr><th>For Date</th><th>Type</th><th>Reason</th><th className="r">Amount</th></tr></thead>
               <tbody>
                 {[...adjustments].reverse().map((a) => (
                   <tr key={a.id}>
@@ -235,11 +235,11 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         )}
       </Section>
 
-      <Section title="Fuel and expenses attributed to this driver" description="Last 3 months">
-        {myCosts.length === 0 ? <EmptyState title="Nothing attributed">Costs appear here when they are matched to this driver&rsquo;s vehicle, or when you assign them.</EmptyState> : (
+      <Section title="Fuel and Expenses Attributed to This Driver" description="Last 3 months">
+        {myCosts.length === 0 ? <EmptyState title="Nothing Attributed">Costs appear here when they are matched to this driver&rsquo;s vehicle, or when you assign them.</EmptyState> : (
           <TableWrap>
             <table className="ledger">
-              <thead><tr><th>Date</th><th>What</th><th>Supplier</th><th>Why it is here</th><th className="r">Amount</th></tr></thead>
+              <thead><tr><th>Date</th><th>What</th><th>Supplier</th><th>Why It Is Here</th><th className="r">Amount</th></tr></thead>
               <tbody>
                 {[...myCosts].reverse().map((c) => (
                   <tr key={c.id}>
@@ -256,8 +256,8 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         )}
       </Section>
 
-      <Section title="Franchise and vehicle assignments" actions={ctx.canWrite ? <AddAssignmentForm driverId={id} franchises={ctx.franchises.filter((f) => f.isActive).map((f) => ({ id: f.id, label: franchiseLabel(f) }))} today={ctx.today} /> : null}>
-        {assignments.length === 0 ? <EmptyState title="Not assigned to a franchise yet" /> : (
+      <Section title="Franchise and Vehicle Assignments" actions={ctx.canWrite ? <AddAssignmentForm driverId={id} franchises={ctx.franchises.filter((f) => f.isActive).map((f) => ({ id: f.id, label: franchiseLabel(f) }))} today={ctx.today} /> : null}>
+        {assignments.length === 0 ? <EmptyState title="Not Assigned to a Franchise Yet" /> : (
           <TableWrap>
             <table className="ledger">
               <thead><tr><th>Franchise</th><th>Route</th><th>Vehicle</th><th>From</th><th>To</th><th /></tr></thead>
@@ -279,7 +279,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       </Section>
 
       {ctx.canWrite ? (
-        <Section title="Driver details">
+        <Section title="Driver Details">
           <Panel>
             <EditDriverForm driver={{ id, displayName: driver.display_name, dpdDriverRef: driver.dpd_driver_ref, phone: driver.phone, email: driver.email, startDate: driver.start_date, leavingDate: driver.leaving_date, isActive: driver.is_active, notes: driver.notes }} />
           </Panel>

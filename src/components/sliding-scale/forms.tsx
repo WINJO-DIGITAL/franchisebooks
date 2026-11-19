@@ -11,8 +11,8 @@ export function AddScaleRateButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Add a band</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add a sliding scale band">
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Add a Band</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Add a Sliding Scale Band">
         <ActionForm action={addScaleRate} className="space-y-4" resetOnSuccess onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
@@ -48,7 +48,7 @@ export function AddScaleRateButton() {
               <Field label="Rate per stop (£)" hint="For example 2.27." error={state.fieldErrors?.rate}>
                 <Input name="rate" inputMode="decimal" required />
               </Field>
-              <SubmitButton>Save band</SubmitButton>
+              <SubmitButton>Save Band</SubmitButton>
             </>
           )}
         </ActionForm>
@@ -61,8 +61,8 @@ export function PasteScaleRatesButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Paste many</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Paste sliding scale rows">
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Paste Many</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Paste Sliding Scale Rows">
         <ActionForm action={importScaleRates} className="space-y-4" resetOnSuccess onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
@@ -70,7 +70,7 @@ export function PasteScaleRatesButton() {
               <Field label="Rows" error={state.fieldErrors?.rates}>
                 <Textarea name="rates" className="min-h-40 font-mono text-xs" spellCheck={false} placeholder={"Van, Large, Diesel, 0, 79, 0, 99, 2.15\nVan, Large, Diesel, 80, , , , 2.30"} required />
               </Field>
-              <SubmitButton>Save rows</SubmitButton>
+              <SubmitButton>Save Rows</SubmitButton>
             </>
           )}
         </ActionForm>

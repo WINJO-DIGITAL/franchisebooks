@@ -9,8 +9,8 @@ import { buttonClass } from "@/components/ui/button";
 export function AddMenu() {
   const items = [
     { href: "/expenses?add=1", label: "Expense", hint: "Fuel, repairs, anything you paid" },
-    { href: "/adjustments/new", label: "Pay adjustment", hint: "Add to or deduct from a driver's pay" },
-    { href: "/adjustments/cover", label: "Driver cover", hint: "Record who covered a route" },
+    { href: "/adjustments/new", label: "Pay Adjustment", hint: "Add to or deduct from a driver's pay" },
+    { href: "/adjustments/cover", label: "Driver Cover", hint: "Record who covered a route" },
   ];
   return (
     <details className="group relative">

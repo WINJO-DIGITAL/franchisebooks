@@ -9,7 +9,7 @@ const initial: ActionState = { ok: false, message: "" };
 const CHOICES = [
   { value: "investigating", label: "Investigating" },
   { value: "resolved", label: "Resolved" },
-  { value: "expected", label: "Expected variation" },
+  { value: "expected", label: "Expected Variation" },
   { value: "ignored", label: "Ignore" },
 ] as const;
 

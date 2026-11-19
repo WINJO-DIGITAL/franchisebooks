@@ -84,7 +84,7 @@ export function Notice({ tone = "info", title, children, detail, className }: { 
       {children ? <div className={cn(title && "mt-0.5", "text-ink-soft")}>{children}</div> : null}
       {detail ? (
         <details className="mt-2 text-sm text-ink-soft">
-          <summary className="cursor-pointer select-none text-muted">Technical details</summary>
+          <summary className="cursor-pointer select-none text-muted">Technical Details</summary>
           <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded bg-surface/70 p-2 font-mono text-xs">{detail}</pre>
         </details>
       ) : null}

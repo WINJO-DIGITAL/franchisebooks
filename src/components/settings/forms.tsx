@@ -30,7 +30,7 @@ export function DpdLoginForm({ saved }: { saved: boolean }) {
           <Field label="DPD portal password" error={state.fieldErrors?.password}>
             <Input name="password" type="password" autoComplete="new-password" required />
           </Field>
-          <SubmitButton>Save DPD login</SubmitButton>
+          <SubmitButton>Save DPD Login</SubmitButton>
         </>
       )}
     </ActionForm>
@@ -52,7 +52,7 @@ export function AddFranchiseForm() {
       {(state) => (<>
         <Field label="FD number" hint="Exactly as it appears on DPD documents." error={state.fieldErrors?.fdNumber}><Input name="fdNumber" autoCapitalize="characters" required /></Field>
         <Field label="Name (optional)"><Input name="name" placeholder="Depot or area" /></Field>
-        <SubmitButton>Add franchise</SubmitButton>
+        <SubmitButton>Add Franchise</SubmitButton>
       </>)}
     </ActionForm>
   );
@@ -106,9 +106,9 @@ export function ScheduleForm({ syncTime, syncEnabled, autoReports, basis }: { sy
 
 export function AlertSettingsForm({ values, defaults }: { values: Record<string, number>; defaults: Record<string, number> }) {
   const fields: { key: string; label: string; unit: string }[] = [
-    { key: "earningsChangePct", label: "Earnings change worth flagging", unit: "% from the driver's normal" },
-    { key: "stopsChangePct", label: "Stops change worth flagging", unit: "%" },
-    { key: "parcelsChangePct", label: "Parcels change worth flagging", unit: "%" },
+    { key: "earningsChangePct", label: "Earnings Change Worth Flagging", unit: "% from the driver's normal" },
+    { key: "stopsChangePct", label: "Stops Change Worth Flagging", unit: "%" },
+    { key: "parcelsChangePct", label: "Parcels Change Worth Flagging", unit: "%" },
     { key: "fuelWeeklyChangePct", label: "Weekly fuel spend increase worth flagging", unit: "%" },
     { key: "baselineDays", label: "Working days that count as “normal”", unit: "days" },
     { key: "expenseHighMultiple", label: "Expense flagged when it is this many times the usual", unit: "×" },
@@ -123,7 +123,7 @@ export function AlertSettingsForm({ values, defaults }: { values: Record<string,
             </Field>
           ))}
         </div>
-        <SubmitButton>Save alert settings</SubmitButton>
+        <SubmitButton>Save Alert Settings</SubmitButton>
       </>)}
     </ActionForm>
   );
@@ -135,8 +135,8 @@ export function AddRevenueButton({ franchises, currentMonth, today }: { franchis
   const [kind, setKind] = useState<"payment" | "credit_note">("payment");
   return (
     <>
-      <Button onClick={() => setOpen(true)}>Add revenue</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add franchise revenue">
+      <Button onClick={() => setOpen(true)}>Add Revenue</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Add Franchise Revenue">
         <ActionForm action={addRevenue} className="space-y-4" resetOnSuccess onSuccess={() => setOpen(false)}>
           {(state) => (<>
             <Field label="Franchise" error={state.fieldErrors?.franchiseId}><Select name="franchiseId" defaultValue={franchises.length === 1 ? franchises[0]!.id : ""} required><option value="" disabled>Choose…</option>{franchises.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}</Select></Field>
@@ -147,7 +147,7 @@ export function AddRevenueButton({ franchises, currentMonth, today }: { franchis
             <Field label="Amount received from DPD" error={state.fieldErrors?.amount}><div className="relative max-w-xs"><span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">£</span><Input name="amount" inputMode="decimal" className="num pl-7" required placeholder="0.00" /></div></Field>
             <Field label="Is this figure confirmed?" hint="Choose “estimate” if it is a forecast. Profit is labelled accordingly."><Select name="status" defaultValue="confirmed"><option value="confirmed">Confirmed (from a statement or invoice)</option><option value="estimated">Estimate</option></Select></Field>
             <Field label="Note (optional)"><Input name="description" maxLength={300} /></Field>
-            <SubmitButton>Save revenue</SubmitButton>
+            <SubmitButton>Save Revenue</SubmitButton>
           </>)}
         </ActionForm>
       </Dialog>
@@ -156,7 +156,7 @@ export function AddRevenueButton({ franchises, currentMonth, today }: { franchis
 }
 
 export const VoidRevenueButton = ({ id }: { id: string }) => (
-  <ReasonDialog action={voidRevenue} fields={{ id }} trigger="Remove" title="Remove this revenue entry" submitLabel="Remove" reasonLabel="Why?" explanation="It stops counting in every total. The record is kept, marked as void." />
+  <ReasonDialog action={voidRevenue} fields={{ id }} trigger="Remove" title="Remove This Revenue Entry" submitLabel="Remove" reasonLabel="Why?" explanation="It stops counting in every total. The record is kept, marked as void." />
 );
 
 export const AddCategoryForm = () => (
@@ -164,7 +164,7 @@ export const AddCategoryForm = () => (
     {(state) => (<>
       <Field label="New expense category" error={state.fieldErrors?.name} className="min-w-56 flex-1"><Input name="name" maxLength={60} required placeholder="For example: Uniforms" /></Field>
       <Field label="Counts as"><Select name="kind" defaultValue="other"><option value="other">Other operating expense</option><option value="vehicle">Vehicle cost</option></Select></Field>
-      <SubmitButton>Add category</SubmitButton>
+      <SubmitButton>Add Category</SubmitButton>
     </>)}
   </ActionForm>
 );
@@ -183,8 +183,8 @@ export function AddDpdLoginForm() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Add a DPD login</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add a DPD login">
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Add a DPD Login</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Add a DPD Login">
         <ActionForm action={addDpdLoginAction} className="space-y-4" resetOnSuccess onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
@@ -201,7 +201,7 @@ export function AddDpdLoginForm() {
               <Field label="FD numbers this login can see (optional)" hint="Leave this blank and we will find them from DPD. Or list them, separated by commas or one on each line." error={state.fieldErrors?.fdNumbers}>
                 <Textarea name="fdNumbers" className="min-h-20 font-mono text-sm" spellCheck={false} />
               </Field>
-              <SubmitButton>Add login</SubmitButton>
+              <SubmitButton>Add Login</SubmitButton>
             </>
           )}
         </ActionForm>
@@ -214,7 +214,7 @@ export function RefreshDpdLoginButton({ id }: { id: string }) {
   return (
     <ActionForm action={refreshDpdLoginAction}>
       <input type="hidden" name="id" value={id} />
-      <SubmitButton variant="secondary" size="sm" pendingLabel="Checking…">Check &amp; refresh</SubmitButton>
+      <SubmitButton variant="secondary" size="sm" pendingLabel="Checking…">Check &amp; Refresh</SubmitButton>
     </ActionForm>
   );
 }

@@ -10,8 +10,8 @@ export const metadata: Metadata = { title: "More" };
 const items = [
   { href: "/adjustments", label: "Adjustments", icon: SlidersHorizontal },
   { href: "/reports", label: "Reports", icon: FileText },
-  { href: "/check", label: "Period check", icon: ClipboardCheck },
-  { href: "/sliding-scale", label: "Sliding scale", icon: Scale },
+  { href: "/check", label: "Period Check", icon: ClipboardCheck },
+  { href: "/sliding-scale", label: "Sliding Scale", icon: Scale },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/data", label: "Data & Integrations", icon: RefreshCw },
   { href: "/settings", label: "Settings", icon: Settings },

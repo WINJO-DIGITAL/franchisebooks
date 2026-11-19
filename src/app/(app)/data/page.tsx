@@ -117,7 +117,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
 
       {/* Upload */}
       {ctx.canWrite ? (
-        <Section title="Upload documents" description="If automatic sync is not working, drop in an earnings PDF, fuel report or expense spreadsheet. The same checks apply as for automatic imports.">
+        <Section title="Upload Documents" description="If automatic sync is not working, drop in an earnings PDF, fuel report or expense spreadsheet. The same checks apply as for automatic imports.">
           <UploadArea franchises={franchises} defaultFranchiseId={ctx.franchiseId} />
         </Section>
       ) : null}
@@ -146,7 +146,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
                 ) : null}
               </div>
               <div className="mt-5 border-t border-line pt-4">
-                <h3 className="mb-2 text-sm font-semibold">Folders being watched</h3>
+                <h3 className="mb-2 text-sm font-semibold">Folders Being Watched</h3>
                 {(folders.data ?? []).length === 0 ? <p className="text-sm text-muted">No folders chosen yet.</p> : (
                   <ul className="divide-y divide-line rounded-lg border border-line">
                     {(folders.data ?? []).map((f) => (
@@ -165,8 +165,8 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
       </Section>
 
       {/* Recent documents */}
-      <Section title="Recent documents">
-        {fileList.length === 0 ? <EmptyState title="No documents yet">Documents appear here as they arrive from DPD, Dropbox or an upload.</EmptyState> : (
+      <Section title="Recent Documents">
+        {fileList.length === 0 ? <EmptyState title="No Documents Yet">Documents appear here as they arrive from DPD, Dropbox or an upload.</EmptyState> : (
           <TableWrap>
             <table className="ledger">
               <thead><tr><th>Document</th><th>Kind</th><th>Covers</th><th>Result</th><th>Received</th></tr></thead>
@@ -187,7 +187,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
       </Section>
 
       {/* DPD portal */}
-      <Section title="DPD portal" description="Read-only access to the DPD partner portal. It can only look and download; it can never change anything in DPD.">
+      <Section title="DPD Portal" description="Read-only access to the DPD partner portal. It can only look and download; it can never change anything in DPD.">
         <Panel>
           <p className="text-[0.9375rem] text-ink-soft">
             {dpdSetupReady(dpd?.config) ? "Your DPD login is saved. Automatic DPD sync runs every evening at the time set in Settings." : "Automatic DPD sync is not set up yet. Add your DPD login in Settings and it runs every evening."}
@@ -202,7 +202,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
                 </details>
               ) : null}
               <details className="rounded-lg border border-line bg-surface px-4 py-3">
-                <summary className="cursor-pointer text-sm font-medium">Custom portal setup for this account (advanced; normally left empty)</summary>
+                <summary className="cursor-pointer text-sm font-medium">Custom Portal Setup for This Account (Advanced; Normally Left Empty)</summary>
                 <div className="mt-3"><PortalMapForm current={portalMap ? JSON.stringify(portalMap, null, 2) : ""} /></div>
               </details>
             </div>
@@ -211,7 +211,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
       </Section>
 
       {/* Activity */}
-      <Section title="Recent activity">
+      <Section title="Recent Activity">
         {(logs.data ?? []).length === 0 ? <p className="text-sm text-muted">Nothing has happened yet.</p> : (
           <Panel flush>
             <ul className="divide-y divide-line">
@@ -221,7 +221,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
                   <div className="min-w-0 flex-1">
                     <p>{log.message}</p>
                     <p className="text-xs text-muted">{formatUkDateTime(log.created_at)}</p>
-                    {log.level !== "info" && log.detail ? <details className="mt-1 text-xs text-muted"><summary className="cursor-pointer">Technical details</summary><pre className="mt-1 overflow-x-auto whitespace-pre-wrap font-mono">{JSON.stringify(log.detail, null, 2).slice(0, 1500)}</pre></details> : null}
+                    {log.level !== "info" && log.detail ? <details className="mt-1 text-xs text-muted"><summary className="cursor-pointer">Technical Details</summary><pre className="mt-1 overflow-x-auto whitespace-pre-wrap font-mono">{JSON.stringify(log.detail, null, 2).slice(0, 1500)}</pre></details> : null}
                   </div>
                 </li>
               ))}

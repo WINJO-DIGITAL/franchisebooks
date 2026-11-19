@@ -60,10 +60,10 @@ export function ConnectingProgress() {
   if (phase === "needs_attention") {
     return (
       <div role="alert">
-        <h1 className="text-xl font-semibold">We could not read your DPD account</h1>
+        <h1 className="text-xl font-semibold">We Could Not Read Your DPD Account</h1>
         <p className="mt-2 text-sm text-ink-soft">{progress?.message}</p>
         <ActionForm action={retryFirstSync} className="mt-6 space-y-3">
-          <SubmitButton className="w-full" pendingLabel="Trying again…">Try again</SubmitButton>
+          <SubmitButton className="w-full" pendingLabel="Trying Again…">Try Again</SubmitButton>
         </ActionForm>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
           <Link href="/settings" className={`${buttonClass("secondary", "md")} flex-1`}>Check my DPD login</Link>
@@ -76,7 +76,7 @@ export function ConnectingProgress() {
   if (phase === "done") {
     return (
       <div role="status">
-        <h1 className="text-xl font-semibold">You are all set</h1>
+        <h1 className="text-xl font-semibold">You Are All Set</h1>
         <p className="mt-2 text-sm text-ink-soft">We have read your DPD account. Taking you to your dashboard…</p>
         <ul className="mt-5 space-y-2 text-sm">
           {["Payments read", "Charges read", "Invoices read", "Driver pay worked out"].map((t) => (
@@ -92,7 +92,7 @@ export function ConnectingProgress() {
   const activity = ACTIVITY[Math.min(ACTIVITY.length - 1, Math.floor(seconds / 6)) % ACTIVITY.length];
   return (
     <div role="status" aria-live="polite">
-      <h1 className="text-xl font-semibold">Reading your DPD account</h1>
+      <h1 className="text-xl font-semibold">Reading Your DPD Account</h1>
       <p className="mt-2 text-sm text-ink-soft">This takes a few minutes. You can leave this page open; it moves on by itself.</p>
       <div className="mt-6 flex items-center gap-3">
         <span aria-hidden className="size-5 shrink-0 animate-spin rounded-full border-2 border-line border-t-accent" />

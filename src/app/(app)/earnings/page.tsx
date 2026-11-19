@@ -32,7 +32,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
         <PageHeader
           title="Income"
           description={`${formatMonth(month)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
-          actions={<><LinkButton href="/earnings" variant="secondary">Daily view</LinkButton><a className={buttonClass("secondary")} href={`/api/export/drivers?month=${month}`}>Download spreadsheet</a></>}
+          actions={<><LinkButton href="/earnings" variant="secondary">Daily View</LinkButton><a className={buttonClass("secondary")} href={`/api/export/drivers?month=${month}`}>Download spreadsheet</a></>}
         />
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <Link href={`/earnings?month=${addMonths(month, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous month"><ChevronLeft className="size-4" aria-hidden /></Link>
@@ -58,13 +58,13 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
             )}
           </Panel>
         </Section>
-        {rows.length === 0 ? <EmptyState title="No earnings for this month" /> : routeIncome ? (
+        {rows.length === 0 ? <EmptyState title="No Earnings for This Month" /> : routeIncome ? (
           <TableWrap>
             <table className="ledger">
               <thead>
                 <tr>
                   <th>Driver</th>{showFranchise ? <th className="hidden sm:table-cell">Franchise</th> : null}<th className="r hidden sm:table-cell">Days</th><th className="r hidden sm:table-cell">Stops</th>
-                  <th className="r">Income</th><th className="r hidden sm:table-cell">Income / stop</th><th className="r">Wage</th>
+                  <th className="r">Income</th><th className="r hidden sm:table-cell">Income / Stop</th><th className="r">Wage</th>
                 </tr>
               </thead>
               <tbody>
@@ -94,7 +94,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
               <thead>
                 <tr>
                   <th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th className="r">Days</th><th className="r">Parcels</th><th className="r">Stops</th>
-                  <th className="r">Per stop</th><th className="r">DPD earnings</th><th className="r">Added</th><th className="r">Deducted</th><th className="r">Final pay</th>
+                  <th className="r">Per Stop</th><th className="r">DPD Earnings</th><th className="r">Added</th><th className="r">Deducted</th><th className="r">Final Pay</th>
                 </tr>
               </thead>
               <tbody>
@@ -152,7 +152,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Income"
         description={`${formatUkDateLong(date)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
-        actions={<><LinkButton href={`/earnings?month=${monthOf(date)}`} variant="secondary">Monthly view</LinkButton>{ctx.canWrite ? <LinkButton href={`/adjustments/new?date=${date}`}>Add Pay Adjustment</LinkButton> : null}</>}
+        actions={<><LinkButton href={`/earnings?month=${monthOf(date)}`} variant="secondary">Monthly View</LinkButton>{ctx.canWrite ? <LinkButton href={`/adjustments/new?date=${date}`}>Add Pay Adjustment</LinkButton> : null}</>}
       />
       <form method="get" className="mb-6 flex flex-wrap items-center gap-2">
         <Link href={`/earnings?date=${addDays(date, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous day"><ChevronLeft className="size-4" aria-hidden /></Link>
@@ -225,7 +225,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
             <thead>
               <tr>
                 <th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th className="r">Parcels</th><th className="r">Stops</th><th className="r">Gross</th>
-                <th className="r">DPD deductions</th><th className="r">DPD extras</th><th className="r">DPD earnings</th><th className="r">Adjustments</th><th className="r">Final pay</th><th>Source</th>
+                <th className="r">DPD Deductions</th><th className="r">DPD Extras</th><th className="r">DPD Earnings</th><th className="r">Adjustments</th><th className="r">Final Pay</th><th>Source</th>
               </tr>
             </thead>
             <tbody>

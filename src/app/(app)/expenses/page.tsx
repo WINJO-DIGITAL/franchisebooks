@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Expenses" };
 const FILTERS = [
   { key: "all", label: "Everything" },
   { key: "fuel", label: "Fuel" },
-  { key: "other", label: "Other expenses" },
+  { key: "other", label: "Other Expenses" },
   { key: "unallocated", label: "Unallocated" },
 ] as const;
 
@@ -96,7 +96,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         <TableWrap>
           <table className="ledger">
             <thead>
-              <tr><th>Date</th><th>What</th><th className="hidden sm:table-cell">Supplier</th><th className="hidden sm:table-cell">Vehicle</th>{!ctx.franchise ? <th>Franchise</th> : null}<th>Belongs to</th><th className="r">Amount</th><th /></tr>
+              <tr><th>Date</th><th>What</th><th className="hidden sm:table-cell">Supplier</th><th className="hidden sm:table-cell">Vehicle</th>{!ctx.franchise ? <th>Franchise</th> : null}<th>Belongs To</th><th className="r">Amount</th><th /></tr>
             </thead>
             <tbody>
               {visible.map((c) => (
@@ -125,7 +125,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                     {ctx.canWrite ? (
                       <span className="inline-flex gap-1">
                         <AssignCostButton kind={c.kind} id={c.id} drivers={drivers} current={c.allocation.scope} summary={`${c.kind === "fuel" ? "Fuel" : c.categoryName} · ${formatGBP(c.amount)} · ${formatUkDate(c.date)}${c.vehicleRegistration ? ` · ${c.vehicleRegistration}` : ""}`} />
-                        <ReasonDialog action={voidCost} fields={{ kind: c.kind, id: c.id }} trigger="Remove" title="Remove this expense from the totals" submitLabel="Remove"
+                        <ReasonDialog action={voidCost} fields={{ kind: c.kind, id: c.id }} trigger="Remove" title="Remove This Expense From the Totals" submitLabel="Remove"
                           reasonLabel="Why? (for example: duplicate, entered in error)" explanation="The record is kept, marked as void, and no longer counts in any total. This cannot be undone." />
                       </span>
                     ) : null}

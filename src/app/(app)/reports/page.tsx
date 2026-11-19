@@ -41,7 +41,7 @@ export default async function ReportsPage() {
   return (
     <>
       <PageHeader title="Reports" description={byPeriod ? "PDF reports for each DPD four-week period. One is made automatically the evening after each period closes, once the last day's figures have synced, so drivers can see what they earned. Original DPD figures and manual adjustments are always shown separately." : "Monthly PDF reports. Original DPD figures and manual adjustments are always shown separately. Reports for last month are made automatically after month end."} />
-      <Section title="Generate a report">
+      <Section title="Generate a Report">
         <Panel>
           <GenerateReportForm
             periods={periods}
@@ -54,14 +54,14 @@ export default async function ReportsPage() {
         </Panel>
       </Section>
 
-      <Section title="Previous reports">
+      <Section title="Previous Reports">
         {(reports ?? []).length === 0 ? (
-          <EmptyState title="No reports yet">Generate your first report above.</EmptyState>
+          <EmptyState title="No Reports Yet">Generate your first report above.</EmptyState>
         ) : (
           <TableWrap>
             <table className="ledger">
               <thead>
-                <tr><th>Report</th><th>Scope</th><th className="r">Income</th><th className="r">Wages / driver costs</th><th className="r">Fuel &amp; expenses</th><th className="r">Profit</th><th>Generated</th><th /></tr>
+                <tr><th>Report</th><th>Scope</th><th className="r">Income</th><th className="r">Wages / Driver Costs</th><th className="r">Fuel &amp; Expenses</th><th className="r">Profit</th><th>Generated</th><th /></tr>
               </thead>
               <tbody>
                 {(reports ?? []).map((r) => {

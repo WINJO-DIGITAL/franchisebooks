@@ -11,3 +11,4 @@
 - The only alert is the cross-check: payments less charges against what the DPD invoice states.
 - A duplicate is the same row read twice (same FD, driver, day and route). Two portal rows with identical figures are two facts.
 - A page that states zero or "no records" is zero (some franchises have no transaction charges). Days not yet read are missing, not zero.
+- Wording: headings, titles, menu items, buttons and table headers are Title Case; paragraphs and hints stay in sentence case (`python3 scripts/title-case.py --apply` converts new text).

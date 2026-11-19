@@ -55,7 +55,7 @@ export function ErrorView({ error, reset, homeHref = "/", standalone = false }: 
         <span className="grid size-10 place-items-center rounded-lg bg-warn-soft text-warn" aria-hidden>
           <AlertTriangle className="size-5" />
         </span>
-        <h1 className="mt-4 text-xl font-semibold tracking-tight">Something went wrong</h1>
+        <h1 className="mt-4 text-xl font-semibold tracking-tight">Something Went Wrong</h1>
         <p className="mt-2 text-[0.9375rem] text-ink-soft">
           We could not show this page. Nothing you have saved has been lost or changed. Trying again often fixes it.
         </p>
@@ -74,7 +74,7 @@ export function ErrorView({ error, reset, homeHref = "/", standalone = false }: 
         </div>
 
         <details className="mt-6 text-sm text-ink-soft">
-          <summary className="cursor-pointer select-none text-muted">Technical details</summary>
+          <summary className="cursor-pointer select-none text-muted">Technical Details</summary>
           <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded bg-sunken p-3 font-mono text-xs">{technical}</pre>
           <button type="button" onClick={copy} className={buttonClass("quiet", "sm", "mt-2")}>
             {copied ? "Copied" : "Copy details"}
@@ -92,7 +92,7 @@ export function NotFoundView({ homeHref = "/" }: { homeHref?: string }) {
         <span className="grid size-10 place-items-center rounded-lg bg-info-soft text-info" aria-hidden>
           <Compass className="size-5" />
         </span>
-        <h1 className="mt-4 text-xl font-semibold tracking-tight">We could not find that page</h1>
+        <h1 className="mt-4 text-xl font-semibold tracking-tight">We Could Not Find That Page</h1>
         <p className="mt-2 text-[0.9375rem] text-ink-soft">
           The link may be out of date, or the page may have moved. Nothing has been lost.
         </p>

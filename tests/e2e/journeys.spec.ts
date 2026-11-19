@@ -14,8 +14,8 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByText("Estimated").first()).toBeVisible();
     // Quick actions live in one Add menu.
     await page.getByText("Add", { exact: true }).first().click();
-    await expect(page.getByRole("link", { name: /Pay adjustment/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Driver cover/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Pay adjustment/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Driver cover/i })).toBeVisible();
     await expect(page.locator('a[href="/expenses?add=1"]')).toBeVisible(); // the Add menu's Expense item, not the Expenses menu entry
     await expect(page.getByRole("button", { name: /Sync DPD/ })).toBeVisible();
     // Every section is reachable from the sidebar.
@@ -74,7 +74,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await page.getByLabel("Whose work was covered?").selectOption({ label: "Alex Example" });
     await page.getByLabel("Who covered it?").selectOption({ label: "Blake Sample" });
     await page.getByRole("button", { name: "Continue" }).click();
-    await page.getByRole("radio", { name: /I'll enter the amounts/ }).check();
+    await page.getByRole("radio", { name: /I'll enter the amounts/i }).check();
     await page.getByLabel(/Add to Blake Sample/).fill("25");
     await page.getByLabel(/Take off Alex Example/).fill("25");
     await page.getByRole("button", { name: "Continue" }).click();
@@ -179,7 +179,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
   test("shows the drivers, an individual driver page and unregistered names", async ({ page }) => {
     await page.goto("/drivers");
     await expect(page.getByRole("link", { name: "Alex Example" })).toBeVisible();
-    await expect(page.getByText(/Names on DPD reports that are not registered/)).toBeVisible();
+    await expect(page.getByText(/Names on DPD reports that are not registered/i)).toBeVisible();
     await page.getByRole("link", { name: "Alex Example" }).click();
     await expect(page.getByRole("heading", { name: "Alex Example" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Earnings history" })).toBeVisible();

@@ -42,8 +42,8 @@ export default async function SubscribePage({ searchParams }: { searchParams: Pr
             <li>Driver pay, expenses and a period report, ready for payday</li>
             <li>Cancel any time</li>
           </ul>
-          {params.checkout === "cancelled" ? <div className="mt-4"><Notice tone="warn" title="Payment was not completed" detail="No charge was made. You can try again whenever you are ready." /></div> : null}
-          {configured ? <SubscribeForm price={PLAN_PRICE_GBP} /> : <div className="mt-6"><Notice tone="warn" title="Payments are not switched on yet" detail="Please check back shortly." /></div>}
+          {params.checkout === "cancelled" ? <div className="mt-4"><Notice tone="warn" title="Payment Was Not Completed" detail="No charge was made. You can try again whenever you are ready." /></div> : null}
+          {configured ? <SubscribeForm price={PLAN_PRICE_GBP} /> : <div className="mt-6"><Notice tone="warn" title="Payments Are Not Switched on Yet" detail="Please check back shortly." /></div>}
         </>
       )}
     </>

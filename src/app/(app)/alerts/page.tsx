@@ -13,8 +13,8 @@ import { ANOMALY_STATUS, SEVERITY } from "@/lib/labels";
 export const metadata: Metadata = { title: "Alerts" };
 
 const VIEWS = [
-  { key: "open", label: "Needs attention", statuses: ["open", "investigating"] },
-  { key: "done", label: "Dealt with", statuses: ["resolved", "expected", "ignored"] },
+  { key: "open", label: "Needs Attention", statuses: ["open", "investigating"] },
+  { key: "done", label: "Dealt With", statuses: ["resolved", "expected", "ignored"] },
 ] as const;
 
 export default async function AlertsPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
@@ -75,7 +75,7 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
         view.key === "open" ? (
           extras === 0 ? <AllClear /> : null
         ) : (
-          <EmptyState title="No alerts have been dealt with yet">{null}</EmptyState>
+          <EmptyState title="No Alerts Have Been Dealt With Yet">{null}</EmptyState>
         )
       ) : (
         <ul className="space-y-3">

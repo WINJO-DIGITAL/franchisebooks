@@ -19,3 +19,7 @@ A DPD franchisee reads their own portal figures nightly, so they can **invoice t
 ## Why
 
 An accountant or a driver must be able to put the app's figures next to the portal and find they are the same figures. Anything the app adds, removes or merges on its own breaks that.
+
+## Wording style
+
+Headings, page and section titles, menu items, buttons and table headers use **Title Case** ("Data & Integrations", "Add Franchise", "Daily Payments"). Small words (a, an, the, and, of, to, in, on, for) stay lower case unless first or last; acronyms and codes (DPD, FD42102, PDF) keep their capitals. Paragraphs, hints and form field labels stay in normal sentence case. To apply this to new text, run `python3 scripts/title-case.py --apply`.

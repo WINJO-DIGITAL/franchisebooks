@@ -13,13 +13,13 @@ import { checkStopRates, normaliseFuel, type ScaleBand } from "@/lib/finance/sli
 import { lastCompletedPeriod, periodContaining, periodLabel, recentPeriods } from "@/lib/finance/periods";
 import { formatGBP, fromDb } from "@/lib/money";
 
-export const metadata: Metadata = { title: "Period check" };
+export const metadata: Metadata = { title: "Period Check" };
 
 const STATUS: Record<IncomeStatus, { label: string; tone: Tone }> = {
-  match: { label: "Matches the invoice", tone: "good" },
-  differs: { label: "Does not match", tone: "bad" },
-  waiting: { label: "Invoice not in yet", tone: "warn" },
-  unreadable: { label: "Invoice could not be read", tone: "warn" },
+  match: { label: "Matches the Invoice", tone: "good" },
+  differs: { label: "Does Not Match", tone: "bad" },
+  waiting: { label: "Invoice Not in Yet", tone: "warn" },
+  unreadable: { label: "Invoice Could Not Be Read", tone: "warn" },
 };
 
 export default async function PeriodCheckPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
@@ -89,7 +89,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
   return (
     <>
       <PageHeader
-        title="Period check"
+        title="Period Check"
         description={`Our figures against DPD's invoices for ${periodLabel(period)}. Check it once the invoice and charges are in, before paying drivers.`}
       />
 
@@ -102,7 +102,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
       </nav>
 
       {results.length === 0 ? (
-        <EmptyState title="No franchises yet">Add a franchise in Settings, then the DPD sync fills this in.</EmptyState>
+        <EmptyState title="No Franchises Yet">Add a franchise in Settings, then the DPD sync fills this in.</EmptyState>
       ) : (
         results.map(({ franchise, invoice, check, chargeItems, rateCheck, hasVehicle }) => (
           <Section key={franchise.id} title={franchiseLabel(franchise)}>
@@ -152,7 +152,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
 
               <TableWrap>
                 <table className="ledger">
-                  <thead><tr><th>DPD charges (from the Charges page)</th><th className="r">Net</th></tr></thead>
+                  <thead><tr><th>DPD Charges (From the Charges Page)</th><th className="r">Net</th></tr></thead>
                   <tbody>
                     {chargeItems.length === 0 ? (
                       <tr><td colSpan={2} className="text-muted">No charges were collected for this period.</td></tr>
@@ -169,7 +169,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
 
             <div className="mt-4">
               <Panel>
-                <h3 className="text-sm font-semibold">Stop rate against the sliding scale</h3>
+                <h3 className="text-sm font-semibold">Stop Rate Against the Sliding Scale</h3>
                 {rateCheck == null ? (
                   <p className="mt-1 text-sm text-muted">
                     {hasVehicle ? "Enter the sliding scale to check each day's rate." : "Set this franchise's vehicle in Settings, and enter the sliding scale, to check each day's rate against it."}
@@ -184,7 +184,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
                     <p className="mt-1 text-sm text-ink-soft">{rateCheck.differs.length} day{rateCheck.differs.length === 1 ? "" : "s"} paid a different rate from the scale; {rateCheck.agreed} matched{rateCheck.notChecked > 0 ? `; ${rateCheck.notChecked} could not be compared` : ""}.</p>
                     <TableWrap>
                       <table className="ledger mt-2">
-                        <thead><tr><th>Date</th><th className="r">Stops</th><th className="r">Scale says</th><th className="r">DPD paid</th></tr></thead>
+                        <thead><tr><th>Date</th><th className="r">Stops</th><th className="r">Scale Says</th><th className="r">DPD Paid</th></tr></thead>
                         <tbody>
                           {rateCheck.differs.slice(0, 20).map((d) => (
                             <tr key={d.date + d.stops}><td>{formatUkDate(d.date)}</td><td className="r num">{d.stops}</td><td className="r num">£{d.expected.toFixed(2)}</td><td className="r num text-bad">£{d.actual.toFixed(2)}</td></tr>

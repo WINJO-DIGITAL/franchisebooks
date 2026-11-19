@@ -5,7 +5,7 @@ import { isDriverLogin } from "@/lib/driver/context";
 import { createClient } from "@/lib/supabase/server";
 import { OnboardingForm } from "./onboarding-form";
 
-export const metadata: Metadata = { title: "Set up your business" };
+export const metadata: Metadata = { title: "Set Up Your Business" };
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -19,7 +19,7 @@ export default async function OnboardingPage() {
   await requireBillingAccess(supabase);
   return (
     <>
-      <h1 className="text-2xl font-semibold tracking-tight">Set up your business</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Set Up Your Business</h1>
       <p className="mt-1 text-sm text-muted">A few details, then we read your DPD account and build your dashboard. You can change all of this later in Settings.</p>
       <OnboardingForm />
     </>

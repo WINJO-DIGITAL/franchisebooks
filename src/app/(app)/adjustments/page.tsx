@@ -53,14 +53,14 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
         </Panel>
       </Section>
 
-      <Section title="Pay adjustments">
+      <Section title="Pay Adjustments">
         {list.length === 0 ? (
           <EmptyState title={`No adjustments in ${formatMonth(month)}`} />
         ) : (
           <TableWrap>
             <table className="ledger">
               <thead>
-                <tr><th>For date</th><th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th>Type</th><th>Reason</th><th className="r">Amount</th><th>Recorded</th><th /></tr>
+                <tr><th>For Date</th><th>Driver</th>{showFranchise ? <th>Franchise</th> : null}<th>Type</th><th>Reason</th><th className="r">Amount</th><th>Recorded</th><th /></tr>
               </thead>
               <tbody>
                 {list.map((a) => {
@@ -83,7 +83,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
                       <td className="r">
                         {canReverse ? (
                           <ReasonDialog
-                            action={reverseAdjustment} fields={{ id: a.id }} trigger="Reverse" title="Reverse this adjustment" submitLabel="Reverse adjustment"
+                            action={reverseAdjustment} fields={{ id: a.id }} trigger="Reverse" title="Reverse This Adjustment" submitLabel="Reverse adjustment"
                             reasonLabel="Why is it being reversed?"
                             explanation={<>A correcting entry of <strong>{formatGBP(-a.amount, { signed: true })}</strong> will be added for {names.get(a.driverId)}. Both entries stay on record.</>}
                           />
@@ -98,11 +98,11 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
         )}
       </Section>
 
-      <Section title="Driver cover" description="Who covered whose work, and the pay allocation you agreed.">
+      <Section title="Driver Cover" description="Who covered whose work, and the pay allocation you agreed.">
         {covers.length === 0 ? <EmptyState title={`No cover recorded in ${formatMonth(month)}`} /> : (
           <TableWrap>
             <table className="ledger">
-              <thead><tr><th>Date</th><th>Covered by</th><th>For</th><th>Route</th><th>Pay allocation</th><th>Costs that day</th><th /></tr></thead>
+              <thead><tr><th>Date</th><th>Covered By</th><th>For</th><th>Route</th><th>Pay Allocation</th><th>Costs That Day</th><th /></tr></thead>
               <tbody>
                 {covers.map((c) => (
                   <tr key={c.id} className={c.status === "cancelled" ? "text-muted" : undefined}>
@@ -120,7 +120,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
                     <td className="r">
                       {c.status === "cancelled" ? <Badge>Cancelled</Badge> : ctx.canWrite ? (
                         <ReasonDialog
-                          action={cancelCover} fields={{ id: c.id }} trigger="Cancel" title="Cancel this cover record" submitLabel="Cancel cover record" reasonLabel="Why is it being cancelled?"
+                          action={cancelCover} fields={{ id: c.id }} trigger="Cancel" title="Cancel This Cover Record" submitLabel="Cancel cover record" reasonLabel="Why is it being cancelled?"
                           explanation="Any pay adjustments made by this cover record will be reversed with correcting entries. Nothing is deleted."
                         />
                       ) : null}

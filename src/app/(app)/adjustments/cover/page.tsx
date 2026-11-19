@@ -7,7 +7,7 @@ import { LinkButton } from "@/components/ui/button";
 import { getContext } from "@/lib/context";
 import { loadWizardOptions } from "@/lib/data/wizard";
 
-export const metadata: Metadata = { title: "Record driver cover" };
+export const metadata: Metadata = { title: "Record Driver Cover" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ original?: string; date?: string }> }) {
   const params = await searchParams;
@@ -17,9 +17,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
   return (
     <div className="max-w-2xl">
       <p className="mb-3 text-sm"><Link href="/adjustments" className="text-accent hover:underline">← Adjustments</Link></p>
-      <PageHeader title="Record driver cover" description="Record that one driver covered another's work, and how pay should be handled." />
+      <PageHeader title="Record Driver Cover" description="Record that one driver covered another's work, and how pay should be handled." />
       {options.franchises.length === 0 || options.drivers.length === 0 ? (
-        <EmptyState title="Add a franchise and a driver first" action={<LinkButton href={options.franchises.length === 0 ? "/settings" : "/drivers/new"}>{options.franchises.length === 0 ? "Go to Settings" : "Add a driver"}</LinkButton>} />
+        <EmptyState title="Add a Franchise and a Driver First" action={<LinkButton href={options.franchises.length === 0 ? "/settings" : "/drivers/new"}>{options.franchises.length === 0 ? "Go to Settings" : "Add a driver"}</LinkButton>} />
       ) : (
         <CoverWizard franchises={options.franchises} drivers={options.drivers} today={ctx.today} defaults={{ franchiseId: ctx.franchiseId, originalDriverId: params.original ?? null, date: params.date ?? null }} />
       )}

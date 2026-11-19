@@ -18,7 +18,7 @@ export function SignUpForm() {
           <Field label="Type it again" error={state.fieldErrors?.confirm}>
             <Input name="confirm" type="password" autoComplete="new-password" required />
           </Field>
-          <SubmitButton className="w-full" pendingLabel="Creating your account…">Continue</SubmitButton>
+          <SubmitButton className="w-full" pendingLabel="Creating Your Account…">Continue</SubmitButton>
         </>
       )}
     </ActionForm>

@@ -12,17 +12,17 @@ export const metadata: Metadata = {
 
 const STEPS = [
   { icon: Plug, title: "Connect DPD", text: "Add your DPD portal login once. It is stored encrypted, and the connection is read-only: it can look and download, never change anything in DPD." },
-  { icon: RefreshCw, title: "We read it every night", text: "Your daily payments, charges and invoices come in by themselves, for every franchise on your account." },
-  { icon: FileText, title: "Payday is already worked out", text: "See income, expenses and what each driver is owed, day by day, with a report ready the Monday after each four-week period." },
+  { icon: RefreshCw, title: "We Read It Every Night", text: "Your daily payments, charges and invoices come in by themselves, for every franchise on your account." },
+  { icon: FileText, title: "Payday Is Already Worked Out", text: "See income, expenses and what each driver is owed, day by day, with a report ready the Monday after each four-week period." },
 ];
 
 const FEATURES = [
-  { icon: Users, title: "Every driver, every day", text: "Stops, parcels, pay, route and mileage laid out the way the DPD Payments page shows them, so drivers recognise it." },
-  { icon: PoundSterling, title: "Driver pay your way", text: "Pay each driver per day worked or per stop, and see their total before you transfer a penny." },
-  { icon: ClipboardCheck, title: "A check against DPD's invoices", text: "Our figures are compared with DPD's own invoice for the period, so a missing day shows up before payday, not after." },
-  { icon: Scale, title: "Expenses and profit", text: "DPD charges and your own expenses are set against income, so you can see what the franchise really made." },
-  { icon: Layers, title: "Several franchises, one login", text: "Add as many FD numbers as you run. Each stays separate, and you can see them together." },
-  { icon: FileText, title: "A report for each period", text: "A clear PDF of earnings, expenses and what drivers are owed, made for each four-week DPD period." },
+  { icon: Users, title: "Every Driver, Every Day", text: "Stops, parcels, pay, route and mileage laid out the way the DPD Payments page shows them, so drivers recognise it." },
+  { icon: PoundSterling, title: "Driver Pay Your Way", text: "Pay each driver per day worked or per stop, and see their total before you transfer a penny." },
+  { icon: ClipboardCheck, title: "A Check Against DPD's Invoices", text: "Our figures are compared with DPD's own invoice for the period, so a missing day shows up before payday, not after." },
+  { icon: Scale, title: "Expenses and Profit", text: "DPD charges and your own expenses are set against income, so you can see what the franchise really made." },
+  { icon: Layers, title: "Several Franchises, One Login", text: "Add as many FD numbers as you run. Each stays separate, and you can see them together." },
+  { icon: FileText, title: "A Report for Each Period", text: "A clear PDF of earnings, expenses and what drivers are owed, made for each four-week DPD period." },
 ];
 
 const FAQ = [
@@ -108,7 +108,7 @@ export default function WelcomePage() {
                 <span className="size-1.5 rounded-full bg-accent" aria-hidden /> For DPD franchise owners
               </p>
               <h1 className="mt-5 text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.03em] sm:text-6xl">
-                Know what your franchise earns, and what each driver is owed.
+                Know What Your Franchise Earns, and What Each Driver Is Owed.
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
                 Connect your DPD login once. Every night we read your payments and charges and work out each driver&rsquo;s pay, so payday takes minutes, not an evening.
@@ -131,7 +131,7 @@ export default function WelcomePage() {
 
         <section id="how" aria-labelledby="how-title" className="scroll-mt-16 border-y border-line bg-surface">
           <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
-            <h2 id="how-title" className="text-3xl font-semibold tracking-tight">How it works</h2>
+            <h2 id="how-title" className="text-3xl font-semibold tracking-tight">How It Works</h2>
             <p className="mt-2 max-w-xl text-ink-soft">Three steps, and the last one is done for you every night.</p>
             <ol className="mt-10 grid gap-5 md:grid-cols-3">
               {STEPS.map((s, i) => (
@@ -149,7 +149,7 @@ export default function WelcomePage() {
         </section>
 
         <section aria-labelledby="features-title" className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
-          <h2 id="features-title" className="max-w-2xl text-3xl font-semibold tracking-tight">Built around how DPD franchises actually work</h2>
+          <h2 id="features-title" className="max-w-2xl text-3xl font-semibold tracking-tight">Built Around How DPD Franchises Actually Work</h2>
           <ul className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((f) => (
               <li key={f.title} className="rounded-2xl border border-line bg-surface p-6 transition-colors hover:border-line-strong">
@@ -164,7 +164,7 @@ export default function WelcomePage() {
         <section aria-labelledby="price-title" className="border-y border-line bg-surface">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-2 lg:items-center">
             <div>
-              <h2 id="price-title" className="text-3xl font-semibold tracking-tight">One simple price</h2>
+              <h2 id="price-title" className="text-3xl font-semibold tracking-tight">One Simple Price</h2>
               <p className="mt-3 max-w-md text-ink-soft">One account, however many franchises you run. No set-up fee, no contract, and no extra charge for adding a franchise.</p>
             </div>
             <div className={`overflow-hidden rounded-2xl border border-line bg-paper ${CARD_SHADOW}`}>
@@ -203,7 +203,7 @@ export default function WelcomePage() {
 
         <section aria-labelledby="cta-title" className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-24">
           <div className="rounded-3xl bg-ink px-6 py-12 text-center text-white sm:px-12 sm:py-16">
-            <h2 id="cta-title" className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Spend payday on the business, not the spreadsheet.</h2>
+            <h2 id="cta-title" className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Spend Payday on the Business, Not the Spreadsheet.</h2>
             <p className="mx-auto mt-3 max-w-xl text-white/70">Connect DPD once, and your figures are ready every night.</p>
             <Link href="/signup" className={`${buttonClass("primary", "lg")} mt-8 w-full sm:w-auto`}>Get started for £{PLAN_PRICE_GBP} a month <ArrowRight className="size-4" aria-hidden /></Link>
           </div>

@@ -48,7 +48,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <Section id="franchises" title="Franchises" description="Each franchise is identified by its FD number, exactly as it appears on DPD documents.">
         <TableWrap>
           <table className="ledger">
-            <thead><tr><th>FD number</th><th>Name</th><th>Depot</th><th>Status</th><th /></tr></thead>
+            <thead><tr><th>FD Number</th><th>Name</th><th>Depot</th><th>Status</th><th /></tr></thead>
             <tbody>
               {franchises.length === 0 ? <tr><td colSpan={5} className="text-muted">No franchises yet.</td></tr> : franchises.map((f) => (
                 <tr key={f.id}>
@@ -63,7 +63,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         {ctx.isOwner ? <Panel className="mt-3"><AddFranchiseForm /></Panel> : null}
       </Section>
 
-      <Section id="revenue" title="Franchise revenue" description="What DPD pays the franchise. This is kept separate from driver pay, and profit is only shown once revenue has been entered. Estimates are always labelled.">
+      <Section id="revenue" title="Franchise Revenue" description="What DPD pays the franchise. This is kept separate from driver pay, and profit is only shown once revenue has been entered. Estimates are always labelled.">
         {ctx.isOwner && optionFranchises.length > 0 ? <div className="mb-3"><AddRevenueButton franchises={optionFranchises} currentMonth={month} today={ctx.today} /></div> : null}
         {revenue.length === 0 ? <Panel className="text-sm text-muted">No revenue entered yet. Until it is, the dashboard and reports show costs but not profit.</Panel> : (
           <TableWrap>
@@ -86,7 +86,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         )}
       </Section>
 
-      <Section title="Schedule and reports">
+      <Section title="Schedule and Reports">
         <Panel>
           {ctx.isOwner && s ? <ScheduleForm syncTime={s.sync_time_local} syncEnabled={s.sync_enabled} autoReports={s.auto_monthly_reports} basis={s.revenue_allocation_basis} /> : (
             <DefinitionList items={[["Evening sync", s ? `${s.sync_time_local.slice(0, 5)} UK time` : "—"], ["Automatic monthly reports", s?.auto_monthly_reports ? "On" : "Off"]]} />
@@ -95,7 +95,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </Section>
 
       {ctx.isOwner ? (
-        <Section title="DPD logins" description="Each DPD login the app reads, and the franchise numbers it sees. All of them are read every evening, one after another. Add one for each login you use.">
+        <Section title="DPD Logins" description="Each DPD login the app reads, and the franchise numbers it sees. All of them are read every evening, one after another. Add one for each login you use.">
           <Panel>
             <div className="mb-4 flex justify-end"><AddDpdLoginForm /></div>
             {listedLogins.length === 0 ? (
@@ -103,7 +103,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             ) : (
               <TableWrap>
                 <table className="ledger">
-                  <thead><tr><th>Login</th><th>Franchises it reads</th><th>Last read</th><th /></tr></thead>
+                  <thead><tr><th>Login</th><th>Franchises It Reads</th><th>Last Read</th><th /></tr></thead>
                   <tbody>
                     {listedLogins.map((l) => (
                       <tr key={l.id}>
@@ -144,18 +144,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       ) : null}
 
       {ctx.isOwner ? (
-        <Section title="Close account" description="Stop using Franchise Books and remove your DPD access.">
+        <Section title="Close Account" description="Stop using Franchise Books and remove your DPD access.">
           <Panel>{params.closed ? <p className="mb-3 text-sm text-good">Your closure request is recorded. Check your email for what happens next.</p> : null}<CloseAccountForm /></Panel>
         </Section>
       ) : null}
 
-      <Section title="Alert levels" description="How different from normal something must be before it is flagged. Each driver is compared with their own history, never with other drivers.">
+      <Section title="Alert Levels" description="How different from normal something must be before it is flagged. Each driver is compared with their own history, never with other drivers.">
         <Panel>
           {ctx.isOwner ? <AlertSettingsForm values={config as unknown as Record<string, number>} defaults={DEFAULT_ANOMALY_CONFIG as unknown as Record<string, number>} /> : <p className="text-sm text-muted">Only the owner can change alert levels.</p>}
         </Panel>
       </Section>
 
-      <Section title="Expense categories" description="Add your own categories. Hiding one keeps it on existing expenses.">
+      <Section title="Expense Categories" description="Add your own categories. Hiding one keeps it on existing expenses.">
         <TableWrap>
           <table className="ledger">
             <tbody>
@@ -173,7 +173,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </Section>
 
       {ctx.canWrite && (audit.data ?? []).length > 0 ? (
-        <Section title="Recent changes" description="A permanent record of who changed what. It cannot be edited.">
+        <Section title="Recent Changes" description="A permanent record of who changed what. It cannot be edited.">
           <Panel flush>
             <ul className="divide-y divide-line text-sm">
               {(audit.data ?? []).map((a) => (

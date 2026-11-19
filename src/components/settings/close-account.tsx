@@ -13,7 +13,7 @@ export function CloseAccountForm() {
           <Field label="Type CLOSE to confirm" error={state.fieldErrors?.confirm}>
             <Input name="confirm" autoComplete="off" required />
           </Field>
-          <SubmitButton variant="danger" pendingLabel="Closing…">Close this account</SubmitButton>
+          <SubmitButton variant="danger" pendingLabel="Closing…">Close This Account</SubmitButton>
         </>
       )}
     </ActionForm>

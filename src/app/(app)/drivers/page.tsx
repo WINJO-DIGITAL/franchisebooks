@@ -83,15 +83,15 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Drivers"
         description={`${workedThisMonth} worked in ${formatMonth(month).split(" ")[0]} · ${visible.filter((d) => d.is_active).length} on the books${ctx.franchise ? ` on ${franchiseLabel(ctx.franchise)}` : ""}`}
-        actions={ctx.canWrite ? <LinkButton href="/drivers/new">Add driver</LinkButton> : null}
+        actions={ctx.canWrite ? <LinkButton href="/drivers/new">Add Driver</LinkButton> : null}
       />
 
       {unregistered.size > 0 ? (
-        <Section title="Names on DPD reports that are not registered" description="Their earnings are counted in the franchise totals, but cannot be attributed to a person until you say who they are.">
+        <Section title="Names on DPD Reports That Are Not Registered" description="Their earnings are counted in the franchise totals, but cannot be attributed to a person until you say who they are.">
           <TableWrap>
             <table className="ledger">
               <thead>
-                <tr><th>Name on the report</th><th>Franchise</th><th className="r">Report days</th><th>Most recent</th><th /></tr>
+                <tr><th>Name on the Report</th><th>Franchise</th><th className="r">Report Days</th><th>Most Recent</th><th /></tr>
               </thead>
               <tbody>
                 {[...unregistered.values()].map((u) => (
@@ -110,7 +110,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
       ) : null}
 
       {visible.length === 0 ? (
-        <EmptyState title="No drivers yet" action={ctx.canWrite ? <LinkButton href="/drivers/new">Add your first driver</LinkButton> : undefined}>
+        <EmptyState title="No Drivers Yet" action={ctx.canWrite ? <LinkButton href="/drivers/new">Add Your First Driver</LinkButton> : undefined}>
           Add your drivers so that earnings, adjustments and expenses can be attributed to the right person.
         </EmptyState>
       ) : routeIncome ? (
@@ -136,7 +136,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                   <th className="hidden sm:table-cell">Route</th>
                   <th className="r">Days</th>
                   <th className="r">Income</th>
-                  <th className="r hidden sm:table-cell">Day rate</th>
+                  <th className="r hidden sm:table-cell">Day Rate</th>
                   <th className="r">Wage</th>
                 </tr>
               </thead>
@@ -174,7 +174,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             <thead>
               <tr>
                 <th>Driver</th><th>Franchise</th><th>Route</th><th>Vehicle</th>
-                <th className="r">Days in {formatMonth(month).split(" ")[0]}</th><th className="r">Pay this month</th>
+                <th className="r">Days in {formatMonth(month).split(" ")[0]}</th><th className="r">Pay This Month</th>
               </tr>
             </thead>
             <tbody>
@@ -207,7 +207,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
           </Link>
         </p>
       ) : null}
-      {ctx.franchises.length === 0 ? <Notice tone="info" className="mt-6" title="Add a franchise first">Drivers are assigned to franchises. Add your FD number in <Link href="/settings" className="text-accent underline">Settings</Link>.</Notice> : null}
+      {ctx.franchises.length === 0 ? <Notice tone="info" className="mt-6" title="Add a Franchise First">Drivers are assigned to franchises. Add your FD number in <Link href="/settings" className="text-accent underline">Settings</Link>.</Notice> : null}
     </>
   );
 }

@@ -173,7 +173,7 @@ export default async function DashboardPage() {
 
       {/* Franchise comparison */}
       {!ctx.franchise && monthSummary.franchises.filter((f) => f.franchiseId).length > 1 ? (
-        <Section title="Franchises this month">
+        <Section title="Franchises This Month">
           <TableWrap>
             <table className="ledger">
               <thead>
@@ -224,14 +224,14 @@ export default async function DashboardPage() {
 
       {/* Driver performance */}
       {topDrivers.length > 0 ? (
-        <Section title="Drivers this month" actions={<LinkButton href="/drivers" variant="quiet" size="sm">View Drivers</LinkButton>}>
+        <Section title="Drivers This Month" actions={<LinkButton href="/drivers" variant="quiet" size="sm">View Drivers</LinkButton>}>
           <TableWrap>
             <table className="ledger">
               <thead>
                 <tr>
                   <th>Driver</th>
                   <th className="r hidden sm:table-cell">Days</th>
-                  <th className="r hidden sm:table-cell">Stops / day</th>
+                  <th className="r hidden sm:table-cell">Stops / Day</th>
                   <th className="r hidden sm:table-cell">{routeIncome ? "Income / stop" : "Per stop"}</th>
                   <th className="r">{routeIncome ? "Income" : "DPD earnings"}</th>
                   {routeIncome ? null : <th className="r">Adjustments</th>}

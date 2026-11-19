@@ -79,7 +79,7 @@ export function RemoveFolderButton({ id }: { id: string }) {
   return (
     <form action={action}>
       <input type="hidden" name="id" value={id} />
-      <Button type="submit" variant="quiet" size="sm" disabled={pending}>Stop watching</Button>
+      <Button type="submit" variant="quiet" size="sm" disabled={pending}>Stop Watching</Button>
       {state.message && !state.ok ? <p className="mt-1 text-sm text-bad">{state.message}</p> : null}
     </form>
   );
@@ -107,7 +107,7 @@ export function AddFolderDialog({ franchises }: { franchises: { id: string; labe
   return (
     <>
       <Button variant="secondary" onClick={() => { setOpen(true); void load(""); }}><FolderOpen className="size-4" aria-hidden />Choose a folder to watch</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Choose a Dropbox folder" wide>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Choose a Dropbox Folder" wide>
         <ActionForm action={addDropboxFolder} className="space-y-4" onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
@@ -153,7 +153,7 @@ export function ReviewActions({ id, needsFranchise, franchises, canApprove }: { 
         </Field>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        {canApprove ? <Button type="submit" name="decision" value="accept" size="sm" disabled={pending}>Figures are correct: import them</Button> : null}
+        {canApprove ? <Button type="submit" name="decision" value="accept" size="sm" disabled={pending}>Figures Are Correct: Import Them</Button> : null}
         <Button type="submit" name="decision" value="reject" size="sm" variant="secondary" disabled={pending}>Reject</Button>
       </div>
       {state.message ? <div className="mt-3"><ActionMessage state={state} /></div> : null}
@@ -168,8 +168,8 @@ export function ConflictActions({ id }: { id: string }) {
     <form action={action} className="mt-3 border-t border-line pt-3">
       <input type="hidden" name="id" value={id} />
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" name="choice" value="keep_existing" size="sm" disabled={pending}>Keep the figures already stored</Button>
-        <Button type="submit" name="choice" value="use_incoming" size="sm" variant="secondary" disabled={pending}>Use the newer document&rsquo;s figures</Button>
+        <Button type="submit" name="choice" value="keep_existing" size="sm" disabled={pending}>Keep the Figures Already Stored</Button>
+        <Button type="submit" name="choice" value="use_incoming" size="sm" variant="secondary" disabled={pending}>Use the Newer Document&rsquo;s Figures</Button>
       </div>
       <p className="mt-2 text-sm text-muted">Either way, nothing is deleted: replaced figures stay on record.</p>
       {state.message ? <div className="mt-3"><ActionMessage state={state} /></div> : null}
@@ -185,7 +185,7 @@ export function PortalMapForm({ current }: { current: string }) {
           <Field label="DPD portal setup (JSON)" hint="Produced from the portal exploration and reviewed by your developer. Leave empty to turn automatic DPD sync off." error={state.fieldErrors?.portalMap}>
             <Textarea name="portalMap" defaultValue={current} className="min-h-48 font-mono text-xs" spellCheck={false} />
           </Field>
-          <SubmitButton>Save portal setup</SubmitButton>
+          <SubmitButton>Save Portal Setup</SubmitButton>
         </>
       )}
     </ActionForm>

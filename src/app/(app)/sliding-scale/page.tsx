@@ -4,7 +4,7 @@ import { Badge, EmptyState, PageHeader, Panel, Section, TableWrap } from "@/comp
 import { getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
 
-export const metadata: Metadata = { title: "Sliding scale" };
+export const metadata: Metadata = { title: "Sliding Scale" };
 
 const FUEL_LABEL: Record<string, string> = { diesel: "Diesel", electric: "Electric", other: "Other" };
 const range = (from: number | null, to: number | null, unit: string) => (from == null && to == null ? "any" : to == null ? `${from}+ ${unit}` : `${from ?? 0}–${to} ${unit}`);
@@ -26,12 +26,12 @@ export default async function SlidingScalePage() {
   return (
     <>
       <PageHeader
-        title="Sliding scale"
+        title="Sliding Scale"
         description="What DPD pays per stop depends on the vehicle, and on the stops and miles for the day. Copy the bands from the Sliding Scale page in the DPD portal."
         actions={ctx.canWrite ? <div className="flex gap-2"><AddScaleRateButton /><PasteScaleRatesButton /></div> : null}
       />
       {groups.size === 0 ? (
-        <EmptyState title="No sliding scale entered yet">Open the Sliding Scale page in the DPD portal and add each band here, one at a time or pasted from a spreadsheet.</EmptyState>
+        <EmptyState title="No Sliding Scale Entered Yet">Open the Sliding Scale page in the DPD portal and add each band here, one at a time or pasted from a spreadsheet.</EmptyState>
       ) : (
         [...groups.entries()].map(([key, rows]) => {
           const first = rows[0]!;
@@ -40,7 +40,7 @@ export default async function SlidingScalePage() {
               <Panel className="p-0">
                 <TableWrap>
                   <table className="ledger">
-                    <thead><tr><th>Stops</th><th>Miles</th><th className="r">Rate per stop</th>{ctx.canWrite ? <th /> : null}</tr></thead>
+                    <thead><tr><th>Stops</th><th>Miles</th><th className="r">Rate per Stop</th>{ctx.canWrite ? <th /> : null}</tr></thead>
                     <tbody>
                       {rows.map((r) => (
                         <tr key={r.id}>

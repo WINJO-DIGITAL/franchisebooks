@@ -20,7 +20,7 @@ export function AddExpenseButton({ franchises, categories, drivers, today, defau
   return (
     <>
       <Button onClick={() => setOpen(true)}>Add Expense</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Add an expense" wide>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Add an Expense" wide>
         <ActionForm action={addExpense} className="space-y-4" resetOnSuccess onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
@@ -55,11 +55,11 @@ export function AddExpenseButton({ franchises, categories, drivers, today, defau
                 </Field>
               </div>
               <fieldset>
-                <legend className="mb-1.5 text-sm font-medium">Who does this cost belong to?</legend>
+                <legend className="mb-1.5 text-sm font-medium">Who Does This Cost Belong To?</legend>
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <ChoiceCard name="assignTo" value="franchise" checked={assignTo === "franchise"} onChange={() => setAssignTo("franchise")} title="The franchise" />
-                  <ChoiceCard name="assignTo" value="driver" checked={assignTo === "driver"} onChange={() => setAssignTo("driver")} title="A driver" />
-                  <ChoiceCard name="assignTo" value="unallocated" checked={assignTo === "unallocated"} onChange={() => setAssignTo("unallocated")} title="Decide later" />
+                  <ChoiceCard name="assignTo" value="franchise" checked={assignTo === "franchise"} onChange={() => setAssignTo("franchise")} title="The Franchise" />
+                  <ChoiceCard name="assignTo" value="driver" checked={assignTo === "driver"} onChange={() => setAssignTo("driver")} title="A Driver" />
+                  <ChoiceCard name="assignTo" value="unallocated" checked={assignTo === "unallocated"} onChange={() => setAssignTo("unallocated")} title="Decide Later" />
                 </div>
               </fieldset>
               {assignTo === "driver" ? (
@@ -70,7 +70,7 @@ export function AddExpenseButton({ franchises, categories, drivers, today, defau
                   </Select>
                 </Field>
               ) : null}
-              <SubmitButton>Save expense</SubmitButton>
+              <SubmitButton>Save Expense</SubmitButton>
             </>
           )}
         </ActionForm>
@@ -85,14 +85,14 @@ export function AssignCostButton({ kind, id, drivers, current, summary }: { kind
   return (
     <>
       <Button variant={current === "unallocated" ? "secondary" : "quiet"} size="sm" onClick={() => setOpen(true)}>{current === "unallocated" ? "Assign" : "Change"}</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Who does this cost belong to?">
+      <Dialog open={open} onClose={() => setOpen(false)} title="Who Does This Cost Belong To?">
         <ActionForm action={assignCost} className="space-y-4" onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
               <input type="hidden" name="kind" value={kind} />
               <input type="hidden" name="id" value={id} />
               <p className="text-[0.9375rem] text-ink-soft">{summary}</p>
-              <ChoiceCard name="assignTo" value="driver" checked={assignTo === "driver"} onChange={() => setAssignTo("driver")} title="A driver" />
+              <ChoiceCard name="assignTo" value="driver" checked={assignTo === "driver"} onChange={() => setAssignTo("driver")} title="A Driver" />
               {assignTo === "driver" ? (
                 <Field label="Which driver?" error={state.fieldErrors?.driverId}>
                   <Select name="driverId" defaultValue="" required>
@@ -101,8 +101,8 @@ export function AssignCostButton({ kind, id, drivers, current, summary }: { kind
                   </Select>
                 </Field>
               ) : null}
-              <ChoiceCard name="assignTo" value="franchise" checked={assignTo === "franchise"} onChange={() => setAssignTo("franchise")} title="The franchise in general" description="A business cost that is nobody's in particular." />
-              <ChoiceCard name="assignTo" value="unallocated" checked={assignTo === "unallocated"} onChange={() => setAssignTo("unallocated")} title="Not decided yet" description="Keep it in the unallocated list." />
+              <ChoiceCard name="assignTo" value="franchise" checked={assignTo === "franchise"} onChange={() => setAssignTo("franchise")} title="The Franchise in General" description="A business cost that is nobody's in particular." />
+              <ChoiceCard name="assignTo" value="unallocated" checked={assignTo === "unallocated"} onChange={() => setAssignTo("unallocated")} title="Not Decided Yet" description="Keep it in the unallocated list." />
               <Field label="Note (optional)">
                 <Input name="note" maxLength={300} />
               </Field>

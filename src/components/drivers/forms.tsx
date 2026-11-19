@@ -32,7 +32,7 @@ export function NewDriverForm({ franchises, defaultFranchiseId, today }: { franc
             </Field>
           </div>
           <details className="rounded-lg border border-line bg-surface px-4 py-3">
-            <summary className="cursor-pointer text-sm font-medium text-ink-soft">More details (optional)</summary>
+            <summary className="cursor-pointer text-sm font-medium text-ink-soft">More Details (Optional)</summary>
             <div className="mt-4 grid gap-5 sm:grid-cols-2">
               <Field label="DPD driver reference" hint="Helps match reports automatically." error={state.fieldErrors?.dpdDriverRef}>
                 <Input name="dpdDriverRef" autoComplete="off" />
@@ -51,7 +51,7 @@ export function NewDriverForm({ franchises, defaultFranchiseId, today }: { franc
               </Field>
             </div>
           </details>
-          <SubmitButton>Add driver</SubmitButton>
+          <SubmitButton>Add Driver</SubmitButton>
         </>
       )}
     </ActionForm>
@@ -105,7 +105,7 @@ export function EditDriverForm({ driver }: { driver: DriverDetails }) {
           <Field label="Notes">
             <Textarea name="notes" defaultValue={driver.notes ?? ""} />
           </Field>
-          <SubmitButton>Save details</SubmitButton>
+          <SubmitButton>Save Details</SubmitButton>
         </>
       )}
     </ActionForm>
@@ -116,8 +116,8 @@ export function AddAssignmentForm({ driverId, franchises, today }: { driverId: s
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Add assignment</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Assign to a franchise">
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Add Assignment</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Assign to a Franchise">
         <ActionForm action={addAssignment} className="space-y-4" onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
@@ -137,7 +137,7 @@ export function AddAssignmentForm({ driverId, franchises, today }: { driverId: s
               <Field label="Vehicle registration (optional)" hint="Fuel bought for this vehicle is attributed to the driver.">
                 <Input name="vehicleRegistration" autoCapitalize="characters" />
               </Field>
-              <SubmitButton>Save assignment</SubmitButton>
+              <SubmitButton>Save Assignment</SubmitButton>
             </>
           )}
         </ActionForm>
@@ -151,7 +151,7 @@ export function EndAssignmentForm({ id, driverId, today }: { id: string; driverI
   return (
     <>
       <Button variant="quiet" size="sm" onClick={() => setOpen(true)}>End</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="End this assignment">
+      <Dialog open={open} onClose={() => setOpen(false)} title="End This Assignment">
         <ActionForm action={endAssignment} className="space-y-4" onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
@@ -161,7 +161,7 @@ export function EndAssignmentForm({ id, driverId, today }: { id: string; driverI
                 <Input name="endDate" type="date" defaultValue={today} required />
               </Field>
               <p className="text-sm text-muted">Everything already recorded stays exactly as it is.</p>
-              <SubmitButton>End assignment</SubmitButton>
+              <SubmitButton>End Assignment</SubmitButton>
             </>
           )}
         </ActionForm>
@@ -175,7 +175,7 @@ export function LinkDriverForm({ franchiseId, driverKey, sourceName, drivers }: 
   const [mode, setMode] = useState<"new" | "existing">("new");
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Sort this out</Button>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Sort This Out</Button>
       <Dialog open={open} onClose={() => setOpen(false)} title={`Who is “${sourceName}”?`}>
         <ActionForm action={linkUnregisteredDriver} className="space-y-4" onSuccess={() => setOpen(false)}>
           {(state) => (
@@ -183,8 +183,8 @@ export function LinkDriverForm({ franchiseId, driverKey, sourceName, drivers }: 
               <input type="hidden" name="franchiseId" value={franchiseId} />
               <input type="hidden" name="driverKey" value={driverKey} />
               <input type="hidden" name="sourceName" value={sourceName} />
-              <ChoiceCard name="mode" value="new" checked={mode === "new"} onChange={() => setMode("new")} title="A new driver" description={`Add “${sourceName}” to your drivers.`} />
-              <ChoiceCard name="mode" value="existing" checked={mode === "existing"} onChange={() => setMode("existing")} title="A driver I already have" description="The report spells the name differently." />
+              <ChoiceCard name="mode" value="new" checked={mode === "new"} onChange={() => setMode("new")} title="A New Driver" description={`Add “${sourceName}” to your drivers.`} />
+              <ChoiceCard name="mode" value="existing" checked={mode === "existing"} onChange={() => setMode("existing")} title="A Driver I Already Have" description="The report spells the name differently." />
               {mode === "existing" ? (
                 <Field label="Which driver?" error={state.fieldErrors?.driverId}>
                   <Select name="driverId" defaultValue="" required>
@@ -207,8 +207,8 @@ export function SetDayRateForm({ driverId, today }: { driverId: string; today: s
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Set pay rate</Button>
-      <Dialog open={open} onClose={() => setOpen(false)} title="Set pay rate">
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Set Pay Rate</Button>
+      <Dialog open={open} onClose={() => setOpen(false)} title="Set Pay Rate">
         <ActionForm action={setDayRate} className="space-y-4" onSuccess={() => setOpen(false)}>
           {(state) => (
             <>
@@ -228,7 +228,7 @@ export function SetDayRateForm({ driverId, today }: { driverId: string; today: s
               <Field label="Note (optional)">
                 <Input name="note" />
               </Field>
-              <SubmitButton>Save pay rate</SubmitButton>
+              <SubmitButton>Save Pay Rate</SubmitButton>
             </>
           )}
         </ActionForm>

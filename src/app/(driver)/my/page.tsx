@@ -8,7 +8,7 @@ import { loadDriverPage } from "@/lib/driver/data";
 import { periodContaining, periodLabel, recentPeriods } from "@/lib/finance/periods";
 import { formatGBP } from "@/lib/money";
 
-export const metadata: Metadata = { title: "Your pay" };
+export const metadata: Metadata = { title: "Your Pay" };
 
 export default async function MyPayPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const params = await searchParams;
@@ -28,7 +28,7 @@ export default async function MyPayPage({ searchParams }: { searchParams: Promis
       </nav>
 
       {s.unpricedDates.length > 0 ? (
-        <Notice tone="warn" title="Some days have no pay shown yet" className="mb-6">
+        <Notice tone="warn" title="Some Days Have No Pay Shown Yet" className="mb-6">
           Your pay rate has not been set up for {s.unpricedDates.length} of these days. Ask your manager, and the figure will appear.
         </Notice>
       ) : null}
@@ -44,9 +44,9 @@ export default async function MyPayPage({ searchParams }: { searchParams: Promis
         </Panel>
       </Section>
 
-      <Section title="Your days">
+      <Section title="Your Days">
         {s.days.length === 0 ? (
-          <EmptyState title="No days in this period yet">Days appear here once they have been read from DPD.</EmptyState>
+          <EmptyState title="No Days in This Period Yet">Days appear here once they have been read from DPD.</EmptyState>
         ) : (
           <TableWrap>
             <table className="ledger">

@@ -8,7 +8,7 @@ import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 export function SubscribeForm({ price }: { price: number }) {
   return (
     <ActionForm action={startCheckout} className="mt-6">
-      <SubmitButton className="w-full" pendingLabel="Opening the payment page…">Subscribe for £{price} a month</SubmitButton>
+      <SubmitButton className="w-full" pendingLabel="Opening the Payment Page…">Subscribe for £{price} a month</SubmitButton>
     </ActionForm>
   );
 }
@@ -16,7 +16,7 @@ export function SubscribeForm({ price }: { price: number }) {
 export function ManageBillingForm() {
   return (
     <ActionForm action={openBillingPortal}>
-      <SubmitButton variant="secondary" size="sm" pendingLabel="Opening…">Manage billing</SubmitButton>
+      <SubmitButton variant="secondary" size="sm" pendingLabel="Opening…">Manage Billing</SubmitButton>
     </ActionForm>
   );
 }

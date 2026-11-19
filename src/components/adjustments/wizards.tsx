@@ -162,8 +162,8 @@ export function AdjustmentWizard({ franchises, drivers, today, defaults }: {
             </div>
             {typeInfo.sign === 0 ? (
               <div className="grid gap-2 sm:grid-cols-2">
-                <ChoiceCard name="direction-picker" value="add" checked={direction === "add"} onChange={() => setDirection("add")} title="Add to their pay" />
-                <ChoiceCard name="direction-picker" value="deduct" checked={direction === "deduct"} onChange={() => setDirection("deduct")} title="Take off their pay" />
+                <ChoiceCard name="direction-picker" value="add" checked={direction === "add"} onChange={() => setDirection("add")} title="Add to Their Pay" />
+                <ChoiceCard name="direction-picker" value="deduct" checked={direction === "deduct"} onChange={() => setDirection("deduct")} title="Take Off Their Pay" />
               </div>
             ) : null}
             <Field label="How much?" hint={type === "withheld_payment" ? "Enter 0 to record that a payment was withheld without changing pay." : "In pounds, for example 50 or 50.00."}>
@@ -314,9 +314,9 @@ export function CoverWizard({ franchises, drivers, today, defaults }: {
 
         {step === 3 ? (
           <StepShell step={3} total={5} question="How should pay be handled?" onNext={next} onBack={back} error={error}>
-            <ChoiceCard name="allocation-picker" value="none" checked={allocation === "none"} onChange={() => setAllocation("none")} title="Just record the cover" description="No pay changes. You can add adjustments separately later." />
-            <ChoiceCard name="allocation-picker" value="all_to_cover" checked={allocation === "all_to_cover"} onChange={() => setAllocation("all_to_cover")} title="Move the day's DPD earnings to the covering driver" description="The original driver's imported earnings for that day are taken off their pay and added to the covering driver's." />
-            <ChoiceCard name="allocation-picker" value="custom" checked={allocation === "custom"} onChange={() => setAllocation("custom")} title="I'll enter the amounts" description="For a fixed cover payment, a split, or anything else you agreed." />
+            <ChoiceCard name="allocation-picker" value="none" checked={allocation === "none"} onChange={() => setAllocation("none")} title="Just Record the Cover" description="No pay changes. You can add adjustments separately later." />
+            <ChoiceCard name="allocation-picker" value="all_to_cover" checked={allocation === "all_to_cover"} onChange={() => setAllocation("all_to_cover")} title="Move the Day's DPD Earnings to the Covering Driver" description="The original driver's imported earnings for that day are taken off their pay and added to the covering driver's." />
+            <ChoiceCard name="allocation-picker" value="custom" checked={allocation === "custom"} onChange={() => setAllocation("custom")} title="I'll Enter the Amounts" description="For a fixed cover payment, a split, or anything else you agreed." />
             {allocation === "custom" ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label={`Add to ${covering?.name ?? "covering driver"}'s pay`}>
@@ -336,7 +336,7 @@ export function CoverWizard({ franchises, drivers, today, defaults }: {
           <StepShell step={4} total={5} question="What about fuel and expenses for that day?" onNext={next} onBack={back} error={error}>
             <ChoiceCard name="expense-picker" value="original" checked={expenses === "original"} onChange={() => setExpenses("original")} title={`Leave them with ${original?.name ?? "the original driver"}`} description="Costs stay wherever they are already attributed." />
             <ChoiceCard name="expense-picker" value="covering" checked={expenses === "covering"} onChange={() => setExpenses("covering")} title={`Count them against ${covering?.name ?? "the covering driver"}`} description="For example, fuel bought for the usual driver's van that day." />
-            <ChoiceCard name="expense-picker" value="franchise" checked={expenses === "franchise"} onChange={() => setExpenses("franchise")} title="Count them against the franchise, not a driver" />
+            <ChoiceCard name="expense-picker" value="franchise" checked={expenses === "franchise"} onChange={() => setExpenses("franchise")} title="Count Them Against the Franchise, Not a Driver" />
           </StepShell>
         ) : null}
 

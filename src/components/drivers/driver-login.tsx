@@ -15,7 +15,7 @@ export function InviteDriverForm({ driverId }: { driverId: string }) {
               <Input name="email" type="email" autoComplete="off" required />
             </Field>
           </div>
-          <SubmitButton pendingLabel="Sending…">Send invitation</SubmitButton>
+          <SubmitButton pendingLabel="Sending…">Send Invitation</SubmitButton>
         </>
       )}
     </ActionForm>
@@ -26,7 +26,7 @@ export function RemoveDriverLoginForm({ driverId }: { driverId: string }) {
   return (
     <ActionForm action={removeDriverLogin}>
       <input type="hidden" name="driverId" value={driverId} />
-      <SubmitButton variant="secondary" size="sm" pendingLabel="Removing…">Remove access</SubmitButton>
+      <SubmitButton variant="secondary" size="sm" pendingLabel="Removing…">Remove Access</SubmitButton>
     </ActionForm>
   );
 }

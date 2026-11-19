@@ -62,11 +62,11 @@ export function OnboardingForm() {
               className="w-full rounded-lg border border-line px-4 py-2.5 text-sm text-ink hover:bg-sunken"
               onClick={() => setBlocks((b) => [...b, nextId.current++])}
             >
-              + Add another DPD login
+              + Add Another DPD Login
             </button>
           ) : null}
 
-          <SubmitButton className="w-full" pendingLabel="Setting up…">Connect DPD and set up my dashboard</SubmitButton>
+          <SubmitButton className="w-full" pendingLabel="Setting Up…">Connect DPD and Set Up My Dashboard</SubmitButton>
         </>
       )}
     </ActionForm>

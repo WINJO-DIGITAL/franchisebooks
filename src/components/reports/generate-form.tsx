@@ -34,7 +34,7 @@ export function GenerateReportForm({
               {franchises.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
             </Select>
           </Field>
-          <SubmitButton pendingLabel="Generating…">Generate report</SubmitButton>
+          <SubmitButton pendingLabel="Generating…">Generate Report</SubmitButton>
         </>
       )}
     </ActionForm>
