@@ -14,7 +14,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Say "merge" when the working branch has new changes to take live (you).
 - [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
 - [ ] In Stripe test mode, turn on the customer portal (you).
-- [ ] Fill in the contact email and VAT wording on the privacy and terms pages, and get them reviewed (you).
+- [x] Fill in the contact email and VAT wording on the privacy and terms pages (done 19 November 2026; no solicitor review, by owner decision).
 - [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise) (you).
 - [ ] Confirm with your accountant how credit notes should be treated (currently: money in, labelled) (you).
 - [ ] Press Sync DPD once, then check a new run appears in GitHub Actions, to prove `GITHUB_SYNC_TOKEN` works (you).
@@ -45,7 +45,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - Period check, sliding scale storage and page, Stripe billing, homepage and sign-up, onboarding with progress screen.
 - Rename to Franchise Books by Winjo Digital; homepage and auth-card redesign.
 - Several DPD logins per account, listed in Settings.
-- Legal pages (draft), owner-only account closure, service emails via Resend (off until keys are set).
+- Legal pages, owner-only account closure, service emails via Resend (off until keys are set).
 - Sync DPD button starts the GitHub Actions sync straight away when GITHUB_SYNC_TOKEN is set on Vercel (it falls back to queueing for the next run without it).
 - Each DPD login has "Check & refresh" in Settings: checks it signs in (wrong logins are reported there), picks up new franchises and re-reads them.
 - Adding a DPD login: name and FD numbers are optional; with no FD numbers, the franchises are found from the portal (Routes drop-down) and read straight away.

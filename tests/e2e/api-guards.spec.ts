@@ -47,4 +47,13 @@ test.describe("public terms page", () => {
     await expect(page.getByRole("link", { name: "hello@winjodigital.co.uk" }).first()).toHaveAttribute("href", "mailto:hello@winjodigital.co.uk");
     await expect(page.getByText("[Insert")).toHaveCount(0);
   });
+
+  test("the terms and privacy pages carry no draft or solicitor-review notice", async ({ page }) => {
+    for (const path of ["/terms", "/privacy"]) {
+      const response = await page.goto(path);
+      expect(response?.status()).toBe(200);
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(page.getByText(/solicitor|^Draft\b/i)).toHaveCount(0);
+    }
+  });
 });
