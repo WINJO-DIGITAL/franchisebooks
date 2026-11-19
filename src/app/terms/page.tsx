@@ -6,6 +6,8 @@ export const metadata: Metadata = { title: "Terms" };
 export default function TermsPage() {
   return (
     <LegalPage title="Terms of service" updated="18 November 2026">
+      <h2>Who provides this service</h2>
+      <p>Franchise Books is a product of Winjo Digital. These terms are Winjo Digital's terms for all its products, and Winjo Digital is the business you contract with.</p>
       <h2>The service</h2>
       <p>Franchise Books reads figures from your DPD partner portal and presents them as income, expenses and driver pay. It is an aid to your own records and is not an accountancy service or tax advice.</p>
       <h2>Your responsibilities</h2>
