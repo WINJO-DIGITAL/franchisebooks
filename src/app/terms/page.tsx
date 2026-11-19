@@ -16,7 +16,7 @@ export default function TermsPage() {
       <h2>What we do with DPD</h2>
       <p>The connection to DPD only reads and downloads. It does not change anything in DPD. It does not get past verification codes or CAPTCHAs.</p>
       <h2>Price and payment</h2>
-      <p>The subscription is £49 a month per account, charged monthly through Stripe. [VAT treatment to be confirmed before publication.] You can cancel at any time under Manage billing; access continues to the end of the period paid for.</p>
+      <p>The subscription is £49 a month per account, charged monthly through Stripe. No VAT is charged: the business is not VAT registered. You can cancel at any time under Manage billing; access continues to the end of the period paid for.</p>
       <h2>Availability</h2>
       <p>We work hard to keep the nightly reads running, but DPD can change its portal at any time, which can stop a read until we update it. We will tell you when this happens.</p>
       <h2>Liability</h2>

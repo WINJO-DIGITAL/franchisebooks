@@ -28,7 +28,7 @@ Set these on the web app (Vercel). The background worker does not need them.
 ## Switching billing on (in this order)
 
 1. **Run the migrations** `20261118000600_billing.sql` (and the earlier ones from the same day). It marks everyone who already has a business as *comped*, so nobody is locked out when billing is enforced.
-2. **Stripe:** create the product and the £49 monthly price (a sandbox one already exists for testing: see the build notes). Decide whether £49 includes VAT, and set the price's tax behaviour to match.
+2. **Stripe:** create the product and the £49 monthly price (a sandbox one already exists for testing: see the build notes). The business is not VAT registered, so £49 is the full price with no VAT. Set the price's tax behaviour to "exclusive" or "not taxable" to match, and do not add VAT to invoices.
 3. **Webhook:** in Stripe add an endpoint `https://<your app>/api/stripe/webhook` listening to `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` and `customer.subscription.deleted`. Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
 4. **Customer portal:** in Stripe settings enable the customer portal, so *Manage billing* (under Settings) can open it.
 5. **Supabase (production):** Authentication → turn **sign-ups on**, and turn **email confirmation on** so addresses are verified. Add `https://<your app>/auth/confirm` to the redirect URLs.
