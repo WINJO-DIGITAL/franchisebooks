@@ -13,7 +13,6 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Remove the saved `api.stripe.com` credential from the assistant's environment settings, because it is a live key (you).
 - [ ] Say "merge" when the working branch has new changes to take live (you).
 - [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
-- [ ] Add `STRIPE_SECRET_KEY` on Vercel (`matthewai`, Settings → Environment Variables, Sensitive, Production): a restricted **test-mode** key from Stripe → Developers → API keys (you).
 - [ ] In Stripe test mode, turn on the customer portal (you).
 - [ ] Fill in the contact email and VAT wording on the privacy and terms pages, and get them reviewed (you).
 - [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise) (you).
