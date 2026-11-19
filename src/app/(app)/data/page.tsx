@@ -121,7 +121,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
 
       {/* DPD documents that could not be read: owner only */}
       {ctx.isOwner && unreadable.length > 0 ? (
-        <Section id="unreadable" title={`Documents That Could Not Be Read (${unreadable.length})`} description="DPD documents the nightly sync downloaded but could not read, such as one-off invoices with no billing period. Nothing from them has been counted. Open the original to check it; the sync tries again each night.">
+        <Section id="unreadable" title={`Documents That Could Not Be Read (${unreadable.length})`} description="DPD documents the nightly sync downloaded but could not read, or invoices whose lines don't add up to their own total. Nothing that can't be trusted has been counted. Open the original to check it; the sync reads it again each night.">
           <TableWrap>
             <table className="ledger" data-testid="unreadable-documents">
               <thead><tr><th>Franchise</th><th>Document</th><th className="hidden sm:table-cell">First seen</th><th>Why</th><th className="r"><span className="sr-only">Open</span></th></tr></thead>
@@ -271,6 +271,9 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
 
 /** The reason in short: the part of the sync's message in brackets ("no billing period found"), or the message itself. */
 function unreadableReason(message: string): string {
+  // A stored invoice whose lines do not add up: say so, then what was wrong.
+  const addUp = /lines do not add up to its own total[^:]*:\s*(.*)$/s.exec(message);
+  if (addUp) return `Lines don't add up to the invoice's own total. ${addUp[1]}`.trim();
   const inBrackets = /\(([^)]+)\)/.exec(message)?.[1];
   const text = inBrackets ?? message;
   return text.charAt(0).toUpperCase() + text.slice(1);

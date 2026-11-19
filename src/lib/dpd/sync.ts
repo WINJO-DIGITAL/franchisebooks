@@ -129,13 +129,14 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   const outcomes: ImportOutcome[] = [];
   const invoices: InvoiceImportOutcome[] = [];
   const failures: { report: string; message: string }[] = [];
-  // Invoices already stored (for any franchise in the business: one login can list a sibling franchise's invoices) are not
-  // downloaded again; a new invoice is fetched on the first night it is listed.
+  // Invoices already stored and adding up (for any franchise in the business: one login can list a sibling franchise's
+  // invoices) are not downloaded again; a new invoice is fetched on the first night it is listed. A stored invoice whose lines
+  // did not add up is fetched and read again each night, so an improved reading puts it right.
   const [{ data: storedInvoices }, { data: accountFranchises }] = await Promise.all([
-    db.from("dpd_invoices").select("invoice_no").eq("account_id", job.account_id),
+    db.from("dpd_invoices").select("invoice_no, reconciled").eq("account_id", job.account_id),
     db.from("franchises").select("id, fd_number").eq("account_id", job.account_id),
   ]);
-  const knownInvoiceNumbers = new Set((storedInvoices ?? []).map((r) => r.invoice_no));
+  const knownInvoiceNumbers = new Set((storedInvoices ?? []).filter((r) => r.reconciled).map((r) => r.invoice_no));
   const siblings = (accountFranchises ?? []).map((f) => ({ id: f.id, fdNumber: f.fd_number }));
 
   for (const report of map.reports) {
@@ -151,6 +152,11 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
           });
           invoices.push(outcome);
           if (outcome.status === "stored" && outcome.invoiceNo) knownInvoiceNumbers.add(outcome.invoiceNo);
+          if (outcome.recheck) {
+            // A fresh reading of an invoice already reported: say so only when it now adds up; otherwise stay quiet.
+            if (outcome.reconciled) await logSync(db, job, "info", "invoice_rechecked", `Invoice ${outcome.invoiceNo} now adds up and is counted.`, { invoiceNo: outcome.invoiceNo });
+            continue;
+          }
           if (outcome.status !== "stored" || !outcome.totalsAgree) {
             await logSync(db, job, "warning", "invoice_needs_checking", outcome.message, {
               invoiceNo: outcome.invoiceNo, status: outcome.status, reconciled: outcome.reconciled, fdRead: outcome.fdRead ?? null, diagnosticsPath: outcome.diagnosticsPath ?? null, pdfPath: outcome.pdfPath ?? null,
@@ -194,10 +200,10 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   const inserted = outcomes.reduce((n, o) => n + o.inserted, 0);
   const needsReview = outcomes.filter((o) => o.status === "needs_review" || o.status === "failed").length;
   const blockedWrites = session.guard.blocked.length;
-  const invoicesStored = invoices.filter((i) => i.status === "stored").length;
+  const invoicesStored = invoices.filter((i) => i.status === "stored" && !i.recheck).length;
   // An invoice needs checking by hand only when its own printed totals disagree. One whose totals agree but whose lines could
   // not be read exactly is stored as it stands.
-  const invoicesToCheck = invoices.filter((i) => i.status !== "stored" || !i.totalsAgree).length;
+  const invoicesToCheck = invoices.filter((i) => !i.recheck && (i.status !== "stored" || !i.totalsAgree)).length;
   const result = { reportDate: date, documents: outcomes.length, inserted, needsReview, invoicesStored, invoicesToCheck, failures, blockedRequests: blockedWrites };
 
   if (outcomes.length === 0 && invoices.length === 0 && failures.length > 0) {

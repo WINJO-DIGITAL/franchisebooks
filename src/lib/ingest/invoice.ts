@@ -133,45 +133,26 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
   if (!periodStart || !periodEnd) return null;
   if (periodEnd < periodStart) return null;
 
-  // Lines sit between the table heading and the VAT analysis.
-  const bodyStart = text.search(/Description\s+Quantity/i);
-  const bodyEnd = text.search(/V\s?AT\s+analysis/i);
-  const body = bodyStart >= 0 ? text.slice(bodyStart, bodyEnd > bodyStart ? bodyEnd : undefined) : "";
-  const rows = body.split("\n").map((l) => l.trim()).filter(Boolean).slice(1);
-
-  // A line is: description, quantity, rate, VAT code, amount. Character recognition slips (a quantity "1" read as "|", a "£"
-  // read as "6") are tolerated here; the arithmetic check below decides whether the result can be trusted.
-  const lineRe = /^(.*?)\s+(\S+)\s+(£?[\d.,]+|Various)\s+([SZE])s?\s+(\S*\d[\d,]*(?:\.\d{2})?)$/i;
-  const draft: { description: string; quantity: number | null; rate: string; vatCode: "S" | "Z" | "E"; candidates: Pence[] }[] = [];
-  for (const row of rows) {
-    const match = lineRe.exec(row);
-    if (match) {
-      const token = match[5]!;
-      const candidates: Pence[] = [];
-      const plain = money(token.replace(/^£/, ""));
-      if (plain != null) candidates.push(plain);
-      // A decimal point lost in recognition ("£21726" for £217.26): the same digits with the point put back.
-      const digits = token.replace(/^£/, "");
-      if (/^\d{3,}$/.test(digits)) {
-        const withPoint = money(`${digits.slice(0, -2)}.${digits.slice(-2)}`);
-        if (withPoint != null) candidates.push(withPoint);
-      }
-      // "£" read as "6": the same amount without the leading 6 is the alternative.
-      if (!token.startsWith("£") && token.startsWith("6")) {
-        const alt = money(token.slice(1));
-        if (alt != null) candidates.push(alt);
-      }
-      if (candidates.length === 0) { problems.push(`Could not read the amount on "${row}".`); continue; }
-      const quantity = /^\d+$/.test(match[2]!) ? Number(match[2]) : /^[|Il]$/.test(match[2]!) ? 1 : null;
-      draft.push({ description: match[1]!.trim(), quantity, rate: match[3]!, vatCode: match[4]!.toUpperCase() as "S" | "Z" | "E", candidates });
-    } else if (draft.length > 0 && !/[£\d]\s*$/.test(row) && !/\d[\d,]*\.\d{2}/.test(row)) {
-      // A wrapped description ("Monday - Friday:", "Saturday", "Sunday") belongs to the line above.
-      draft[draft.length - 1]!.description += ` ${row.replace(/:$/, "")}`;
-    }
+  // Lines sit between the table heading and the VAT analysis. When recognition garbles the heading, or nothing could be read
+  // below it, the lines are looked for anywhere between the billing period and the VAT analysis instead.
+  const tableEnd = text.search(/V\s?AT\s*analysis|Goods\s*\/\s*services/i);
+  const lineProblems: string[] = [];
+  let draft = readLines(lineWindow(text, text.search(/Descr\w*\s+Quant/i), tableEnd, true), lineProblems);
+  if (draft.length === 0) {
+    lineProblems.length = 0;
+    draft = readLines(lineWindow(text, text.indexOf("\n", period.index), tableEnd, false), lineProblems);
   }
+  problems.push(...lineProblems);
 
-  const { netTotal, vatTotal, invoiceTotal } = printedTotals(text);
-  if (netTotal == null || vatTotal == null || invoiceTotal == null) return null;
+  const printed = printedTotals(text);
+  const { netTotal, invoiceTotal } = printed;
+  if (netTotal == null || invoiceTotal == null) return null;
+  // Net plus VAT is the invoice total. When the VAT read does not make that true, or no "VAT £…" figure could be read
+  // (recognition can split "Total exc VAT" over two lines, or put the net beside a "VAT" label), the VAT is the figure the
+  // invoice prints that does make it true, such as the amount in its VAT analysis. Only a figure the invoice prints is used.
+  let vatTotal = printed.vatTotal;
+  if ((vatTotal == null || netTotal + vatTotal !== invoiceTotal) && printedAmounts(text).includes(invoiceTotal - netTotal)) vatTotal = invoiceTotal - netTotal;
+  if (vatTotal == null) return null;
 
   // Pick, for every line with more than one possible reading, the combination that adds up to the invoice's own net total.
   const chosen = draft.map((d) => d.candidates[0]!);
@@ -203,6 +184,78 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
   return { kind: "period", refersTo: [], invoiceNo, fdNumber, invoiceDate, dueDate, periodStart, periodEnd, lines, netTotal, vatTotal, invoiceTotal, reconciled, totalsAgree, problems };
 }
 
+type DraftLine = { description: string; quantity: number | null; rate: string; vatCode: "S" | "Z" | "E" | null; candidates: Pence[] };
+
+/** The rows of the invoice table between two positions in the text. The heading row itself is skipped. */
+function lineWindow(text: string, start: number, end: number, skipHeading: boolean): string[] {
+  if (start < 0) return [];
+  const body = text.slice(start, end > start ? end : undefined);
+  const rows = body.split("\n").map((l) => l.trim()).filter(Boolean);
+  return skipHeading ? rows.slice(1) : rows;
+}
+
+/**
+ * Reads the invoice lines: description, quantity, rate, VAT code, amount. Character recognition slips (a quantity "1" read
+ * as "|", a "£" read as "6" or "s", a lost decimal point, the VAT code "S" read as "5" or "$") are tolerated here; the
+ * arithmetic check afterwards decides whether the result can be trusted.
+ */
+function readLines(rows: string[], problems: string[]): DraftLine[] {
+  const lineRe = /^(.*?)\s+(\S+)\s+(£?[\d.,]+|Various)\s+([SZE5$])s?\s+(\S*\d[\d,]*(?:\.\d{2})?)$/i;
+  // A row the strict pattern misses (a garbled rate or VAT code) still counts when it is a description and ends in an amount
+  // with pence: "Excess parcels 942 £0.0S S £47.10".
+  const looseRe = /^([^\d£|]*[A-Za-z]{3}[^\d£|]*?)\s+(?:(\d[\d,]*|[|Il])\s+)?.*?(£?\d[\d,]*\.\d{2})$/;
+  const draft: DraftLine[] = [];
+  for (const row of rows) {
+    if (/^(?:Description|Total|Invoice\s*total|VAT\b|Goods)/i.test(row) || /period\s+\d{2}\/\d{2}\/\d{4}/i.test(row)) continue;
+    const match = lineRe.exec(row);
+    const loose = match ? null : looseRe.exec(row);
+    if (match || loose) {
+      const token = match ? match[5]! : loose![3]!;
+      const candidates = amountCandidates(token);
+      if (candidates.length === 0) { problems.push(`Could not read the amount on "${row}".`); continue; }
+      const q = (match ? match[2] : loose![2]) ?? "";
+      const quantity = /^\d+$/.test(q) ? Number(q) : /^[|Il]$/.test(q) ? 1 : null;
+      const code = match ? match[4]!.toUpperCase().replace(/[5$]/, "S") : null;
+      draft.push({
+        description: (match ? match[1]! : loose![1]!).trim(), quantity, rate: match ? match[3]! : "Various",
+        vatCode: code === "S" || code === "Z" || code === "E" ? code : null, candidates,
+      });
+    } else if (draft.length > 0 && !/[£\d]\s*$/.test(row) && !/\d[\d,]*\.\d{2}/.test(row)) {
+      // A wrapped description ("Monday - Friday:", "Saturday", "Sunday") belongs to the line above.
+      draft[draft.length - 1]!.description += ` ${row.replace(/:$/, "")}`;
+    }
+  }
+  return draft;
+}
+
+/**
+ * The possible readings of a line amount, most likely first: as printed; with a lost decimal point put back ("£21726" or
+ * "s7,45571" for £217.26 and £7,455.71); without a leading "6" that was really a "£".
+ */
+function amountCandidates(token: string): Pence[] {
+  const out: Pence[] = [];
+  const add = (v: Pence | null) => { if (v != null && !out.includes(v)) out.push(v); };
+  // A stray character where the "£" was ("s7,455.71", "$7,455.71").
+  const core = token.replace(/^£/, "").replace(/^[^\d-]+(?=\d)/, "");
+  add(money(core));
+  if (!core.includes(".")) {
+    const digits = core.replace(/,/g, "");
+    if (/^\d{3,}$/.test(digits)) add(money(`${digits.slice(0, -2)}.${digits.slice(-2)}`));
+  }
+  if (!token.startsWith("£") && token.startsWith("6")) add(money(token.slice(1)));
+  return out;
+}
+
+/** Every amount with pence printed anywhere on the invoice. */
+function printedAmounts(text: string): Pence[] {
+  const out: Pence[] = [];
+  for (const m of text.matchAll(/£?\s?(\d{1,3}(?:,\d{3})*\.\d{2}|\d+\.\d{2})(?!\d)/g)) {
+    const v = money(m[1]);
+    if (v != null) out.push(v);
+  }
+  return out;
+}
+
 /** The printed "Total exc VAT", "VAT" and "Invoice total", each null when not printed. */
 function printedTotals(text: string): { netTotal: Pence | null; vatTotal: Pence | null; invoiceTotal: Pence | null } {
   const netTotal = money(new RegExp(String.raw`Total\s*ex(?:cl(?:uding)?|c)?\.?\s*VAT\s*(${MONEY})`, "i").exec(text)?.[1]);
@@ -210,8 +263,12 @@ function printedTotals(text: string): { netTotal: Pence | null; vatTotal: Pence 
   let vatTotal: Pence | null = null;
   const vatRe = new RegExp(String.raw`(?:^|\s)VAT\s*(${MONEY})\s*$`, "gim");
   for (const match of text.matchAll(vatRe)) {
-    const line = text.slice(text.lastIndexOf("\n", match.index) + 1, (match.index ?? 0) + match[0].length);
+    const lineStart = text.lastIndexOf("\n", match.index) + 1;
+    const line = text.slice(lineStart, (match.index ?? 0) + match[0].length);
     if (/total\s*ex(?:cl(?:uding)?|c)?\.?\s*VAT/i.test(line)) continue;
+    // "Total exc" at the end of one line and "VAT £6,058.41" starting the next is the net total split in two.
+    const previous = text.slice(text.lastIndexOf("\n", Math.max(lineStart - 2, 0)) + 1, Math.max(lineStart - 1, 0));
+    if (/^\s*VAT/i.test(line) && /total\s*ex(?:cl(?:uding)?|c)?\.?\s*$/i.test(previous)) continue;
     vatTotal = money(match[1]);
     if (vatTotal != null) break;
   }

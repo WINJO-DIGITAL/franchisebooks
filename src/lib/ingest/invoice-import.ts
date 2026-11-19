@@ -28,8 +28,10 @@ export interface InvoiceImportOutcome {
   storedForFranchiseId?: string | null;
   /** Where the recognised text was kept (private diagnostics storage) when the invoice could not be used as it stands. */
   diagnosticsPath?: string | null;
-  /** Where the original PDF was kept (private diagnostics storage) when the document could not be read. */
+  /** Where the original PDF was kept (private diagnostics storage) when the document could not be read or did not add up. */
   pdfPath?: string | null;
+  /** The invoice was already stored without adding up, and this was a fresh reading of it. */
+  recheck?: boolean;
 }
 
 /** Decides what a parsed invoice means for the franchise it was downloaded for. Pure, so it is testable without the portal. */
@@ -97,33 +99,50 @@ export async function storeReadInvoice(
     return { status, invoiceNo, reconciled: false, totalsAgree: false, message, fdRead: invoice?.fdNumber ?? null, diagnosticsPath, pdfPath };
   }
 
-  const { error } = await db.from("dpd_invoices").upsert(
-    {
-      account_id: input.accountId,
-      franchise_id: franchiseId,
-      invoice_no: invoiceNo,
-      invoice_date: invoice.invoiceDate,
-      due_date: invoice.dueDate,
-      period_start: invoice.periodStart,
-      period_end: invoice.periodEnd,
-      net_total: invoice.netTotal / 100,
-      vat_total: invoice.vatTotal / 100,
-      invoice_total: invoice.invoiceTotal / 100,
-      lines: invoice.lines as unknown as JsonObject[],
-      reconciled: invoice.reconciled && invoiceNumbersMatch(invoiceNo, invoice.invoiceNo),
-      problems: problems as unknown as JsonObject[],
-      kind: invoice.kind,
-      refers_to: invoice.refersTo as unknown as JsonObject[],
-    },
-    { onConflict: "account_id,invoice_no", ignoreDuplicates: true },
-  );
-  if (error) throw new Error(`Could not store invoice ${invoiceNo}: ${error.message}`);
-  await resolveUnreadableDocument(db, input.accountId, invoiceNo);
-
   const numberOk = invoiceNumbersMatch(invoiceNo, invoice.invoiceNo);
   const reconciled = invoice.reconciled && numberOk;
   const totalsAgree = invoice.totalsAgree && numberOk;
-  const diagnosticsPath = totalsAgree ? null : await keepRecognisedText(db, input.accountId, invoiceNo, text);
+  const row = {
+    account_id: input.accountId,
+    franchise_id: franchiseId,
+    invoice_no: invoiceNo,
+    invoice_date: invoice.invoiceDate,
+    due_date: invoice.dueDate,
+    period_start: invoice.periodStart,
+    period_end: invoice.periodEnd,
+    net_total: invoice.netTotal / 100,
+    vat_total: invoice.vatTotal / 100,
+    invoice_total: invoice.invoiceTotal / 100,
+    lines: invoice.lines as unknown as JsonObject[],
+    reconciled,
+    problems: problems as unknown as JsonObject[],
+    kind: invoice.kind,
+    refers_to: invoice.refersTo as unknown as JsonObject[],
+  };
+  // A stored invoice that adds up is never touched again. One that did not add up is read afresh each night it is listed, and
+  // the new reading replaces the old one, so a better reading (or a fixed reader) puts it right without anyone doing anything.
+  const { data: existing } = await db.from("dpd_invoices").select("reconciled").eq("account_id", input.accountId).eq("invoice_no", invoiceNo).maybeSingle();
+  const recheck = existing != null;
+  if (existing?.reconciled) {
+    return { status: "stored", invoiceNo, reconciled: true, totalsAgree: true, message: `Invoice ${invoiceNo} is already stored.`, fdRead: invoice.fdNumber, storedForFranchiseId: franchiseId, diagnosticsPath: null, recheck };
+  }
+  const { error } = existing
+    ? await db.from("dpd_invoices").update(row).eq("account_id", input.accountId).eq("invoice_no", invoiceNo).eq("reconciled", false)
+    : await db.from("dpd_invoices").upsert(row, { onConflict: "account_id,invoice_no", ignoreDuplicates: true });
+  if (error) throw new Error(`Could not store invoice ${invoiceNo}: ${error.message}`);
+
+  // Anything short of adding up keeps the recognised text and the original PDF, listed for the owner to open.
+  const diagnosticsPath = reconciled ? null : await keepRecognisedText(db, input.accountId, invoiceNo, text);
+  let pdfPath: string | null = null;
+  if (reconciled) {
+    await resolveUnreadableDocument(db, input.accountId, invoiceNo);
+  } else {
+    pdfPath = await keepUnreadableDocument(db, {
+      accountId: input.accountId, franchiseId, fdNumber, documentNo: invoiceNo, status: "unreadable",
+      reason: `Invoice ${invoiceNo} for ${fdNumber} was stored, but its lines do not add up to its own total, so its extras are not counted: ${problems.join(" ")}`,
+      bytes: input.bytes, textPath: diagnosticsPath,
+    });
+  }
   const message = reconciled && invoice.kind === "support_payment"
     ? `Support payment ${invoiceNo} for ${fdNumber}${elsewhere} stored (dated ${invoice.invoiceDate}).`
     : reconciled && invoice.kind === "vat_only"
@@ -134,7 +153,7 @@ export async function storeReadInvoice(
       // The printed totals agree, so the invoice is stored as it stands; only its line detail could not be read exactly.
       ? `Invoice ${invoiceNo} for ${fdNumber}${elsewhere} stored with its totals (${invoice.periodStart} to ${invoice.periodEnd}); the lines could not be read exactly, so its extras are not counted.`
       : `Invoice ${invoiceNo} for ${fdNumber}${elsewhere} stored but needs checking: ${problems.join(" ")}`;
-  return { status: "stored", invoiceNo, reconciled, totalsAgree, message, fdRead: invoice.fdNumber, storedForFranchiseId: franchiseId, diagnosticsPath };
+  return { status: "stored", invoiceNo, reconciled, totalsAgree, message, fdRead: invoice.fdNumber, storedForFranchiseId: franchiseId, diagnosticsPath, pdfPath, recheck };
 }
 
 /** What was missing from an unreadable invoice's text, in plain words, so the log says why. */
