@@ -71,7 +71,9 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <Section>
         <Panel>
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-            <Stat size="lg" label="Total expenses" value={formatGBP(fuelTotal + otherTotal)} />
+            <Stat size="lg" label="Expenses Excluding VAT" value={formatGBP(fuelTotal + otherTotal)} sub={`${costs.length} item${costs.length === 1 ? "" : "s"}, as the portal states them`} />
+            <Stat label="VAT Stated on Top" value={formatGBP(sumPence(costs.map((c) => c.vat ?? 0)))} sub={costs.every((c) => c.vat == null) ? "No VAT stated on these" : costs.some((c) => c.vat == null) ? `On ${costs.filter((c) => c.vat != null).length} of ${costs.length}. The rest state none.` : `On all ${costs.length}`} />
+            <Stat label="Expenses Including VAT" value={formatGBP(fuelTotal + otherTotal + sumPence(costs.map((c) => c.vat ?? 0)))} sub="Excluding VAT plus the VAT stated on top" />
             <Stat label="Fuel" value={costs.some(isFuel) ? formatGBP(fuelTotal) : "None"} sub={litres > 0 ? `${litres.toLocaleString("en-GB", { maximumFractionDigits: 0 })} litres` : costs.some(isFuel) ? undefined : "No fuel data imported"} />
             <Stat label="Other expenses" value={formatGBP(otherTotal)} />
             <Stat label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} sub={unallocated.length ? `${unallocated.length} item${unallocated.length === 1 ? "" : "s"} to assign` : "Nothing waiting"} />
