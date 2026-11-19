@@ -1,10 +1,10 @@
 /**
  * What one driver sees of their own pay. Pure code: no database, no network.
  *
- * A driver sees their days (route, stops, parcels, miles), what each day paid them, and any pay adjustments. They never see the
- * franchise's income, expenses or profit, other drivers, or what DPD pays the franchise. In accounts where the DPD figures
- * are the franchise's income ("route_income"), a driver's pay comes from their pay rate (per day or per stop); in accounts where
- * DPD's figures are the driver's pay, it is that figure.
+ * A driver sees their days (route, stops, parcels, miles), what each day pays them, and any pay adjustments. They never see the
+ * franchise's income, expenses or profit, other drivers, or what DPD pays the franchise. The DPD figures are the franchise's
+ * income, so a driver's pay comes only from the pay rate set for them (per day or per stop). With no rate set, the day's pay is
+ * left blank, never filled in from the franchise's figures.
  */
 
 import type { ISODate } from "@/lib/dates";
@@ -12,7 +12,7 @@ import type { EarningDetail } from "@/lib/data/period";
 import { adjustmentLabel } from "@/lib/labels";
 import type { Pence } from "@/lib/money";
 import { sumPence } from "@/lib/money";
-import { totalAdjustments, type AdjustmentRow, type EarningsMeaning } from "./calc";
+import { totalAdjustments, type AdjustmentRow } from "./calc";
 import { rateOn, type DayRate } from "./wages";
 
 export interface DriverAdjustmentInput extends AdjustmentRow {
@@ -56,10 +56,7 @@ export interface DriverStatementInput {
   earnings: EarningDetail[];
   adjustments: DriverAdjustmentInput[];
   dayRates: DayRate[];
-  meaning: EarningsMeaning;
 }
-
-const originalOf = (e: EarningDetail): Pence => e.netSupplied ?? e.gross - e.deductions + e.additional;
 
 export function buildDriverStatement(input: DriverStatementInput): DriverStatement {
   // Group the driver's rows by date: a driver on two routes in a day is one day.
@@ -80,15 +77,12 @@ export function buildDriverStatement(input: DriverStatementInput): DriverStateme
     const mileage = miles.some((m) => m == null) ? null : miles.reduce((a: number, m) => a + (m as number), 0);
     const routes = [...new Set(rows.map((r) => r.route).filter((r): r is string => !!r))].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true }));
 
+    // Only the pay rate set for this driver. The DPD figures are the franchise's income and are never shown as a driver's pay.
+    const rate = rateOn(input.dayRates, input.driverId, date);
     let pay: Pence | null;
-    if (input.meaning === "driver_pay") {
-      pay = sumPence(rows.map(originalOf));
-    } else {
-      const rate = rateOn(input.dayRates, input.driverId, date);
-      if (!rate) pay = null;
-      else if ((rate.basis ?? "day") === "stop") pay = stops == null ? null : Math.round(rate.dayRate * stops);
-      else pay = rate.dayRate;
-    }
+    if (!rate) pay = null;
+    else if ((rate.basis ?? "day") === "stop") pay = stops == null ? null : Math.round(rate.dayRate * stops);
+    else pay = rate.dayRate;
     if (pay == null) unpricedDates.push(date);
     days.push({ date, route: routes.length ? routes.join(" / ") : null, stops, parcels, mileage, pay });
   }

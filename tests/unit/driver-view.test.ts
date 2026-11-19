@@ -17,7 +17,7 @@ const dayRate = (r: number, basis: "day" | "stop" = "day"): DayRate[] => [{ driv
 
 describe("a driver's statement", () => {
   it("prices each day from their day rate and never shows what DPD paid the franchise", () => {
-    const s = buildDriverStatement({ driverId: me, earnings: [earn({ date: "2026-11-09", gross: 99999 }), earn({ date: "2026-11-10", gross: 88888 })], adjustments: [], dayRates: dayRate(12000), meaning: "route_income" });
+    const s = buildDriverStatement({ driverId: me, earnings: [earn({ date: "2026-11-09", gross: 99999 }), earn({ date: "2026-11-10", gross: 88888 })], adjustments: [], dayRates: dayRate(12000) });
     expect(s.days.map((d) => d.pay)).toEqual([12000, 12000]);
     expect(s.dayPay).toBe(24000);
     expect(JSON.stringify(s)).not.toContain("99999");
@@ -25,13 +25,13 @@ describe("a driver's statement", () => {
   });
 
   it("prices a per-stop rate from the day's stops", () => {
-    const s = buildDriverStatement({ driverId: me, earnings: [earn({ date: "2026-11-09", stops: 100 })], adjustments: [], dayRates: dayRate(85, "stop"), meaning: "route_income" });
+    const s = buildDriverStatement({ driverId: me, earnings: [earn({ date: "2026-11-09", stops: 100 })], adjustments: [], dayRates: dayRate(85, "stop") });
     expect(s.days[0]?.pay).toBe(8500);
   });
 
   it("counts a day on two routes as one day, with the routes joined and the stops added", () => {
     const s = buildDriverStatement({
-      driverId: me, adjustments: [], dayRates: dayRate(12000), meaning: "route_income",
+      driverId: me, adjustments: [], dayRates: dayRate(12000),
       earnings: [earn({ date: "2026-11-09", route: "359", stops: 80 }), earn({ date: "2026-11-09", route: "101", stops: 30 })],
     });
     expect(s.daysWorked).toBe(1);
@@ -40,20 +40,21 @@ describe("a driver's statement", () => {
   });
 
   it("says a day cannot be priced yet when no rate is set, rather than showing zero", () => {
-    const s = buildDriverStatement({ driverId: me, earnings: [earn({ date: "2026-11-09" })], adjustments: [], dayRates: [], meaning: "route_income" });
+    const s = buildDriverStatement({ driverId: me, earnings: [earn({ date: "2026-11-09" })], adjustments: [], dayRates: [] });
     expect(s.days[0]?.pay).toBeNull();
     expect(s.unpricedDates).toEqual(["2026-11-09"]);
     expect(s.dayPay).toBe(0);
   });
 
-  it("uses DPD's figure as the driver's pay in accounts where DPD pays drivers directly", () => {
-    const s = buildDriverStatement({ driverId: me, earnings: [earn({ date: "2026-11-09", gross: 15000, deductions: 500, additional: 200 })], adjustments: [], dayRates: [], meaning: "driver_pay" });
-    expect(s.days[0]?.pay).toBe(14700);
+  it("never shows the DPD figure as the driver's pay, even when the account says DPD pays drivers", () => {
+    const s = buildDriverStatement({ driverId: me, earnings: [earn({ date: "2026-11-09", gross: 15000, deductions: 500, additional: 200 })], adjustments: [], dayRates: [] });
+    expect(s.days[0]?.pay).toBeNull();
+    expect(s.dayPay).toBe(0);
   });
 
   it("adds the driver's own adjustments to the total, and ignores anyone else's", () => {
     const s = buildDriverStatement({
-      driverId: me, earnings: [earn({ date: "2026-11-09" })], dayRates: dayRate(12000), meaning: "route_income",
+      driverId: me, earnings: [earn({ date: "2026-11-09" })], dayRates: dayRate(12000),
       adjustments: [adj({ amount: 1500 }), adj({ amount: -500, type: "deduction", reason: "Damage" }), adj({ driverId: other, amount: 99900 })],
     });
     expect(s.adjustmentsNet).toBe(1000);
@@ -63,7 +64,7 @@ describe("a driver's statement", () => {
 
   it("never includes another driver's days, even if they are passed in by mistake", () => {
     const s = buildDriverStatement({
-      driverId: me, adjustments: [], dayRates: dayRate(12000), meaning: "route_income",
+      driverId: me, adjustments: [], dayRates: dayRate(12000),
       earnings: [earn({ date: "2026-11-09" }), earn({ date: "2026-11-09", driverId: other, route: "777", stops: 500 })],
     });
     expect(s.daysWorked).toBe(1);

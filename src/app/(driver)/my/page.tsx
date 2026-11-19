@@ -61,7 +61,7 @@ export default async function MyPayPage({ searchParams }: { searchParams: Promis
                     <td className="r num">{d.stops ?? "—"}</td>
                     <td className="r num hidden sm:table-cell">{d.parcels ?? "—"}</td>
                     <td className="r num hidden sm:table-cell">{d.mileage ?? "—"}</td>
-                    <td className="r num font-medium">{d.pay == null ? <Badge tone="warn">Not set</Badge> : formatGBP(d.pay)}</td>
+                    <td className="r num font-medium">{d.pay == null ? null : formatGBP(d.pay)}</td>
                   </tr>
                 ))}
               </tbody>
