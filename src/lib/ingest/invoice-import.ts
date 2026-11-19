@@ -28,6 +28,8 @@ export interface InvoiceImportOutcome {
   storedForFranchiseId?: string | null;
   /** Where the recognised text was kept (private diagnostics storage) when the invoice could not be used as it stands. */
   diagnosticsPath?: string | null;
+  /** Where the original PDF was kept (private diagnostics storage) when the document could not be read. */
+  pdfPath?: string | null;
 }
 
 /** Decides what a parsed invoice means for the franchise it was downloaded for. Pure, so it is testable without the portal. */
@@ -78,7 +80,11 @@ export async function importSelfBilledInvoice(
         : status === "incomplete"
           ? `Invoice ${invoiceNo} for ${input.fdNumber} is missing its dates, so it was not stored. It will be tried again tomorrow.`
           : `Invoice ${invoiceNo} for ${input.fdNumber} could not be read (${describeUnreadable(text)}), so it was not stored. It will be tried again tomorrow.`;
-    return { status, invoiceNo, reconciled: false, totalsAgree: false, message, fdRead: invoice?.fdNumber ?? null, diagnosticsPath };
+    const pdfPath = await keepUnreadableDocument(db, {
+      accountId: input.accountId, franchiseId: input.franchiseId, fdNumber: input.fdNumber, documentNo: invoiceNo,
+      status: creditNote ? "credit_note" : status === "stored" ? "unreadable" : status, reason: message, bytes: input.bytes, textPath: diagnosticsPath,
+    });
+    return { status, invoiceNo, reconciled: false, totalsAgree: false, message, fdRead: invoice?.fdNumber ?? null, diagnosticsPath, pdfPath };
   }
 
   const { error } = await db.from("dpd_invoices").upsert(
@@ -100,6 +106,7 @@ export async function importSelfBilledInvoice(
     { onConflict: "account_id,invoice_no", ignoreDuplicates: true },
   );
   if (error) throw new Error(`Could not store invoice ${invoiceNo}: ${error.message}`);
+  await resolveUnreadableDocument(db, input.accountId, invoiceNo);
 
   const numberOk = invoiceNumbersMatch(invoiceNo, invoice.invoiceNo);
   const reconciled = invoice.reconciled && numberOk;
@@ -133,4 +140,44 @@ async function keepRecognisedText(db: AdminClient, accountId: string, invoiceNo:
   const path = `${accountId}/invoices/${invoiceNo.replace(/[^A-Za-z0-9_-]/g, "_")}.txt`;
   const upload = await db.storage.from("diagnostics").upload(path, new TextEncoder().encode(text), { contentType: "text/plain; charset=utf-8", upsert: true });
   return upload.error ? null : path;
+}
+
+/** The private storage path for the original PDF of a document that could not be read: one file per franchise and number. */
+export function unreadablePdfPath(accountId: string, fdNumber: string, documentNo: string): string {
+  const safe = (v: string) => v.replace(/[^A-Za-z0-9_-]/g, "_");
+  return `${accountId}/invoices/${safe(fdNumber)}/${safe(documentNo)}.pdf`;
+}
+
+/**
+ * Keeps the original PDF of a document the sync could not read, and records it for the owner to look at. Running again on
+ * a later night replaces the same file and updates the same row, so nothing is duplicated. Never throws: keeping the copy
+ * must not stop the sync.
+ */
+async function keepUnreadableDocument(
+  db: AdminClient,
+  doc: {
+    accountId: string; franchiseId: string; fdNumber: string; documentNo: string;
+    status: "unreadable" | "incomplete" | "wrong_franchise" | "credit_note"; reason: string; bytes: Uint8Array; textPath: string | null;
+  },
+): Promise<string | null> {
+  try {
+    const path = unreadablePdfPath(doc.accountId, doc.fdNumber, doc.documentNo);
+    const upload = await db.storage.from("diagnostics").upload(path, doc.bytes, { contentType: "application/pdf", upsert: true });
+    const pdfPath = upload.error ? null : path;
+    await db.from("unreadable_documents").upsert(
+      {
+        account_id: doc.accountId, franchise_id: doc.franchiseId, document_no: doc.documentNo, status: doc.status,
+        reason: doc.reason.slice(0, 1000), pdf_path: pdfPath, text_path: doc.textPath, last_seen_at: new Date().toISOString(), resolved_at: null,
+      },
+      { onConflict: "account_id,document_no" },
+    );
+    return pdfPath;
+  } catch {
+    return null;
+  }
+}
+
+/** Marks a document as dealt with once a later run has read and stored it. */
+async function resolveUnreadableDocument(db: AdminClient, accountId: string, documentNo: string): Promise<void> {
+  await db.from("unreadable_documents").update({ resolved_at: new Date().toISOString() }).eq("account_id", accountId).eq("document_no", documentNo).is("resolved_at", null);
 }

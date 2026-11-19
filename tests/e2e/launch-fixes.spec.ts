@@ -64,3 +64,32 @@ test.describe("launch fixes (synthetic demo data)", () => {
     await expect(categories.getByRole("row", { name: /Fuel/ })).toBeVisible();
   });
 });
+
+test.describe("documents the sync could not read (synthetic demo data)", () => {
+  test("the owner sees them under Data & Integrations and can open the original PDF through a short-lived link", async ({ page }) => {
+    // Stand in for a night where DPD sent a document that could not be read (local database only).
+    expect(process.env.NEXT_PUBLIC_SUPABASE_URL).toMatch(/^http:\/\/(127\.0\.0\.1|localhost):/);
+    const { createClient } = await import("@supabase/supabase-js");
+    const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+    const { data: franchise } = await admin.from("franchises").select("id, account_id, fd_number").eq("fd_number", "FD-DEMO-1").single();
+    const path = `${franchise!.account_id}/invoices/${franchise!.fd_number}/FVI-DEMO-1.pdf`;
+    await admin.storage.from("diagnostics").upload(path, new TextEncoder().encode("%PDF-1.4\nsynthetic\n%%EOF"), { contentType: "application/pdf", upsert: true });
+    await admin.from("unreadable_documents").upsert({
+      account_id: franchise!.account_id, franchise_id: franchise!.id, document_no: "FVI-DEMO-1", status: "unreadable",
+      reason: "Invoice FVI-DEMO-1 for FD-DEMO-1 could not be read (no billing period found), so it was not stored.", pdf_path: path, resolved_at: null,
+    }, { onConflict: "account_id,document_no" });
+
+    await page.goto("/data");
+    const table = page.getByTestId("unreadable-documents");
+    await expect(table).toBeVisible();
+    const row = table.getByRole("row", { name: /FVI-DEMO-1/ });
+    await expect(row).toContainText("No billing period found");
+    const href = await row.getByRole("link", { name: "View" }).getAttribute("href");
+    const first = await page.request.get(href!, { maxRedirects: 0 });
+    expect(first.status()).toBe(303);
+    expect(first.headers()["location"]).toMatch(/\/storage\/v1\/object\/sign\/diagnostics\/.+token=/);
+    const pdf = await page.request.get(href!);
+    expect(pdf.status()).toBe(200);
+    expect((await pdf.body()).subarray(0, 5).toString()).toBe("%PDF-");
+  });
+});

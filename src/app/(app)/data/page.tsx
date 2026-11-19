@@ -41,6 +41,10 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
     supabase.from("integration_connections").select("provider, status, display_name, config").eq("account_id", accountId),
     supabase.from("import_jobs").select("id, status, result, finished_at").eq("job_type", "dpd_discovery").order("created_at", { ascending: false }).limit(1),
   ]);
+  // Owners only (the table itself also only lets owners read it).
+  const unreadable = ctx.isOwner
+    ? (await supabase.from("unreadable_documents").select("id, franchise_id, document_no, reason, pdf_path, first_seen_at, last_seen_at").is("resolved_at", null).order("last_seen_at", { ascending: false }).limit(50)).data ?? []
+    : [];
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const dropbox = connections.data?.find((c) => c.provider === "dropbox");
   const dpd = connections.data?.find((c) => c.provider === "dpd");
@@ -114,6 +118,35 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
           </ul>
         )}
       </Section>
+
+      {/* DPD documents that could not be read: owner only */}
+      {ctx.isOwner && unreadable.length > 0 ? (
+        <Section id="unreadable" title={`Documents That Could Not Be Read (${unreadable.length})`} description="DPD documents the nightly sync downloaded but could not read, such as one-off invoices with no billing period. Nothing from them has been counted. Open the original to check it; the sync tries again each night.">
+          <TableWrap>
+            <table className="ledger" data-testid="unreadable-documents">
+              <thead><tr><th>Franchise</th><th>Document</th><th className="hidden sm:table-cell">First seen</th><th>Why</th><th className="r"><span className="sr-only">Open</span></th></tr></thead>
+              <tbody>
+                {unreadable.map((d) => (
+                  <tr key={d.id}>
+                    <td className="whitespace-nowrap">{franchiseName.get(d.franchise_id) ?? "—"}</td>
+                    <td className="num whitespace-nowrap">{d.document_no}<span className="block text-xs text-ink-soft sm:hidden">{formatUkDate(d.first_seen_at.slice(0, 10))}</span></td>
+                    <td className="hidden whitespace-nowrap sm:table-cell">{formatUkDateTime(d.first_seen_at)}</td>
+                    <td className="text-sm text-ink-soft">{unreadableReason(d.reason)}</td>
+                    <td className="r whitespace-nowrap">
+                      {d.pdf_path ? (
+                        <span className="inline-flex gap-2">
+                          <a className={buttonClass("secondary", "sm")} href={`/api/unreadable-documents/${d.id}`} target="_blank" rel="noopener">View</a>
+                          <a className={buttonClass("quiet", "sm")} href={`/api/unreadable-documents/${d.id}?download=1`}>Download</a>
+                        </span>
+                      ) : <span className="text-sm text-muted">Kept on the next sync</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </Section>
+      ) : null}
 
       {/* Upload */}
       {ctx.canWrite ? (
@@ -234,4 +267,11 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
       </Section>
     </>
   );
+}
+
+/** The reason in short: the part of the sync's message in brackets ("no billing period found"), or the message itself. */
+function unreadableReason(message: string): string {
+  const inBrackets = /\(([^)]+)\)/.exec(message)?.[1];
+  const text = inBrackets ?? message;
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

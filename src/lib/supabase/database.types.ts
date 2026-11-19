@@ -199,6 +199,18 @@ isOneToOne: false
                     "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: []
+                },"unreadable_documents": {
+                  Row: {
+                    "id": string,"account_id": string,"franchise_id": string,"document_no": string,"status": string,"reason": string,"pdf_path": string | null,"text_path": string | null,"first_seen_at": string,"last_seen_at": string,"resolved_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"account_id": string,"franchise_id": string,"document_no": string,"status": string,"reason": string,"pdf_path"?: string | null,"text_path"?: string | null,"first_seen_at"?: string,"last_seen_at"?: string,"resolved_at"?: string | null
+                  }
+                  Update: {
+                    "id"?: string,"account_id"?: string,"franchise_id"?: string,"document_no"?: string,"status"?: string,"reason"?: string,"pdf_path"?: string | null,"text_path"?: string | null,"first_seen_at"?: string,"last_seen_at"?: string,"resolved_at"?: string | null
+                  }
+                  Relationships: []
                 },"sync_dispatches": {
                   Row: {
                     "night": string,"attempt": number,"dispatched_at": string,"started": boolean,"message": string | null

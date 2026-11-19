@@ -153,7 +153,7 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
           if (outcome.status === "stored" && outcome.invoiceNo) knownInvoiceNumbers.add(outcome.invoiceNo);
           if (outcome.status !== "stored" || !outcome.totalsAgree) {
             await logSync(db, job, "warning", "invoice_needs_checking", outcome.message, {
-              invoiceNo: outcome.invoiceNo, status: outcome.status, reconciled: outcome.reconciled, fdRead: outcome.fdRead ?? null, diagnosticsPath: outcome.diagnosticsPath ?? null,
+              invoiceNo: outcome.invoiceNo, status: outcome.status, reconciled: outcome.reconciled, fdRead: outcome.fdRead ?? null, diagnosticsPath: outcome.diagnosticsPath ?? null, pdfPath: outcome.pdfPath ?? null,
             });
             // Also in the run's own log, so the reason can be seen in GitHub Actions without opening the database.
             logger.warn({ jobId: job.id, invoiceNo: outcome.invoiceNo, status: outcome.status, fdRead: outcome.fdRead ?? null }, outcome.message);
