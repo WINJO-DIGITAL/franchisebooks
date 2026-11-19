@@ -33,3 +33,18 @@ test.describe("forms", () => {
     await expect(page.getByLabel("Email address", { exact: true })).toBeVisible();
   });
 });
+
+test.describe("public terms page", () => {
+  test("shows the Terms & Conditions to a signed-out visitor, with all 20 sections and the contact details", async ({ page }) => {
+    await page.goto("/terms");
+    await expect(page.getByRole("heading", { level: 1, name: "Terms & Conditions" })).toBeVisible();
+    await expect(page.getByText("Last updated 19 November 2026")).toBeVisible();
+    const headings = await page.getByRole("heading", { level: 2 }).allTextContents();
+    for (let n = 1; n <= 20; n++) expect(headings.some((h) => h.startsWith(`${n}. `))).toBe(true);
+    expect(headings).toContain("Important Notice");
+    await expect(page.getByText(/Nitisat Sirisom/)).toBeVisible();
+    await expect(page.getByText(/processed by Stripe\. No VAT is charged/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "hello@winjodigital.co.uk" }).first()).toHaveAttribute("href", "mailto:hello@winjodigital.co.uk");
+    await expect(page.getByText("[Insert")).toHaveCount(0);
+  });
+});
