@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <aside className="no-print hidden border-r border-line bg-surface lg:flex lg:flex-col">
         <div className="sticky top-0 flex h-dvh flex-col p-4">
           <Link href="/" className="mb-6 block px-2 pt-1">
-            <img src="/logo.png" alt="Franchise Books by WINJO Digital" className="h-12 w-auto" />
+            <img src="/logo.png" alt="Franchise Books by WINJO Digital" className="h-24 w-auto" />
             <span className="mt-2 block truncate text-sm font-medium leading-tight text-ink-soft">{ctx.accountName || ""}</span>
           </Link>
           <SidebarNav attention={reviewCount} />
@@ -37,7 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="min-w-0">
         <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-paper/95 px-4 backdrop-blur sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center lg:hidden">
-            <img src="/logo.png" alt="Franchise Books by WINJO Digital" className="h-8 w-auto" />
+            <img src="/logo.png" alt="Franchise Books by WINJO Digital" className="h-11 w-auto" />
           </Link>
           <FranchiseSwitcher
             franchises={ctx.franchises.filter((f) => f.isActive || f.id === ctx.franchiseId).map((f) => ({ id: f.id, label: franchiseLabel(f) }))}
