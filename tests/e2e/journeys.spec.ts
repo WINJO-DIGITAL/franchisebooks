@@ -5,13 +5,10 @@ test.describe("owner journeys (synthetic demo data)", () => {
   test("the dashboard answers the key questions in one screen", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await expect(page.getByText("Earned by drivers")).toBeVisible();
-    await expect(page.getByText("Driver pay").first()).toBeVisible();
-    await expect(page.getByText("Fuel", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("Other expenses").first()).toBeVisible();
+    // DPD figures are the franchise's income (docs/CORE.md rule 9); there are no estimates.
+    for (const label of ["Income", "Wages", "Expenses", "Profit"]) await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("From DPD payments").first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Synchronisation" })).toBeVisible();
-    // Revenue was entered as an estimate, so profit must be labelled as an estimate.
-    await expect(page.getByText("Estimated").first()).toBeVisible();
     // Quick actions live in one Add menu.
     await page.getByText("Add", { exact: true }).first().click();
     await expect(page.getByRole("link", { name: /Pay adjustment/i })).toBeVisible();
@@ -203,8 +200,8 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByRole("heading", { name: "Franchise revenue" })).toBeVisible();
     await page.getByRole("button", { name: "Add revenue" }).click();
     await page.getByLabel("Amount received from DPD").fill("12000");
-    await page.getByLabel("Is this figure confirmed?").selectOption("confirmed");
-    await page.getByRole("button", { name: "Save revenue" }).click();
+    // Revenue entries are always confirmed (docs/CORE.md rule 9), so there is no "confirmed?" question any more.
+    await page.getByRole("button", { name: "Save Revenue" }).click();
     // The dialog closes on success; the new entry appears in the table.
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(page.getByRole("row", { name: /Confirmed.*£12,000\.00/ }).first()).toBeVisible();
