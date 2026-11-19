@@ -100,6 +100,11 @@ dialog::backdrop {
   background: rgb(239 237 231 / 0.45);
 }
 
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
