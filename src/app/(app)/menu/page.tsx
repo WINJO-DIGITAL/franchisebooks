@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, ClipboardCheck, FileText, Scale, LogOut, RefreshCw, Settings, SlidersHorizontal, Bell } from "lucide-react";
+import { ChevronRight, ClipboardCheck, FileText, Scale, LogOut, RefreshCw, Settings, SlidersHorizontal, Bell, TrendingUp } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
 import { getContext } from "@/lib/context";
 import { PageHeader } from "@/components/ui/bits";
@@ -11,6 +11,7 @@ const items = [
   { href: "/adjustments", label: "Adjustments", icon: SlidersHorizontal },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/check", label: "Period Check", icon: ClipboardCheck },
+  { href: "/insights", label: "Insights", icon: TrendingUp },
   { href: "/sliding-scale", label: "Sliding Scale", icon: Scale },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/data", label: "Data & Integrations", icon: RefreshCw },
