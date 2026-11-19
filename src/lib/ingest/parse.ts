@@ -520,7 +520,7 @@ function parseFuelTable(
     return { rows: out, totalsVerified: null };
   }
   if (col.total === undefined) {
-    issues.push({ level: "warning", message: "Only a net (ex-VAT) amount was found; it has been used as the cost." });
+    issues.push({ level: "warning", message: "Only an amount before VAT was found; it has been used as the cost." });
     confidence.limit(0.8);
   }
 

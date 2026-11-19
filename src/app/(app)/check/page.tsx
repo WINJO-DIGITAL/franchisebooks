@@ -128,22 +128,22 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
                 <Stat
                   label="Money Out (DPD Charges)"
                   value={formatGBP(check.charges.net)}
-                  sub="Excluding VAT, as the portal states them. The including-VAT figures are below."
+                  sub="Before VAT. The total with VAT is shown below."
                 />
                 <Stat
                   label="Invoice Total"
                   value={check.invoiceStated == null ? "Waiting for the Invoice" : formatGBP(check.invoiceStated.invoiceTotal)}
-                  sub={check.invoiceStated == null ? undefined : `As printed: ${formatGBP(check.invoiceStated.netTotal)} + ${formatGBP(check.invoiceStated.vatTotal)} VAT${check.invoiceStated.dueDate ? `, due ${formatUkDate(check.invoiceStated.dueDate)}` : ""}.`}
+                  sub={check.invoiceStated == null ? undefined : `${formatGBP(check.invoiceStated.netTotal)} before VAT + ${formatGBP(check.invoiceStated.vatTotal)} VAT${check.invoiceStated.dueDate ? `, due ${formatUkDate(check.invoiceStated.dueDate)}` : ""}.`}
                 />
               </div>
               <div className="mt-6 grid gap-6 border-t border-line pt-6 sm:grid-cols-3">
-                <Stat label="Expenses Excluding VAT" value={formatGBP(check.charges.net)} sub={`${check.charges.count} charges, as the portal states them`} />
+                <Stat label="Total Before VAT" value={formatGBP(check.charges.net)} sub={`${check.charges.count} charge${check.charges.count === 1 ? "" : "s"}`} />
                 <Stat
-                  label="VAT Stated on Top"
+                  label="VAT"
                   value={formatGBP(check.charges.vatStated)}
-                  sub={check.charges.vatStatedOn === 0 ? "The portal states no VAT on these charges" : check.charges.vatStatedOn < check.charges.count ? `On ${check.charges.vatStatedOn} of ${check.charges.count} charges. The rest state none.` : `On all ${check.charges.count} charges`}
+                  sub={check.charges.vatStatedOn === 0 ? "No VAT on these charges" : check.charges.vatStatedOn < check.charges.count ? `On ${check.charges.vatStatedOn} of ${check.charges.count} charges` : `On all ${check.charges.count} charges`}
                 />
-                <Stat label="Expenses Including VAT" value={formatGBP(check.charges.gross)} sub="Excluding VAT plus the VAT stated on top" />
+                <Stat label="Total With VAT" value={formatGBP(check.charges.gross)} sub="Before VAT plus VAT" />
               </div>
 
               {check.income.status === "unread" ? (
@@ -169,7 +169,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
                     {invoice && invoice.reconciled ? (
                       <>
                         {invoice.lines.map((l, i) => <tr key={i}><td>{l.description}</td><td className="r num">{formatGBP(l.amount)}</td></tr>)}
-                        <tr><td className="font-medium">Total (VAT {formatGBP(invoice.vatTotal)}; with VAT {formatGBP(invoice.invoiceTotal)})</td><td className="r num font-medium">{formatGBP(invoice.netTotal)}</td></tr>
+                        <tr><td className="font-medium">Total Before VAT (VAT {formatGBP(invoice.vatTotal)}, {formatGBP(invoice.invoiceTotal)} with VAT)</td><td className="r num font-medium">{formatGBP(invoice.netTotal)}</td></tr>
                       </>
                     ) : (
                       <tr><td colSpan={2} className="text-muted">{invoice ? "The invoice was downloaded but its lines could not be read reliably." : "The invoice has not been collected yet. It appears after DPD posts it and the next sync runs."}</td></tr>
