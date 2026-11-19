@@ -1,5 +1,6 @@
 import { LogOut } from "lucide-react";
 import { signOut } from "@/lib/actions/auth";
+import Image from "next/image";
 
 /** A driver's own space: no business navigation, just their pay. */
 export default function DriverLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +9,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <img src="/logo.png" alt="Franchise Books by WINJO Digital" className="h-12 w-auto" />
+            <Image src="/logo.png" alt="Franchise Books by WINJO Digital" width={629} height={390} className="h-12 w-auto" />
             <span className="hidden text-[0.6875rem] font-medium uppercase tracking-wider text-muted sm:block">Your pay</span>
           </div>
           <form action={signOut}>

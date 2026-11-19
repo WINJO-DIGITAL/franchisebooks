@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Check, ChevronDown, ClipboardCheck, FileText, Layers, Lock, Plug, PoundSterling, RefreshCw, Scale, ShieldCheck, Users } from "lucide-react";
 import { buttonClass } from "@/components/ui/button";
 import { PLAN_PRICE_GBP } from "@/lib/billing/status";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: { absolute: "Franchise Books by Winjo Digital: know what your DPD franchise earns and what each driver is owed" },
@@ -90,7 +91,7 @@ export default function WelcomePage() {
       <header className="sticky top-0 z-30 border-b border-line/70 bg-paper/85 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/welcome" className="flex items-center">
-            <img src="/logo.png" alt="Franchise Books by WINJO Digital" className="h-14 w-auto" />
+            <Image src="/logo.png" alt="Franchise Books by WINJO Digital" width={629} height={390} className="h-14 w-auto" />
           </Link>
           <nav aria-label="Account" className="flex items-center gap-1.5">
             <Link href="/login" className={buttonClass("quiet", "sm")}>Sign in</Link>
