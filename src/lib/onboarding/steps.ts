@@ -31,9 +31,9 @@ export interface SetupStep {
 export function remainingSetupSteps(s: SetupState): SetupStep[] {
   const steps: SetupStep[] = [];
   if (!s.hasDpdLogin) {
-    steps.push({ key: "login", title: "Connect your DPD login", detail: "Saved encrypted. We read your franchises, drivers, payments and charges from DPD, read-only.", href: "/settings", cta: "Add your login" });
+    steps.push({ key: "login", title: "Connect Your DPD Login", detail: "Saved encrypted. We read your franchises, drivers, payments and charges from DPD, read-only.", href: "/settings", cta: "Add your login" });
   } else if (!s.hasEarnings) {
-    steps.push({ key: "first-read", title: "Reading your DPD account", detail: "We are finding your franchises and drivers on DPD. Press Sync DPD to start it now. Your figures appear here once it finishes.", href: "/data", cta: "Open Data & Integrations" });
+    steps.push({ key: "first-read", title: "Reading Your DPD Account", detail: "We are finding your franchises and drivers on DPD. Press Sync DPD to start it now. Your figures appear here once it finishes.", href: "/data", cta: "Open Data & Integrations" });
   }
   if (s.driverCount > 0 && s.ratesMatter && s.driversWithoutRate > 0) {
     steps.push({
@@ -64,7 +64,7 @@ export interface ChecklistItem {
 export function setupChecklist(s: SetupState): ChecklistItem[] {
   const ratesDone = !(s.driverCount > 0 && s.ratesMatter && s.driversWithoutRate > 0);
   const items: ChecklistItem[] = [
-    { key: "login", title: "Connect your DPD login", detail: "Saved encrypted and read-only.", href: "/settings", cta: "Add your login", done: s.hasDpdLogin },
+    { key: "login", title: "Connect Your DPD Login", detail: "Saved encrypted and read-only.", href: "/settings", cta: "Add your login", done: s.hasDpdLogin },
     { key: "first-read", title: "First read of your DPD account", detail: s.hasEarnings ? "Your franchises, drivers and payments have been read from DPD." : "Press Sync DPD to start it now. Your figures appear once it finishes.", href: "/data", cta: "Open Data & Integrations", done: s.hasEarnings },
     {
       key: "rates",
