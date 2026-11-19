@@ -5,7 +5,7 @@ import { portalMapSchema } from "@/lib/dpd/portal-map";
 
 const invoice = (o: Partial<ParsedInvoice> = {}): ParsedInvoice => ({
   invoiceNo: "FI1041458", fdNumber: "FD42102", invoiceDate: "2026-11-08", dueDate: "2026-11-13", periodStart: "2026-10-12", periodEnd: "2026-11-08",
-  lines: [], netTotal: 0, vatTotal: 0, invoiceTotal: 0, reconciled: true, problems: [], ...o,
+  lines: [], netTotal: 0, vatTotal: 0, invoiceTotal: 0, reconciled: true, totalsAgree: true, problems: [], ...o,
 });
 
 describe("classifying a downloaded self-billed invoice", () => {

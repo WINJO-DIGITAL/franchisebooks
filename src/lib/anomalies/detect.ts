@@ -141,6 +141,11 @@ export interface AnomalyInput {
   covers: CoverRow[];
   openConflicts: { id: string; franchiseId: string | null; title: string; detail: string; date: ISODate }[];
   invoices?: AnomalyInvoice[];
+  /**
+   * For each franchise, the first and last day we hold daily payments for. An invoice is only compared with the daily payments
+   * for periods this covers: for earlier days there is no data to compare, which is not the same as nothing having been earned.
+   */
+  dailyCoverage?: Record<string, { first: ISODate; last: ISODate }>;
 }
 
 export type AnomalyType =
@@ -506,6 +511,13 @@ export function detectAnomalies(input: AnomalyInput): AnomalyCandidate[] {
     if (!inEval(invoice.storedOn)) continue;
     // Only recent periods: an old invoice that is stored late (history back-filled) is not news.
     if (invoice.periodEnd < addDays(input.evalFrom, -35)) continue;
+    // Compare with the daily payments only for a period we hold them for. Before the first day we read, there is no daily
+    // data, so a total of £0 there is missing data, not a disagreement with the invoice.
+    if (input.dailyCoverage) {
+      const cover = input.dailyCoverage[invoice.franchiseId];
+      const covered = cover != null && cover.first <= addDays(invoice.periodStart, 6) && cover.last >= addDays(invoice.periodEnd, -6);
+      if (!covered) continue;
+    }
     if (!invoice.reconciled) {
       out.push({
         dedupeKey: `invoice_unreadable|${invoice.id}`,
@@ -528,6 +540,8 @@ export function detectAnomalies(input: AnomalyInput): AnomalyCandidate[] {
     for (const e of input.earnings) {
       if (e.franchiseId === invoice.franchiseId && e.date >= invoice.periodStart && e.date <= invoice.periodEnd) daily += originalEarnings(e);
     }
+    // Nothing at all in the daily payments for the period means the days were not read, not that nobody earned anything.
+    if (daily === 0) continue;
     const diff = daily - invoice.stopPayNet;
     if (Math.abs(diff) > config.invoiceTolerancePence) {
       out.push({

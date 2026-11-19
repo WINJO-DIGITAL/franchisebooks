@@ -226,6 +226,15 @@ async function processFile(db: AdminClient, input: ProcessInput): Promise<Import
     return { fileId: input.fileId, status: "needs_review", documentType: parsed.documentType, message: `${title}. ${detail}`, inserted: 0, unchanged: 0, conflicts: 0, issues: parsed.issues };
   };
 
+  if (parsed.documentType !== "unknown" && parsed.emptyReport) {
+    // A report with headings and no rows is a day with nothing in it. Record it as read, so it is not read again as new
+    // and does not wait for anyone to decide anything.
+    const dateText = parsed.dateFrom ? ` for ${formatUkDate(parsed.dateFrom)}` : "";
+    const message = `${label[0]!.toUpperCase()}${label.slice(1)}${dateText}: nothing reported for this day.`;
+    await db.from("imported_files").update({ ...common, status: "imported", status_message: message, records_imported: 0, records_unchanged: 0 }).eq("id", input.fileId);
+    await log(db, input, "info", "file_imported", message, { fileId: input.fileId, empty: true }, franchiseId);
+    return { fileId: input.fileId, status: "imported", documentType: parsed.documentType, message, inserted: 0, unchanged: 0, conflicts: 0, issues: parsed.issues };
+  }
   if (parsed.documentType === "unknown" || common.records_found === 0) {
     const reason = parsed.issues.find((i) => i.level === "error")?.message ?? "It does not look like an earnings, fuel or expense report.";
     return hold("unknown_document", `"${input.filename}" was not recognised`, `${reason} Nothing was imported.`);

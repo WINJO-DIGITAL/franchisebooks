@@ -7,7 +7,7 @@
  */
 
 import { readSelfBilledInvoicePdf } from "./invoice-pdf";
-import type { ParsedInvoice } from "./invoice";
+import { invoiceNumbersMatch, type ParsedInvoice } from "./invoice";
 import type { AdminClient } from "@/lib/supabase/admin";
 import type { JsonObject } from "@/lib/supabase/json";
 
@@ -16,7 +16,10 @@ export type InvoiceStatus = "stored" | "unreadable" | "wrong_franchise" | "incom
 export interface InvoiceImportOutcome {
   status: InvoiceStatus;
   invoiceNo: string | null;
+  /** The lines add up and the totals agree: the invoice can be used in full. */
   reconciled: boolean;
+  /** The printed totals agree with each other, even if the lines could not be read exactly. Nothing to check by hand. */
+  totalsAgree: boolean;
   message: string;
 }
 
@@ -40,13 +43,13 @@ export async function importSelfBilledInvoice(
   const status = classifyInvoice(invoice, input.fdNumber);
   const invoiceNo = input.portalInvoiceNo;
   const problems = [...(invoice?.problems ?? [])];
-  if (invoice && invoice.invoiceNo !== invoiceNo) problems.push(`The portal lists this invoice as ${invoiceNo}, but the PDF reads as ${invoice.invoiceNo}. Check the number.`);
+  if (invoice && !invoiceNumbersMatch(invoiceNo, invoice.invoiceNo)) problems.push(`The portal lists this invoice as ${invoiceNo}, but the PDF reads as ${invoice.invoiceNo}. Check the number.`);
 
   if (!invoice || status !== "stored") {
     const message = status === "wrong_franchise"
       ? `Invoice ${invoiceNo} is for ${invoice?.fdNumber}, not ${input.fdNumber}, so it was not stored.`
       : `Invoice ${invoiceNo} for ${input.fdNumber} could not be read, so it was not stored. It will be tried again tomorrow.`;
-    return { status, invoiceNo, reconciled: false, message };
+    return { status, invoiceNo, reconciled: false, totalsAgree: false, message };
   }
 
   const { error } = await db.from("dpd_invoices").upsert(
@@ -62,16 +65,21 @@ export async function importSelfBilledInvoice(
       vat_total: invoice.vatTotal / 100,
       invoice_total: invoice.invoiceTotal / 100,
       lines: invoice.lines as unknown as JsonObject[],
-      reconciled: invoice.reconciled && invoice.invoiceNo === invoiceNo,
+      reconciled: invoice.reconciled && invoiceNumbersMatch(invoiceNo, invoice.invoiceNo),
       problems: problems as unknown as JsonObject[],
     },
     { onConflict: "account_id,invoice_no", ignoreDuplicates: true },
   );
   if (error) throw new Error(`Could not store invoice ${invoiceNo}: ${error.message}`);
 
-  const reconciled = invoice.reconciled && invoice.invoiceNo === invoiceNo;
+  const numberOk = invoiceNumbersMatch(invoiceNo, invoice.invoiceNo);
+  const reconciled = invoice.reconciled && numberOk;
+  const totalsAgree = invoice.totalsAgree && numberOk;
   const message = reconciled
     ? `Invoice ${invoiceNo} for ${input.fdNumber} stored (${invoice.periodStart} to ${invoice.periodEnd}).`
-    : `Invoice ${invoiceNo} for ${input.fdNumber} stored but needs checking: ${problems.join(" ")}`;
-  return { status: "stored", invoiceNo, reconciled, message };
+    : totalsAgree
+      // The printed totals agree, so the invoice is stored as it stands; only its line detail could not be read exactly.
+      ? `Invoice ${invoiceNo} for ${input.fdNumber} stored with its totals (${invoice.periodStart} to ${invoice.periodEnd}); the lines could not be read exactly, so its extras are not counted.`
+      : `Invoice ${invoiceNo} for ${input.fdNumber} stored but needs checking: ${problems.join(" ")}`;
+  return { status: "stored", invoiceNo, reconciled, totalsAgree, message };
 }

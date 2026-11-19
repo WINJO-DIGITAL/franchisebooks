@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DAILY_PAYMENT_LINE, parseSelfBilledInvoice } from "@/lib/ingest/invoice";
+import { DAILY_PAYMENT_LINE, invoiceNumbersMatch, parseSelfBilledInvoice } from "@/lib/ingest/invoice";
 
 const sample = readFileSync("tests/fixtures/dpd-invoice-ocr.txt", "utf8");
 
@@ -82,5 +82,52 @@ describe("recognition slips are repaired only when the arithmetic then works", (
   it("does not accept a repair that leaves the lines not adding up", () => {
     const inv = parseSelfBilledInvoice(readFileSync("tests/fixtures/dpd-invoice-ocr-misread-pound.txt", "utf8").replace("£1,295.07", "£1,295.00"))!;
     expect(inv.reconciled).toBe(false);
+  });
+});
+
+describe("trusting what the invoice itself states", () => {
+  it("treats the printed totals as the facts when they agree: net plus 20% VAT is the invoice total", () => {
+    const inv = parseSelfBilledInvoice(sample)!;
+    expect(inv.totalsAgree).toBe(true);
+    expect(inv.netTotal + inv.vatTotal).toBe(inv.invoiceTotal);
+  });
+
+  it("corrects a misread VAT figure from the net and total when they are consistent with 20% VAT", () => {
+    // Net 6,058.41 and total 7,270.09 are consistent with 20% VAT (1,211.68); the VAT line has been read as 1,219.68.
+    const text = sample.replace("TotalexcVAT £7,303.36", "TotalexcVAT £6,058.41").replace("Invoice total £8,764.03", "Invoice total £7,270.09").replace("VAT £1,460.67", "VAT £1,219.68");
+    const inv = parseSelfBilledInvoice(text)!;
+    expect(inv.netTotal).toBe(605841);
+    expect(inv.invoiceTotal).toBe(727009);
+    expect(inv.vatTotal).toBe(121168);
+    expect(inv.totalsAgree).toBe(true);
+    expect(inv.problems).not.toContain("Net plus VAT is not the invoice total.");
+  });
+
+  it("does not hide totals that really disagree", () => {
+    const inv = parseSelfBilledInvoice(sample.replace("Invoice total £8,764.03", "Invoice total £9,999.99"))!;
+    expect(inv.totalsAgree).toBe(false);
+    expect(inv.problems).toContain("Net plus VAT is not the invoice total.");
+  });
+
+  it("still stores an invoice whose totals agree when its lines cannot be read, so nothing is wrongly flagged", () => {
+    const noLines = sample.replace(/Description Quantity[\s\S]*?Vat analysis/i, "Vat analysis");
+    const inv = parseSelfBilledInvoice(noLines)!;
+    expect(inv.lines).toHaveLength(0);
+    expect(inv.reconciled).toBe(false);
+    expect(inv.totalsAgree).toBe(true);
+  });
+});
+
+describe("matching an invoice number read from a picture", () => {
+  it("accepts the look-alike letters character recognition produces", () => {
+    expect(invoiceNumbersMatch("FI969646", "FIS69646")).toBe(true); // S read for a 9
+    expect(invoiceNumbersMatch("FI960635", "FIS60635")).toBe(true);
+    expect(invoiceNumbersMatch("FI1004458", "FI1OO4458")).toBe(true); // O read for a 0
+    expect(invoiceNumbersMatch("FI1041458", "FI1O41458")).toBe(true); // O read for a 0
+  });
+  it("refuses a genuinely different number", () => {
+    expect(invoiceNumbersMatch("FI969646", "FI969647")).toBe(false);
+    expect(invoiceNumbersMatch("FI969646", "FI96964")).toBe(false);
+    expect(invoiceNumbersMatch("FI969646", "FIX69646")).toBe(false); // X is not a look-alike for anything
   });
 });

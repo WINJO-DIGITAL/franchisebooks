@@ -148,7 +148,7 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
           const outcome = await importSelfBilledInvoice(db, { accountId: job.account_id, franchiseId: franchise.id, fdNumber: franchise.fd_number, portalInvoiceNo: document.filename.replace(/\.pdf$/i, ""), bytes: document.bytes });
           invoices.push(outcome);
           if (outcome.status === "stored" && outcome.invoiceNo) knownInvoiceNumbers.add(outcome.invoiceNo);
-          if (outcome.status !== "stored" || !outcome.reconciled) {
+          if (outcome.status !== "stored" || !outcome.totalsAgree) {
             await logSync(db, job, "warning", "invoice_needs_checking", outcome.message, { invoiceNo: outcome.invoiceNo, status: outcome.status, reconciled: outcome.reconciled });
           }
         }
@@ -188,7 +188,9 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   const needsReview = outcomes.filter((o) => o.status === "needs_review" || o.status === "failed").length;
   const blockedWrites = session.guard.blocked.length;
   const invoicesStored = invoices.filter((i) => i.status === "stored").length;
-  const invoicesToCheck = invoices.filter((i) => i.status !== "stored" || !i.reconciled).length;
+  // An invoice needs checking by hand only when its own printed totals disagree. One whose totals agree but whose lines could
+  // not be read exactly is stored as it stands.
+  const invoicesToCheck = invoices.filter((i) => i.status !== "stored" || !i.totalsAgree).length;
   const result = { reportDate: date, documents: outcomes.length, inserted, needsReview, invoicesStored, invoicesToCheck, failures, blockedRequests: blockedWrites };
 
   if (outcomes.length === 0 && invoices.length === 0 && failures.length > 0) {

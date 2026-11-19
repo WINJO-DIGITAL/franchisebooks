@@ -102,6 +102,20 @@ describe("earnings PDF end to end", () => {
   });
 });
 
+describe("a day with nothing in it", () => {
+  it("is recorded as read, not held as an unrecognised document, when a daily report has headings and no rows", async () => {
+    const headings = "Date,Driver ID,Driver,Route,Parcels,Stops,Pay per parcel,Pay per stop,Gross,Deductions,Additional,Net\n";
+    const outcome = await upload(`payments_${t.fdNumber}_2026-11-28.csv`, Buffer.from(headings));
+    expect(outcome.status).toBe("imported");
+    expect(outcome.inserted).toBe(0);
+    expect(outcome.message).toContain("nothing reported for this day");
+    const open = await sql("select id from public.review_items where account_id = $1 and status = 'open' and kind = 'unknown_document'", [t.accountId]);
+    expect(open).toEqual([]);
+    const [file] = await sql<{ status: string }>("select status from public.imported_files where account_id = $1 and original_filename like 'payments_%'", [t.accountId]);
+    expect(file!.status).toBe("imported");
+  });
+});
+
 describe("documents that cannot be trusted", () => {
   it("holds a low-confidence document in the review queue and stores nothing", async () => {
     const outcome = await upload("corrupt.pdf", await earningsPdf({ fdNumber: t.fdNumber, date: "2026-11-16", corruptTotalBy: 25 }));

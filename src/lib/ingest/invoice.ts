@@ -32,7 +32,30 @@ export interface ParsedInvoice {
   invoiceTotal: Pence;
   /** The lines add up to the net total, and net plus VAT is the invoice total. */
   reconciled: boolean;
+  /** The printed totals agree with each other (net plus VAT is the invoice total), whatever happened to the lines. */
+  totalsAgree: boolean;
   problems: string[];
+}
+
+/** UK VAT at the standard rate: the printed total of a self-billed invoice is its net total plus 20%. */
+const STANDARD_VAT_PERCENT = 20;
+
+/**
+ * Whether the invoice number read from the picture is the number the portal lists. Character recognition mixes up look-alikes
+ * ("S" for a 9 or a 5, "O" for 0, "I" or "l" for 1, "B" for 8, "Z" for 2), so a letter read where the portal has one of its
+ * look-alike digits counts as the same number. Any other difference is a different number.
+ */
+const LOOK_ALIKES: Record<string, string> = { S: "59", O: "0", I: "1", L: "1", B: "8", Z: "2" };
+export function invoiceNumbersMatch(portalNo: string, readNo: string): boolean {
+  const a = portalNo.toUpperCase();
+  const b = readNo.toUpperCase();
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === b[i]) continue;
+    if (!(LOOK_ALIKES[b[i]!] ?? "").includes(a[i]!)) return false;
+  }
+  return true;
 }
 
 /** Lines the daily Payments figures already contain (stop pay and excess parcels). Everything else is an extra payment. */
@@ -117,10 +140,18 @@ export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
   }
   const lines: InvoiceLine[] = draft.map((d, i) => ({ description: d.description, quantity: d.quantity, rate: d.rate, amount: chosen[i]!, vatCode: d.vatCode }));
   const linesSum = sumOf(chosen);
-  const reconciled = lines.length > 0 && linesSum === netTotal && netTotal + vatTotal === invoiceTotal;
+  // The VAT figure is the smallest number on the invoice and the likeliest to be misread. When the net total and the invoice
+  // total are consistent with 20% VAT (to the penny, as DPD rounds it), the VAT is the difference between them, not the misread.
+  let vatFinal = vatTotal;
+  if (netTotal + vatFinal !== invoiceTotal) {
+    const expected = netTotal + Math.round((netTotal * STANDARD_VAT_PERCENT) / 100);
+    if (Math.abs(expected - invoiceTotal) <= 1) vatFinal = invoiceTotal - netTotal;
+  }
+  const totalsAgree = netTotal + vatFinal === invoiceTotal;
+  const reconciled = lines.length > 0 && linesSum === netTotal && totalsAgree;
   if (lines.length === 0) problems.push("No invoice lines could be read.");
   else if (linesSum !== netTotal) problems.push(`The lines add up to ${linesSum / 100} but the invoice states ${netTotal / 100} excluding VAT.`);
-  if (netTotal + vatTotal !== invoiceTotal) problems.push("Net plus VAT is not the invoice total.");
+  if (!totalsAgree) problems.push("Net plus VAT is not the invoice total.");
 
-  return { invoiceNo, fdNumber, invoiceDate, dueDate, periodStart, periodEnd, lines, netTotal, vatTotal, invoiceTotal, reconciled, problems };
+  return { invoiceNo, fdNumber, invoiceDate, dueDate, periodStart, periodEnd, lines, netTotal, vatTotal: vatFinal, invoiceTotal, reconciled, totalsAgree, problems };
 }

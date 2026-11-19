@@ -167,6 +167,19 @@ describe("income per stop, charges and invoices", () => {
     expect(run({ earnings: paid, invoices: [old] }).some((a) => a.type.startsWith("invoice_"))).toBe(false);
   });
 
+  it("does not compare an invoice with daily payments we never read: no data is not the same as nothing earned", () => {
+    // The invoice says £6,000 for a period before the first day we hold; the daily total there is £0 only because it was never read.
+    const early = invoice({ periodStart: "2026-10-12", periodEnd: "2026-11-08", stopPayNet: 600000 });
+    const coverage = { [F]: { first: "2026-11-09", last: "2026-11-10" } };
+    expect(run({ earnings: paid, invoices: [early], dailyCoverage: coverage }).some((a) => a.type.startsWith("invoice_"))).toBe(false);
+  });
+
+  it("still compares an invoice when the daily payments cover its whole period", () => {
+    const coverage = { [F]: { first: "2026-11-09", last: "2026-11-10" } };
+    expect(run({ earnings: paid, invoices: [invoice({ stopPayNet: 29000 })], dailyCoverage: coverage }).some((a) => a.type === "invoice_mismatch")).toBe(true);
+    expect(run({ earnings: paid, invoices: [invoice({})], dailyCoverage: coverage }).some((a) => a.type.startsWith("invoice_"))).toBe(false);
+  });
+
   it("flags an invoice that could not be read reliably", () => {
     expect(run({ earnings: paid, invoices: [invoice({ reconciled: false })] }).some((a) => a.type === "invoice_unreadable")).toBe(true);
   });

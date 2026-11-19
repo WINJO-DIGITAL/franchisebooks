@@ -175,3 +175,17 @@ describe("expense spreadsheet", () => {
     expect(doc.confidence).toBeGreaterThanOrEqual(AUTO_IMPORT_THRESHOLD);
   });
 });
+
+describe("a day with nothing in it", () => {
+  const headings = "Date,Driver ID,Driver,Route,Parcels,Stops,Pay per parcel,Pay per stop,Gross,Deductions,Additional,Net\n";
+  it("is an empty report, not an unrecognised document, when the headings have no rows under them", async () => {
+    const doc = await parse("payments_FD75486_2026-11-18.csv", Buffer.from(headings));
+    expect(doc.documentType).toBe("earnings_report");
+    expect(doc.emptyReport).toBe(true);
+    expect(doc.issues.some((i) => i.level === "error")).toBe(false);
+  });
+  it("still reports rows that exist but could not be read", async () => {
+    const doc = await parse("payments_FD75486_2026-11-18.csv", Buffer.from(`${headings}not,a,real,row\n`));
+    expect(doc.emptyReport).not.toBe(true);
+  });
+});

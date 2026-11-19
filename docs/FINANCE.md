@@ -75,3 +75,13 @@ Whether DPD's "daily earnings" statement is what a driver is paid (a cost to you
 2. Compare the row with the document.
 3. If they differ, it will be in the review queue or the sync log with a
    plain-English reason. Do not fix it by adjusting pay; resolve the import.
+
+## Telling duplicates and missing data apart
+
+The app decides from facts, not guesses:
+
+* **Daily payments are the record of what was paid each day.** A DPD invoice is a summary of the same money for a four-week period. It is checked against the daily payments, never added to them, so nothing is counted twice. Only the invoice's extra lines (Fuel Supplement, C&D App and so on, not the stop-pay lines) count as extra income.
+* **The same driver, franchise and day with the same figures is one record.** It does not matter if the route text differs or the driver code is spelled `DR27903` or `ref:dr27903`. Two routes on one day stay separate only when their figures differ.
+* **No data is not zero.** An invoice is compared with the daily payments only for a period the app holds daily payments for. For earlier days (before the first read) there is nothing to compare, so no alert is raised, and the invoice is not wrong.
+* **The invoice's printed totals are facts.** If net plus 20% VAT equals the invoice total, the totals are trusted even when character recognition misreads a line, the VAT figure or the invoice number (an "S" for a 9, an "O" for a 0). An invoice needs checking by hand only when its own totals disagree.
+* **A daily report with headings and no rows** is a day with nothing in it. It is recorded as read and does not wait for a decision.

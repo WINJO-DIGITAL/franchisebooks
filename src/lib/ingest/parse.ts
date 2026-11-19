@@ -88,6 +88,8 @@ export interface ParsedDocument {
   earnings: ParsedEarningsRow[];
   fuel: ParsedFuelRow[];
   expenses: ParsedExpenseRow[];
+  /** True when the report has its column headings but no rows at all: nothing was paid or reported for that day. */
+  emptyReport?: boolean;
 }
 
 const DATE_PATTERN =
@@ -223,9 +225,11 @@ export function parseDocument(doc: ExtractedDocument): ParsedDocument {
   let totalsSeen = false;
   let totalsOk = true;
 
+  let nonBlankRows = 0;
   for (const table of sameType) {
     const next = tables[tables.indexOf(table) + 1];
     const rows = dataRowsOf(doc, table, next);
+    nonBlankRows += rows.filter((r) => r.row.some((cell) => cell.trim() !== "")).length;
     if (first.type === "earnings_report") {
       const outcome = parseEarningsTable(table.header, rows, reportDate, issues, confidence);
       result.earnings.push(...outcome.rows);
@@ -251,7 +255,12 @@ export function parseDocument(doc: ExtractedDocument): ParsedDocument {
   }
 
   const count = result.earnings.length + result.fuel.length + result.expenses.length;
-  if (count === 0) {
+  if (count === 0 && nonBlankRows === 0) {
+    // Headings and nothing under them: DPD sends a report with no rows for a day nobody worked or nothing was paid.
+    // That is a fact about the day, not a document that failed to read.
+    result.emptyReport = true;
+    issues.push({ level: "info", message: "The report has its headings but no rows: nothing was reported for this day." });
+  } else if (count === 0) {
     issues.push({ level: "error", message: "The table headings were recognised but no rows could be read." });
     confidence.limit(0);
   }

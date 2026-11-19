@@ -43,6 +43,18 @@ export async function runAnomalyScan(
     fetchAll(() => db.from("review_items").select("id, franchise_id, title, detail, payload, created_at").eq("account_id", accountId).eq("kind", "source_conflict").eq("status", "open").order("id")),
     fetchAll(() => db.from("dpd_invoices").select("id, franchise_id, invoice_no, period_start, period_end, reconciled, lines, created_at").eq("account_id", accountId).gte("created_at", `${range.from}T00:00:00Z`).order("id")),
   ]);
+  // The first and last day of daily payments we hold for each franchise, so an invoice for a period we never read is not
+  // compared with a "£0" that only means we have no data.
+  const dailyCoverage: Record<string, { first: ISODate; last: ISODate }> = {};
+  await Promise.all(franchises.map(async (f) => {
+    const edge = async (ascending: boolean) => {
+      const { data } = await db.from("daily_earnings").select("report_date").eq("account_id", accountId).eq("franchise_id", f.id).eq("is_current", true)
+        .order("report_date", { ascending }).limit(1);
+      return data?.[0]?.report_date ?? null;
+    };
+    const [first, last] = await Promise.all([edge(true), edge(false)]);
+    if (first && last) dailyCoverage[f.id] = { first, last };
+  }));
   const invoices: AnomalyInvoice[] = invoiceRows.map((r) => {
     const lines = Array.isArray(r.lines) ? (r.lines as { description?: string; amount?: number }[]) : [];
     const stopPayNet = lines.filter((l) => l.description && typeof l.amount === "number" && DAILY_PAYMENT_LINE.test(l.description)).reduce((a, l) => a + (l.amount as number), 0);
@@ -70,6 +82,7 @@ export async function runAnomalyScan(
       fromDpd: c.source === "dpd_portal", unassigned: c.allocation.scope === "unallocated",
     })),
     invoices,
+    dailyCoverage,
     covers,
     openConflicts: conflicts.map((c) => {
       const incoming = (c.payload as { incoming?: { report_date?: string } } | null)?.incoming;
