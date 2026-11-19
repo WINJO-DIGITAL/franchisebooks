@@ -27,7 +27,7 @@ const DRIVERS = [
   { name: "Alex Example", ref: "D001", base: 112 },
   { name: "Blake Sample", ref: "D002", base: 98 },
   { name: "Casey Testcase", ref: "D003", base: 124 },
-  { name: "Devon Placeholder", ref: "D004", base: 90 },
+  { name: "Jordan Lookalike", ref: "D004", base: 90 },
 ];
 
 function pseudo(seed: number): () => number {
@@ -55,8 +55,13 @@ async function main() {
   const franchiseId = franchise!.id;
   const driverIds: string[] = [];
   for (const [i, d] of DRIVERS.entries()) {
-    // The last driver is deliberately left unregistered so the "unmatched name" flow can be tried.
-    if (i === DRIVERS.length - 1) continue;
+    if (i === DRIVERS.length - 1) {
+      // Two drivers share the last name and neither is linked to the franchise, so DPD's report lines for that name cannot be
+      // matched to one of them. (Names nobody has registered are added automatically; a name that fits two people is left
+      // for the owner to sort out.) This lets the "unmatched name" flow be tried.
+      for (let twin = 0; twin < 2; twin++) await user.from("drivers").insert({ account_id: account, display_name: d.name, start_date: "2026-01-05" });
+      continue;
+    }
     const { data: row } = await user.from("drivers").insert({ account_id: account, display_name: d.name, dpd_driver_ref: d.ref, start_date: "2026-01-05" }).select("id").single();
     driverIds.push(row!.id);
     await user.from("driver_assignments").insert({ account_id: account, driver_id: row!.id, franchise_id: franchiseId, start_date: "2026-01-05", route: `R0${i + 1}`, vehicle_registration: ["AB12CDE", "XY21ZZZ", "LM70QRS"][i] });

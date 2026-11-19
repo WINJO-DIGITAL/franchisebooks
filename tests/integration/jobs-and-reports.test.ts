@@ -74,6 +74,8 @@ describe("scheduler tick", () => {
   });
 
   it("queues last month's report once there was activity, and only once", async () => {
+    // New accounts follow DPD four-week periods by default; this test is about the calendar-month setting.
+    await sql("update public.app_settings set report_frequency = 'monthly' where account_id = $1", [t.accountId]);
     const file = await createFile(t.accountId, t.franchiseId);
     await ingestEarnings(file, [earningsRow(t, { report_date: "2026-11-10" })]);
     await runSchedulerTick(db, new Date("2026-12-02T12:00:00Z"));

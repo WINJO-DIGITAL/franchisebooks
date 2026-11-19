@@ -30,7 +30,7 @@ describe("earnings PDF end to end", () => {
     expect(outcome.inserted).toBe(4);
     expect(outcome.message).toContain("4 driver records imported");
     expect(outcome.message).toContain("14/11/2026");
-    expect(outcome.message).toContain("2 names not matched");
+    expect(outcome.message).not.toContain("not matched");
 
     const rows = await sql<{ source_driver_name: string; driver_id: string | null; gross_earnings: string; original_earnings: string; franchise_id: string; source: string }>(
       "select source_driver_name, driver_id, gross_earnings, original_earnings, franchise_id, source from public.daily_earnings where account_id = $1 order by source_driver_name", [t.accountId],
@@ -44,9 +44,13 @@ describe("earnings PDF end to end", () => {
       expect(row.franchise_id).toBe(t.franchiseId);
       expect(row.source).toBe("manual_upload");
     }
-    // Registered drivers are matched; unknown names are left unmatched, never guessed.
+    // Registered drivers are matched; a name nobody has registered is added as a new driver, linked to the franchise.
     expect(rows.find((r) => r.source_driver_name === "Alex Example")!.driver_id).toBe(t.driverIds[0]);
-    expect(rows.find((r) => r.source_driver_name === "Casey Testcase")!.driver_id).toBeNull();
+    const casey = rows.find((r) => r.source_driver_name === "Casey Testcase")!.driver_id;
+    expect(casey).not.toBeNull();
+    expect(t.driverIds).not.toContain(casey);
+    const [assignment] = await sql<{ franchise_id: string; start_date: string }>("select franchise_id, start_date::text from public.driver_assignments where driver_id = $1", [casey]);
+    expect(assignment).toMatchObject({ franchise_id: t.franchiseId, start_date: "2026-11-14" });
   });
 
   it("keeps the original document and records where each figure came from", async () => {
@@ -90,12 +94,11 @@ describe("earnings PDF end to end", () => {
     expect(alerts).toHaveLength(1);
   });
 
-  it("raises an alert for report names that are not registered drivers", async () => {
-    const alerts = await sql<{ title: string }>("select title from public.anomalies where account_id = $1 and anomaly_type = 'unregistered_driver' order by title", [t.accountId]);
-    expect(alerts.map((a) => a.title)).toEqual([
-      '"Casey Testcase" appears in DPD reports but is not registered',
-      '"Devon Placeholder" appears in DPD reports but is not registered',
-    ]);
+  it("adds the names on a report as drivers instead of raising unregistered-driver alerts", async () => {
+    const alerts = await sql<{ title: string }>("select title from public.anomalies where account_id = $1 and anomaly_type = 'unregistered_driver'", [t.accountId]);
+    expect(alerts).toEqual([]);
+    const added = await sql<{ display_name: string }>("select display_name from public.drivers where account_id = $1 and display_name in ('Casey Testcase', 'Devon Placeholder') order by display_name", [t.accountId]);
+    expect(added.map((d) => d.display_name)).toEqual(["Casey Testcase", "Devon Placeholder"]);
   });
 });
 

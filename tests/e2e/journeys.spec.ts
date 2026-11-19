@@ -106,7 +106,8 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await page.locator("#upload-files").setInputFiles({ name: `e2e-earnings-${date}.pdf`, mimeType: "application/pdf", buffer });
     await page.getByRole("button", { name: "Import files" }).click();
     await expect(page.getByRole("status").getByText(/4 driver records imported/)).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole("status").getByText(/not matched to a registered driver/)).toBeVisible();
+    // Names nobody has registered are added as drivers automatically, so nothing is left "not matched".
+    await expect(page.getByRole("status").getByText(/not matched to a registered driver/)).toHaveCount(0);
     await page.goto("/data");
     await page.waitForLoadState("networkidle");
     await page.locator("#upload-files").setInputFiles({ name: "same-file-renamed.pdf", mimeType: "application/pdf", buffer });

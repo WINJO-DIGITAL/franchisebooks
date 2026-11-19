@@ -79,9 +79,17 @@ test.describe("onboarding", () => {
 
     await page.getByLabel("What is your business called?").fill("Onboarding Test Couriers");
     await page.getByLabel("What is your name?").fill("Olive Owner");
-    await page.getByLabel("Your first franchise FD number").fill("fd-onb1");
+    // The DPD login is required; the name and FD numbers for it are optional. A second login can be added.
     await page.getByRole("button", { name: "Connect DPD and set up my dashboard" }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByText("Enter your DPD portal username.")).toBeVisible();
+    await page.getByLabel("DPD portal username").first().fill("onboarding-test-one");
+    await page.getByLabel("DPD portal password").first().fill("not-a-real-password");
+    await page.getByLabel(/FD numbers on this login/).first().fill("FD42199");
+    await page.getByRole("button", { name: "+ Add another DPD login" }).click();
+    await page.getByLabel("DPD portal username").nth(1).fill("onboarding-test-two");
+    await page.getByLabel("DPD portal password").nth(1).fill("not-a-real-password-either");
+    await page.getByRole("button", { name: "Connect DPD and set up my dashboard" }).click();
+    await expect(page).toHaveURL(/\/(connecting)?$/);
     await expect(page.getByRole("heading", { name: "Something went wrong" })).toHaveCount(0);
   });
 

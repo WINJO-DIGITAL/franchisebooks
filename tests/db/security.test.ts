@@ -173,7 +173,7 @@ describe("account setup", () => {
   it("creates the default expense categories and settings once", async () => {
     const categories = await sql<{ name: string }>("select name from public.expense_categories where account_id = $1 order by sort_order", [a.accountId]);
     expect(categories.map((c) => c.name)).toEqual([
-      "Fuel", "Vehicle maintenance", "Repairs", "Tyres", "Insurance", "Vehicle hire", "Parking", "Equipment", "Other operating expenses",
+      "Fuel", "Vehicle maintenance", "Repairs", "Tyres", "Insurance", "Vehicle hire", "Parking", "Equipment", "Franchise fee", "Other operating expenses",
     ]);
     await expect(asUser(a.ownerId, (run) => run("select public.bootstrap_account('Again', 'Owner')"))).rejects.toThrow(/already belongs/);
   });

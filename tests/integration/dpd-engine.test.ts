@@ -146,7 +146,7 @@ describe("DPD portal automation (against a synthetic mock portal)", () => {
     await saveDpdLogin(db, t.accountId, null, { username: "test.user", password: "wrong" });
     const result = await runSync("2026-11-16");
     expect(result.status).toBe("blocked");
-    expect(result.error_message).toMatch(/did not accept the username and password/);
+    expect(result.error_message).toMatch(/did not accept this username and password/);
   }, 90_000);
 
   it("handles a portal layout change: records it, keeps going and queues a retry", async () => {

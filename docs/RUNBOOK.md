@@ -17,7 +17,7 @@ the dashboard) such as "Tonight's DPD sync did not finish."
    | Message says | What it means | What to do |
    | --- | --- | --- |
    | "It will be tried again automatically" | A temporary problem (slow portal, network) | Nothing. It retries after 2, 8, then 32 minutes |
-   | "Could not sign in to DPD" | Password changed, account locked, or portal down | Check you can sign in to the DPD portal yourself. If the password changed, update `DPD_PASSWORD` on the worker and redeploy it |
+   | "DPD did not accept this username and password" / "DPD wants something done on the portal" / "DPD did not confirm the sign-in" | Password changed, a password change or new terms waiting on the portal, account locked, or portal down | Sign in to the DPD portal yourself. Fix whatever it asks, or change the saved password in **Settings → DPD logins** (remove the login and add it again), then press **Check & refresh** on that login |
    | "DPD asked for a security code" / "blocked" | MFA or a CAPTCHA. The system will not work around it | Use Dropbox or **Import files** for now; tell a developer |
    | "The page layout has changed" | See *The DPD portal layout changed* below | |
    | "Needs review" | A document could not be read with enough confidence | Open **Review**, check the document, approve or fix it |
@@ -133,6 +133,6 @@ If a secret may have leaked (a key pasted somewhere it should not be):
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API (regenerate) | Update Vercel and the worker; redeploy both |
 | `CRON_SECRET` | Vercel variables | Redeploy |
 | `WORKER_AUTH_TOKEN` | Vercel **and** the worker (same new value) | Redeploy both |
-| `DPD_PASSWORD` | Change it in DPD first | Update the worker; redeploy |
+| A DPD login password | Change it in DPD first | Remove the login in **Settings → DPD logins** and add it again with the new password (there is no shared DPD password on the worker) |
 | `DROPBOX_APP_SECRET` | Dropbox App Console | Update Vercel; redeploy; reconnect Dropbox |
 | `ENCRYPTION_KEY` | **Do not just change it**: stored Dropbox connections become unreadable | Change it, then reconnect Dropbox |

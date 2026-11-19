@@ -8,6 +8,7 @@ import type { Browser, BrowserContext, Download, Locator, Page } from "playwrigh
 import { londonToday, type ISODate } from "@/lib/dates";
 import { scrubSecrets } from "@/lib/logger";
 import { PortalError } from "./errors";
+import { classifyLoginFailure } from "./login-failure";
 import { ReadOnlyGuard, safeClick, WRITE_ACTION_PATTERN } from "./guard";
 import { findPeriodIndex, parsePeriodText, tableShowsPeriod, yearCandidates } from "./period";
 import { fillTemplate, formatDateToken, type PortalMap, type PortalReport, type PortalStep, type PortalTarget, type TemplateValues } from "./portal-map";
@@ -28,8 +29,6 @@ export interface CollectedDocument {
 }
 
 const CAPTCHA_SELECTOR = 'iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], .g-recaptcha, .h-captcha, [data-sitekey]';
-const MFA_TEXT = /verification code|one[- ]time (pass)?code|authenticator app|two[- ]factor|2fa|security code|enter the code/i;
-const LOGIN_ERROR_TEXT = /incorrect|invalid|not recognised|not recognized|wrong (user|pass)|failed to (log|sign)|locked/i;
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -156,16 +155,7 @@ export class PortalSession {
     const signedIn = await signedInMarker.count();
 
     if (!signedIn) {
-      if (MFA_TEXT.test(body)) {
-        throw new PortalError("blocked", "login:mfa", "The DPD portal asked for a verification code. Automatic sign-in stops here on purpose — it will not try to get around two-step verification. Download the reports and upload them by hand, or use Dropbox.");
-      }
-      if (await this.page.locator(CAPTCHA_SELECTOR).count()) {
-        throw new PortalError("blocked", "login:captcha", "The DPD portal is asking for a CAPTCHA, which cannot (and will not) be completed automatically.");
-      }
-      if (LOGIN_ERROR_TEXT.test(body)) {
-        throw new PortalError("auth", "login:rejected", "DPD did not accept this username and password. Check them in Settings, under DPD logins.");
-      }
-      throw new PortalError("layout", "login:confirm", "Sign-in to the DPD portal could not be confirmed. The page layout may have changed.", "Signed-in marker not found after submitting the login form");
+      throw classifyLoginFailure(body, (await this.page.locator(CAPTCHA_SELECTOR).count()) > 0);
     }
     this.guard.endLoginPhase();
     this.signedIn = true;

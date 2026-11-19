@@ -53,8 +53,10 @@ Secrets (never put these in code or chat):
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → `service_role` key |
 | `ENCRYPTION_KEY` | The same key the Vercel app uses (32 bytes, base64) |
 | `DPD_PORTAL_URL` | The DPD portal address. Each account's own DPD login is saved in the app (Settings), encrypted with `ENCRYPTION_KEY`; there is no shared username or password any more |
-| `DPD_LOGIN_SECRET` | Only if the portal has an extra login field |
+| `DPD_LOGIN_SECRET` | Only if the portal has an extra login field (it has not needed one so far; leave it out) |
 | `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` | Only once Dropbox is connected |
+
+An old `DPD_USERNAME` or `DPD_PASSWORD` secret is not read by anything and can be deleted.
 
 Variables (not secret):
 
