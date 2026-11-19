@@ -124,7 +124,7 @@ export default async function DataPage({ searchParams }: { searchParams: Promise
         <Section id="unreadable" title={`Documents That Could Not Be Read (${unreadable.length})`} description="DPD documents the nightly sync downloaded but could not read, or invoices whose lines don't add up to their own total. Nothing that can't be trusted has been counted. Open the original to check it; the sync reads it again each night.">
           <TableWrap>
             <table className="ledger" data-testid="unreadable-documents">
-              <thead><tr><th>Franchise</th><th>Document</th><th className="hidden sm:table-cell">First seen</th><th>Why</th><th className="r"><span className="sr-only">Open</span></th></tr></thead>
+              <thead><tr><th>Franchise</th><th>Document</th><th className="hidden sm:table-cell">First Seen</th><th>Why</th><th className="r"><span className="sr-only">Open</span></th></tr></thead>
               <tbody>
                 {unreadable.map((d) => (
                   <tr key={d.id}>

@@ -16,7 +16,7 @@ describe("remaining set-up steps", () => {
   it("says the account is being read once the login is saved and nothing has been read", () => {
     const steps = remainingSetupSteps({ ...done, hasEarnings: false });
     expect(steps.map((s) => s.key)).toEqual(["first-read"]);
-    expect(steps[0]?.title).toBe("Reading your DPD account");
+    expect(steps[0]?.title).toBe("Reading Your DPD Account");
   });
 
   it("says the account is being read even before DPD has supplied any franchise", () => {

@@ -86,7 +86,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         <Section title="By Category">
           <TableWrap>
             <table className="ledger" data-testid="category-subtotals">
-              <thead><tr><th>Category</th><th className="r">Items</th><th className="r">Amount</th><th className="r hidden sm:table-cell">VAT stated</th></tr></thead>
+              <thead><tr><th>Category</th><th className="r">Items</th><th className="r">Amount</th><th className="r hidden sm:table-cell">VAT Stated</th></tr></thead>
               <tbody>
                 {summary.byCategory.map((c) => (
                   <tr key={c.name}>

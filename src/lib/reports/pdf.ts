@@ -215,7 +215,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   } else if (!report.franchiseId && report.franchises.length > 1) {
     heading("By franchise");
     table(
-      [{ title: "Franchise", width: 151 }, { title: "Revenue", width: 76, align: "right" }, { title: "Driver costs", width: 76, align: "right" }, { title: "Fuel", width: 66, align: "right" }, { title: "Other", width: 66, align: "right" }, { title: "Profit", width: 76, align: "right" }],
+      [{ title: "Franchise", width: 151 }, { title: "Revenue", width: 76, align: "right" }, { title: "Driver Costs", width: 76, align: "right" }, { title: "Fuel", width: 66, align: "right" }, { title: "Other", width: 66, align: "right" }, { title: "Profit", width: 76, align: "right" }],
       report.franchises.map((f) => [
         f.label, f.revenueStatus === "unavailable" ? "Not entered" : `${money(f.revenueTotal)}${f.revenueStatus === "estimated" ? " (est.)" : ""}`,
         money(f.driverCosts), money(f.fuel), money(f.otherExpenses),
@@ -244,7 +244,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     table(
       [
         { title: "Driver", width: 108 }, { title: "Route", width: 52 }, { title: "Days", width: 28, align: "right" }, { title: "Stops", width: 40, align: "right" }, { title: "Parcels", width: 44, align: "right" },
-        { title: "Income", width: 68, align: "right" }, { title: "Per stop", width: 46, align: "right" }, { title: "Wage", width: 68, align: "right" }, { title: "Vs usual", width: 49, align: "right" },
+        { title: "Income", width: 68, align: "right" }, { title: "Per Stop", width: 46, align: "right" }, { title: "Wage", width: 68, align: "right" }, { title: "Vs Usual", width: 49, align: "right" },
       ],
       withGroups(worked, (d) => [
         `${d.name}${d.registered ? "" : " (not registered)"}`, routesText(d),
@@ -259,8 +259,8 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     table(
       [
         { title: "Driver", width: 100 }, { title: "Route", width: 46 }, { title: "Days", width: 26, align: "right" }, { title: "Parcels", width: 40, align: "right" },
-        { title: "Stops", width: 36, align: "right" }, { title: "DPD earnings", width: 62, align: "right" }, { title: "Adjust.", width: 50, align: "right" },
-        { title: "Final pay", width: 62, align: "right" }, { title: "Expenses", width: 52, align: "right" }, { title: "Vs usual", width: 37, align: "right" },
+        { title: "Stops", width: 36, align: "right" }, { title: "DPD Earnings", width: 62, align: "right" }, { title: "Adjust.", width: 50, align: "right" },
+        { title: "Final Pay", width: 62, align: "right" }, { title: "Expenses", width: 52, align: "right" }, { title: "Vs Usual", width: 37, align: "right" },
       ],
       withGroups(report.drivers, (d) => [
         `${d.name}${d.registered ? "" : " (not registered)"}`, routesText(d),
@@ -291,7 +291,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     table(
       [
         { title: "Date", width: 80 }, { title: "Route", width: 48 }, { title: "Stops", width: 40, align: "right" }, { title: "Parcels", width: 46, align: "right" }, { title: "Excess", width: 44, align: "right" },
-        { title: "Stop pay", width: 68, align: "right" }, { title: "Parcel pay", width: 62, align: "right" }, { title: "Total", width: 72, align: "right" }, { title: "Miles", width: 40, align: "right" },
+        { title: "Stop Pay", width: 68, align: "right" }, { title: "Parcel Pay", width: 62, align: "right" }, { title: "Total", width: 72, align: "right" }, { title: "Miles", width: 40, align: "right" },
       ],
       dailyRows,
       { fontSize: 8 },
@@ -303,7 +303,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   if (report.categories.length === 0) paragraph("No fuel or expenses were recorded for this period.", MUTED);
   else {
     table(
-      [{ title: "Category", width: 171 }, { title: "Total", width: 86, align: "right" }, { title: "To drivers", width: 96, align: "right" }, { title: "Franchise", width: 86, align: "right" }, { title: "Unallocated", width: 72, align: "right" }],
+      [{ title: "Category", width: 171 }, { title: "Total", width: 86, align: "right" }, { title: "To Drivers", width: 96, align: "right" }, { title: "Franchise", width: 86, align: "right" }, { title: "Unallocated", width: 72, align: "right" }],
       report.categories.map((c) => [c.name, money(c.total), money(c.allocatedToDrivers), money(c.franchiseGeneral), money(c.unallocated)]),
       { footer: ["Total", money(t.fuel + t.otherExpenses), money(report.categories.reduce((a, c) => a + c.allocatedToDrivers, 0)), money(report.categories.reduce((a, c) => a + c.franchiseGeneral, 0)), money(t.unallocatedCosts)] },
     );
@@ -327,7 +327,7 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   if (report.unusual.length === 0) paragraph("Nothing unusual was flagged.", MUTED);
   else {
     table(
-      [{ title: "Date", width: 54 }, { title: "What was flagged", width: 237 }, { title: "Actual", width: 70 }, { title: "Usual", width: 90 }, { title: "Status", width: 60 }],
+      [{ title: "Date", width: 54 }, { title: "What Was Flagged", width: 237 }, { title: "Actual", width: 70 }, { title: "Usual", width: 90 }, { title: "Status", width: 60 }],
       report.unusual.map((a) => [formatUkDate(a.date), a.title, a.actual ?? "", a.expected ?? "", ANOMALY_STATUS[a.status]?.label ?? a.status]),
       { fontSize: 8 },
     );

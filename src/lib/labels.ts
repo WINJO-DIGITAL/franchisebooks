@@ -1,12 +1,12 @@
 import type { Tone } from "@/components/ui/bits";
 
 export const ADJUSTMENT_TYPES = [
-  { value: "additional_payment", label: "Additional payment", help: "Add money to the driver's pay.", sign: 1 },
+  { value: "additional_payment", label: "Additional Payment", help: "Add money to the driver's pay.", sign: 1 },
   { value: "deduction", label: "Deduction", help: "Take money off the driver's pay.", sign: -1 },
-  { value: "withheld_payment", label: "Withheld payment", help: "Record a payment the driver should not receive. Enter £0 to record the decision without changing pay.", sign: -1 },
-  { value: "cover_payment", label: "Cover payment", help: "Pay for covering another driver's work.", sign: 1 },
-  { value: "earnings_correction", label: "Earnings correction", help: "Correct the pay up or down.", sign: 0 },
-  { value: "other", label: "Other adjustment", help: "Anything else, up or down.", sign: 0 },
+  { value: "withheld_payment", label: "Withheld Payment", help: "Record a payment the driver should not receive. Enter £0 to record the decision without changing pay.", sign: -1 },
+  { value: "cover_payment", label: "Cover Payment", help: "Pay for covering another driver's work.", sign: 1 },
+  { value: "earnings_correction", label: "Earnings Correction", help: "Correct the pay up or down.", sign: 0 },
+  { value: "other", label: "Other Adjustment", help: "Anything else, up or down.", sign: 0 },
 ] as const;
 
 export type AdjustmentTypeValue = (typeof ADJUSTMENT_TYPES)[number]["value"];
@@ -19,14 +19,14 @@ export const ANOMALY_STATUS: Record<string, { label: string; tone: Tone }> = {
   open: { label: "New", tone: "warn" },
   investigating: { label: "Investigating", tone: "info" },
   resolved: { label: "Resolved", tone: "good" },
-  expected: { label: "Expected variation", tone: "neutral" },
+  expected: { label: "Expected Variation", tone: "neutral" },
   ignored: { label: "Ignored", tone: "neutral" },
 };
 
 export const SEVERITY: Record<string, { label: string; tone: Tone }> = {
-  urgent: { label: "Needs attention now", tone: "bad" },
-  attention: { label: "Worth a look", tone: "warn" },
-  info: { label: "For information", tone: "neutral" },
+  urgent: { label: "Needs Attention Now", tone: "bad" },
+  attention: { label: "Worth a Look", tone: "warn" },
+  info: { label: "For Information", tone: "neutral" },
 };
 
 export const SOURCE_LABEL: Record<string, string> = {
@@ -42,7 +42,7 @@ export const FILE_STATUS: Record<string, { label: string; tone: Tone }> = {
   received: { label: "Received", tone: "info" },
   processing: { label: "Processing", tone: "info" },
   imported: { label: "Imported", tone: "good" },
-  needs_review: { label: "Needs checking", tone: "warn" },
+  needs_review: { label: "Needs Checking", tone: "warn" },
   failed: { label: "Failed", tone: "bad" },
   ignored: { label: "Rejected", tone: "neutral" },
 };
@@ -57,5 +57,5 @@ export const DOCUMENT_TYPE: Record<string, string> = {
 export const FIGURE_STATUS: Record<string, { label: string; tone: Tone }> = {
   confirmed: { label: "Confirmed", tone: "good" },
   estimated: { label: "Estimated", tone: "warn" },
-  unavailable: { label: "Not available", tone: "neutral" },
+  unavailable: { label: "Not Available", tone: "neutral" },
 };
