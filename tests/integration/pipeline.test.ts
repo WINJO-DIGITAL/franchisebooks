@@ -195,6 +195,12 @@ describe("fuel and expenses end to end", () => {
     expect(rows[1]).toMatchObject({ vehicle_registration: "ZZ99ZZZ", driver_id: null, method: null });
   });
 
+  it("holds a fuel file that states only a total and no VAT for a person, instead of importing it", async () => {
+    const csv = Buffer.from(`Fuel Card Transactions,Franchise: ${t.fdNumber},SYNTHETIC TEST DATA\r\nDate,Registration,Litres,Total,Reference\r\n13/11/2026,AB12 CDE,10.00,18.00,TX-TOTAL-ONLY\r\n`);
+    const outcome = await upload("fuel-total-only.csv", csv);
+    expect(outcome).toMatchObject({ status: "needs_review", inserted: 0 });
+  });
+
   it("does not duplicate transactions when an overlapping report is imported", async () => {
     const overlapping = [...fuelRows, { date: "2026-11-14", time: "07:10", card: "****1234", registration: "AB12 CDE", site: "Synthetic Services", litres: 40, pricePerLitre: 1.5, reference: "TX-0003" }];
     const outcome = await upload("fuel-week-46-extended.csv", fuelCsv(overlapping, { fdNumber: t.fdNumber }));

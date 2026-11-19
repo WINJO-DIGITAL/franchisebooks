@@ -51,4 +51,13 @@ describe("the VAT the portal states on a charge", () => {
     expect(rows).toHaveLength(3);
     expect(rows.find((r) => r.description === "Management Fee")).toMatchObject({ amount: "11.47", vat_amount: "2.29" });
   });
+
+  it("stores £15.00 before VAT and £3.00 VAT for a charge written as “£18.00 (incl. £3.00 VAT)”", async () => {
+    const out = await upload(`charges_${t.fdNumber}_2026-11-09_e.csv`, csv([
+      "Fixed costs,Management Fee,,£11.47,,2.29,09/11/2026", "Fixed costs,Admin Fee,,£5.00,,,09/11/2026", "Variable costs,Temporary Van Hire,,£79.02,,15.80,09/11/2026",
+      "Variable costs,Vehicle Wash,,£18.00 (incl. £3.00 VAT),,,09/11/2026",
+    ]));
+    expect(out.inserted).toBe(1);
+    expect((await stored()).find((r) => r.description === "Vehicle Wash")).toMatchObject({ amount: "15.00", vat_amount: "3.00" });
+  });
 });

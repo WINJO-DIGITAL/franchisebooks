@@ -159,11 +159,11 @@ export function fuelTotal(row: SyntheticFuelRow): number {
   return Math.round(row.litres * row.pricePerLitre * 100) / 100;
 }
 
-/** A synthetic fuel-card transaction report as CSV. */
+/** A synthetic fuel-card transaction report as CSV. The cost column is the amount before VAT ("Net"), as fuel cards state it. */
 export function fuelCsv(rows: SyntheticFuelRow[], options: { fdNumber?: string; totals?: boolean } = {}): Buffer {
   const lines: string[] = [];
   if (options.fdNumber) lines.push(`Fuel Card Transactions,Franchise: ${options.fdNumber},SYNTHETIC TEST DATA`);
-  lines.push("Date,Time,Card,Registration,Driver,Site,Product,Litres,PPL,Total,Reference");
+  lines.push("Date,Time,Card,Registration,Driver,Site,Product,Litres,PPL,Net,Reference");
   let total = 0;
   for (const row of rows) {
     const cost = fuelTotal(row);
