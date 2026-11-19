@@ -46,3 +46,36 @@ export function remainingSetupSteps(s: SetupState): SetupStep[] {
   }
   return steps;
 }
+
+export interface ChecklistItem {
+  key: "login" | "first-read" | "rates";
+  title: string;
+  detail: string;
+  href: string;
+  cta: string;
+  done: boolean;
+}
+
+/**
+ * The first-franchisee checklist on the dashboard: the three things that get an account working, ticked off as they are
+ * done. Shown until all three are done. Once the first sync has brought drivers in, the pay-rate step names how many
+ * drivers still need one (their statements and wages wait for it). Pure code.
+ */
+export function setupChecklist(s: SetupState): ChecklistItem[] {
+  const ratesDone = !(s.driverCount > 0 && s.ratesMatter && s.driversWithoutRate > 0);
+  const items: ChecklistItem[] = [
+    { key: "login", title: "Connect your DPD login", detail: "Saved encrypted and read-only.", href: "/settings", cta: "Add your login", done: s.hasDpdLogin },
+    { key: "first-read", title: "First read of your DPD account", detail: s.hasEarnings ? "Your franchises, drivers and payments have been read from DPD." : "Press Sync DPD to start it now. Your figures appear once it finishes.", href: "/data", cta: "Open Data & Integrations", done: s.hasEarnings },
+    {
+      key: "rates",
+      title: ratesDone ? "Set your drivers' pay rates" : `Set the pay rate for ${s.driversWithoutRate} driver${s.driversWithoutRate === 1 ? "" : "s"}`,
+      detail: ratesDone
+        ? "Every driver who has worked has a pay rate."
+        : "Per day worked or per stop. Until a driver has one, their wages show as incomplete and no driver statement is made for them.",
+      href: "/drivers",
+      cta: "Set pay rates",
+      done: s.hasEarnings && ratesDone,
+    },
+  ];
+  return items.every((i) => i.done) ? [] : items;
+}

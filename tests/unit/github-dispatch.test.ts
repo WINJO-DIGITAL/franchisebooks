@@ -1,9 +1,15 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { dispatchSyncWorkflow, startWorkerRun } from "@/lib/github/dispatch";
 
 const saved = process.env.GITHUB_SYNC_TOKEN;
+const savedRepo = process.env.GITHUB_REPOSITORY;
+beforeEach(() => {
+  // GitHub Actions sets GITHUB_REPOSITORY itself; start each test without it so the default is what is tested.
+  delete process.env.GITHUB_REPOSITORY;
+});
 afterEach(() => {
   if (saved === undefined) delete process.env.GITHUB_SYNC_TOKEN; else process.env.GITHUB_SYNC_TOKEN = saved;
+  if (savedRepo === undefined) delete process.env.GITHUB_REPOSITORY; else process.env.GITHUB_REPOSITORY = savedRepo;
 });
 
 describe("starting the sync workflow from the website", () => {
@@ -21,9 +27,17 @@ describe("starting the sync workflow from the website", () => {
     const fakeFetch = (async (u: string, init: RequestInit) => { url = u; body = JSON.parse(String(init.body)); auth = String((init.headers as Record<string, string>).authorization); return new Response(null, { status: 204 }); }) as typeof fetch;
     const r = await dispatchSyncWorkflow({ force: true }, fakeFetch);
     expect(r).toEqual({ started: true });
-    expect(url).toBe("https://api.github.com/repos/WINJO-DIGITAL/matthewai/actions/workflows/dpd-sync.yml/dispatches");
+    expect(url).toBe("https://api.github.com/repos/WINJO-DIGITAL/franchisebooks/actions/workflows/dpd-sync.yml/dispatches");
     expect(body).toEqual({ ref: "main", inputs: { force: "true", report_date: "" } });
     expect(auth).toBe("Bearer github_pat_test");
+  });
+
+  it("uses GITHUB_REPOSITORY when it is set", async () => {
+    process.env.GITHUB_SYNC_TOKEN = "github_pat_test";
+    process.env.GITHUB_REPOSITORY = "EXAMPLE/another-repo";
+    let url = "";
+    await dispatchSyncWorkflow({ force: false }, (async (u: string) => { url = u; return new Response(null, { status: 204 }); }) as unknown as typeof fetch);
+    expect(url).toBe("https://api.github.com/repos/EXAMPLE/another-repo/actions/workflows/dpd-sync.yml/dispatches");
   });
 
   it("explains a refusal in plain English", async () => {

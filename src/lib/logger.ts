@@ -52,10 +52,19 @@ export function describeError(error: unknown, extra: Record<string, unknown> = {
   };
 }
 
-/** Logs an error and, if configured, forwards it to an external error tracker. Never throws. */
+/** Logs an error, emails ALERT_EMAIL (at most once an hour per error) and, if configured, forwards it to an error tracker. Never throws. */
 export async function reportError(error: unknown, context: Record<string, unknown> = {}): Promise<void> {
   const detail = describeError(error);
   logger.error({ err: detail, ...context }, detail.message);
+  // Email the person who runs the service (ALERT_EMAIL), rate-limited. Loaded here so the logger has no database import.
+  if (env.alertEmail()) {
+    try {
+      const { alertAdminOfError } = await import("./notify/alerts");
+      await alertAdminOfError(detail, context);
+    } catch {
+      // An alert must never break the request it is reporting on.
+    }
+  }
   const url = env.errorWebhookUrl();
   if (!url) return;
   try {

@@ -12,6 +12,7 @@ import { fetchAll } from "@/lib/data/fetch-all";
 import { loadCosts, loadDriverNames } from "@/lib/data/period";
 import { addDays, formatUkDate } from "@/lib/dates";
 import { periodFromParam, periodLabel } from "@/lib/finance/periods";
+import { summariseCosts } from "@/lib/finance/cost-summary";
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
 
@@ -32,7 +33,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const { start, end } = period;
 
   const [costs, names, categories] = await Promise.all([
-    loadCosts(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId }),
+    loadCosts(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
     loadDriverNames(ctx.supabase, ctx.accountId),
     fetchAll(() => ctx.supabase.from("expense_categories").select("id, name, kind, is_active").eq("is_active", true).order("sort_order").order("id")),
   ]);
@@ -44,6 +45,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const otherTotal = sumPence(costs.filter((c) => !isFuel(c)).map((c) => c.amount));
   const unallocated = costs.filter((c) => c.allocation.scope === "unallocated");
   const litres = costs.reduce((n, c) => n + (c.litres ?? 0), 0);
+  const summary = summariseCosts(costs);
+  const items = (n: number) => `${n} item${n === 1 ? "" : "s"}`;
 
   const visible = costs
     .filter((c) => (show === "fuel" ? isFuel(c) : show === "other" ? !isFuel(c) : show === "unallocated" ? c.allocation.scope === "unallocated" : true))
@@ -67,15 +70,37 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <Section>
         <Panel>
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-            <Stat size="lg" label="Total Before VAT" value={formatGBP(fuelTotal + otherTotal)} sub={`${costs.length} item${costs.length === 1 ? "" : "s"}`} />
-            <Stat label="VAT" value={formatGBP(sumPence(costs.map((c) => c.vat ?? 0)))} sub={costs.every((c) => c.vat == null) ? "No VAT on these" : costs.some((c) => c.vat == null) ? `On ${costs.filter((c) => c.vat != null).length} of ${costs.length} items` : `On all ${costs.length}`} />
-            <Stat label="Total With VAT" value={formatGBP(fuelTotal + otherTotal + sumPence(costs.map((c) => c.vat ?? 0)))} sub="Before VAT plus VAT" />
+            <Stat size="lg" label="Total Before VAT" value={formatGBP(summary.beforeVat)} sub={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : items(costs.length)} />
+            <Stat label="VAT" value={formatGBP(summary.vat)} sub={summary.vat === 0 ? "No VAT stated" : "As stated on the documents"} />
+            <Stat label="Total With VAT" value={formatGBP(summary.withVat)} sub={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : "Before VAT plus VAT"} />
+            <Stat label="VAT Not Stated" value={summary.vatNotStatedCount > 0 ? formatGBP(summary.vatNotStated) : "None"} sub={summary.vatNotStatedCount > 0 ? `${items(summary.vatNotStatedCount)}: the document does not say whether VAT is included` : "Every cost states its VAT"} />
+            <Stat label="Total Spent" value={formatGBP(summary.totalSpent)} sub={items(costs.length)} />
             <Stat label="Fuel" value={costs.some(isFuel) ? formatGBP(fuelTotal) : "None"} sub={litres > 0 ? `${litres.toLocaleString("en-GB", { maximumFractionDigits: 0 })} litres` : costs.some(isFuel) ? undefined : "No fuel data imported"} />
             <Stat label="Other expenses" value={formatGBP(otherTotal)} />
-            <Stat label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} sub={unallocated.length ? `${unallocated.length} item${unallocated.length === 1 ? "" : "s"} to assign` : "Nothing waiting"} />
+            <Stat label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} sub={unallocated.length ? `${items(unallocated.length)} to assign` : "Nothing waiting"} />
           </div>
         </Panel>
       </Section>
+
+      {summary.byCategory.length > 0 ? (
+        <Section title="By Category">
+          <TableWrap>
+            <table className="ledger" data-testid="category-subtotals">
+              <thead><tr><th>Category</th><th className="r">Items</th><th className="r">Amount</th><th className="r hidden sm:table-cell">VAT stated</th></tr></thead>
+              <tbody>
+                {summary.byCategory.map((c) => (
+                  <tr key={c.name}>
+                    <td className="font-medium">{c.name}{c.businessCost ? <Badge className="ml-2">Business cost</Badge> : null}</td>
+                    <td className="r num">{c.count}</td>
+                    <td className="r num">{formatGBP(c.amount)}</td>
+                    <td className="r num hidden sm:table-cell">{c.vat ? formatGBP(c.vat) : <span className="text-muted">—</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </TableWrap>
+        </Section>
+      ) : null}
 
       <nav aria-label="Filter" className="mb-4 flex flex-wrap gap-1.5">
         {FILTERS.map((f) => (
@@ -88,7 +113,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
       {visible.length === 0 ? (
         <EmptyState title={show === "unallocated" ? "Nothing is waiting to be assigned" : `No expenses recorded for ${periodLabel(period)}`}>
-          {show === "unallocated" ? "Every expense this pay period has been assigned to a driver or to the franchise." : "Fuel and expense reports appear here when they are synced or uploaded. You can also add an expense by hand."}
+          {show === "unallocated" ? "Every expense this pay period has been assigned to a driver or counted as a business cost." : "Fuel and expense reports appear here when they are synced or uploaded. You can also add an expense by hand."}
         </EmptyState>
       ) : (
         <TableWrap>
@@ -116,10 +141,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                     {c.allocation.scope === "driver" ? (
                       <><Link href={`/drivers/${c.allocation.driverId}`} className="font-medium hover:underline">{names.get(c.allocation.driverId) ?? "Driver"}</Link>
                         <span className="block text-xs text-muted">{c.allocationMethod === "manual" ? "Assigned by you" : (c.allocationNote ?? "Matched automatically")}</span></>
-                    ) : c.allocation.scope === "franchise" ? "Franchise (general)" : <Badge tone="warn">Unallocated</Badge>}
+                    ) : c.allocation.scope === "franchise" ? "Business cost" : <Badge tone="warn">Unallocated</Badge>}
                   </td>
                   <td className="r num font-semibold">{formatGBP(c.amount)}</td>
-                  <td className="r num hidden sm:table-cell">{c.vat == null ? <span className="text-muted">—</span> : formatGBP(c.vat)}</td>
+                  <td className="r num hidden sm:table-cell">{c.vat != null ? formatGBP(c.vat) : c.vatBasis === "gross" ? <span className="text-xs text-muted">Included</span> : c.vatBasis === "not_stated" ? <span className="text-xs text-muted">Not stated</span> : <span className="text-muted">—</span>}</td>
                   <td className="r whitespace-nowrap">
                     {ctx.canWrite ? (
                       <span className="inline-flex gap-1">

@@ -443,6 +443,8 @@ export async function storeParsed(db: AdminClient, input: StoreInput): Promise<S
         litres: row.litres ?? "",
         price_per_litre: row.pricePerLitre ?? "",
         total_cost: toDb(row.total),
+        vat_amount: row.vat == null ? "" : toDb(row.vat),
+        vat_basis: row.vatBasis,
         transaction_ref: row.reference ?? "",
         dedupe_key: `fuel|${identity}|${n}`,
         driver_id: driverId ?? "",

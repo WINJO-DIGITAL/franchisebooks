@@ -7,6 +7,9 @@ test.describe("protected endpoints", () => {
     expect((await request.get("/api/reports/00000000-0000-0000-0000-000000000000")).status()).toBe(401);
     expect((await request.get("/api/files/00000000-0000-0000-0000-000000000000")).status()).toBe(401);
     expect((await request.get("/api/cron/tick")).status()).toBe(401);
+    expect((await request.get("/api/statements/00000000-0000-0000-0000-000000000000")).status()).toBe(401);
+    expect((await request.get("/api/statements/zip?period=2026-10-12")).status()).toBe(401);
+    expect((await request.get("/api/my/statements/00000000-0000-0000-0000-000000000000")).status()).toBe(401);
     // Refused either way: 403 (bad signature) or 503 (Dropbox not configured on this server).
     expect([403, 503]).toContain((await request.post("/api/dropbox/webhook", { data: "{}" })).status());
   });

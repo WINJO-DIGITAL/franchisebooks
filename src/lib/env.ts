@@ -67,7 +67,7 @@ export const env = {
   dpdLoginSecret: () => optional("DPD_LOGIN_SECRET"),
   /** Lets the website start the nightly GitHub workflow by hand. Optional: without it the button queues the job for the next run. */
   githubSyncToken: () => optional("GITHUB_SYNC_TOKEN"),
-  githubRepo: () => optional("GITHUB_REPOSITORY") ?? "WINJO-DIGITAL/matthewai",
+  githubRepo: () => optional("GITHUB_REPOSITORY") ?? "WINJO-DIGITAL/franchisebooks",
   /** Email sending (Resend). Both must be set for any email to go out. */
   resendApiKey: () => optional("RESEND_API_KEY"),
   emailFrom: () => optional("EMAIL_FROM"),
@@ -79,4 +79,9 @@ export const env = {
   billingEnforced: () => optional("BILLING_ENFORCED") === "true",
   logLevel: () => optional("LOG_LEVEL") ?? "info",
   errorWebhookUrl: () => optional("ERROR_WEBHOOK_URL"),
+  /** Where error alerts are emailed (the person who runs the service). Without it, errors are only logged and sent to ERROR_WEBHOOK_URL. */
+  alertEmail: () => {
+    const raw = optional("ALERT_EMAIL");
+    return raw && z.email().safeParse(raw).success ? raw : null;
+  },
 };

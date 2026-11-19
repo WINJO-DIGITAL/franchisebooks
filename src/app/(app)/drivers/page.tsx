@@ -5,7 +5,7 @@ import { Badge, EmptyState, Notice, PageHeader, Section, TableWrap } from "@/com
 import { buttonClass, LinkButton } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
-import { loadPeriodData } from "@/lib/data/period";
+import { loadPeriodData, hiddenFranchiseFilter } from "@/lib/data/period";
 import { formatUkDate } from "@/lib/dates";
 import { periodContaining, periodLabel } from "@/lib/finance/periods";
 import { summarisePeriod } from "@/lib/finance/calc";
@@ -22,10 +22,12 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const [drivers, assignments, data, unregisteredRows] = await Promise.all([
     fetchAll(() => ctx.supabase.from("drivers").select("id, display_name, is_active, start_date, leaving_date, dpd_driver_ref").order("display_name").order("id")),
     fetchAll(() => ctx.supabase.from("driver_assignments").select("id, driver_id, franchise_id, route, vehicle_registration, start_date, end_date").order("start_date", { ascending: false }).order("id")),
-    loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: ctx.today, franchiseId: ctx.franchiseId }),
+    loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: ctx.today, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
     fetchAll(() => {
       let q = ctx.supabase.from("daily_earnings").select("id, franchise_id, driver_key, source_driver_name, report_date").is("driver_id", null).eq("is_current", true).order("report_date", { ascending: false }).order("id");
       if (ctx.franchiseId) q = q.eq("franchise_id", ctx.franchiseId);
+      const hiddenFilter = hiddenFranchiseFilter(ctx);
+      if (hiddenFilter) q = q.or(hiddenFilter);
       return q;
     }),
   ]);

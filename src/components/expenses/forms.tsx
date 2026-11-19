@@ -57,7 +57,7 @@ export function AddExpenseButton({ franchises, categories, drivers, today, defau
               <fieldset>
                 <legend className="mb-1.5 text-sm font-medium">Who Does This Cost Belong To?</legend>
                 <div className="grid gap-2 sm:grid-cols-3">
-                  <ChoiceCard name="assignTo" value="franchise" checked={assignTo === "franchise"} onChange={() => setAssignTo("franchise")} title="The Franchise" />
+                  <ChoiceCard name="assignTo" value="franchise" checked={assignTo === "franchise"} onChange={() => setAssignTo("franchise")} title="Business Cost" description="Insurance, MOT, the franchise fee: nobody's in particular." />
                   <ChoiceCard name="assignTo" value="driver" checked={assignTo === "driver"} onChange={() => setAssignTo("driver")} title="A Driver" />
                   <ChoiceCard name="assignTo" value="unallocated" checked={assignTo === "unallocated"} onChange={() => setAssignTo("unallocated")} title="Decide Later" />
                 </div>
@@ -101,7 +101,7 @@ export function AssignCostButton({ kind, id, drivers, current, summary }: { kind
                   </Select>
                 </Field>
               ) : null}
-              <ChoiceCard name="assignTo" value="franchise" checked={assignTo === "franchise"} onChange={() => setAssignTo("franchise")} title="The Franchise in General" description="A business cost that is nobody's in particular." />
+              <ChoiceCard name="assignTo" value="franchise" checked={assignTo === "franchise"} onChange={() => setAssignTo("franchise")} title="Business Cost" description="A cost of the business as a whole (insurance, MOT, the franchise fee), nobody's in particular." />
               <ChoiceCard name="assignTo" value="unallocated" checked={assignTo === "unallocated"} onChange={() => setAssignTo("unallocated")} title="Not Decided Yet" description="Keep it in the unallocated list." />
               <Field label="Note (optional)">
                 <Input name="note" maxLength={300} />

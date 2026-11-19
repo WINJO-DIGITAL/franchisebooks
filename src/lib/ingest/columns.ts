@@ -49,9 +49,11 @@ const FUEL: Record<FuelField, string[]> = {
   description: ["product", "description", "fuel type", "fuel"],
   litres: ["litres", "liters", "quantity", "qty", "volume", "ltrs"],
   pricePerLitre: ["ppl", "price per litre", "unit price", "pence per litre", "price/litre", "£/litre"],
-  net: ["net", "net amount", "net value"],
+  net: ["net", "net amount", "net value", "ex vat", "excl vat", "total ex vat", "total excl vat", "amount ex vat", "amount excl vat", "net ex vat"],
   vat: ["vat", "vat amount"],
-  total: ["total", "total cost", "gross", "gross amount", "amount", "value", "total amount"],
+  // Headings that say the total includes VAT are still the total; parse.ts reads the heading to know VAT is included.
+  total: ["total", "total cost", "gross", "gross amount", "amount", "value", "total amount", "total inc vat", "total incl vat", "total including vat",
+    "amount inc vat", "amount incl vat", "gross inc vat", "gross incl vat", "inc vat", "incl vat", "cost inc vat", "cost incl vat"],
   reference: ["reference", "ref", "transaction id", "transaction ref", "transaction no", "receipt", "receipt no"],
 };
 

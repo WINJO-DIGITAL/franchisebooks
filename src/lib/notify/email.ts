@@ -7,6 +7,8 @@ export interface Email {
   to: string;
   subject: string;
   text: string;
+  /** Optional files, such as a statement PDF. */
+  attachments?: { filename: string; content: Buffer }[];
 }
 
 /**
@@ -24,7 +26,10 @@ export async function sendEmail(mail: Email): Promise<boolean> {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from, to: [mail.to], subject: mail.subject, text: mail.text }),
+      body: JSON.stringify({
+        from, to: [mail.to], subject: mail.subject, text: mail.text,
+        ...(mail.attachments?.length ? { attachments: mail.attachments.map((a) => ({ filename: a.filename, content: a.content.toString("base64") })) } : {}),
+      }),
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) logger.warn({ status: res.status, subject: mail.subject }, "email provider refused the message");

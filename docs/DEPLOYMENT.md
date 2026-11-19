@@ -68,6 +68,7 @@ buckets (`source-documents`, `reports`, `diagnostics`).
    | `WORKER_AUTH_TOKEN` | the hex secret you generated (same value on the worker) |
    | `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`, `DROPBOX_REDIRECT_URL` | Step 6 |
    | `ERROR_WEBHOOK_URL` | Optional: an error-tracking address (step 8) |
+   | `ALERT_EMAIL` | Optional: who is emailed when an error is logged (step 8) |
 
    **Do not add the `DPD_*` variables to Vercel.** The DPD login belongs on
    the worker only, so the web app can never see it.
@@ -190,7 +191,7 @@ the app says so and shows a *Reconnect* button (see the runbook).
 
 ## 7. DPD portal **(you, then a developer)**
 
-The integration is read-only and has three stages. **None has been run against the real portal yet.**
+The integration is read-only and has three stages. **All of them have been run against the real portal** (myportal.drivers.dpd.co.uk): since November 2026 the sync reads payments, charges and self-billed invoices for live franchises. The steps below are for setting it up again or for a new portal layout.
 
 1. Confirm your DPD franchise agreement and the portal's terms allow automated,
    read-only access. (The system never changes anything on the portal; every
@@ -223,6 +224,11 @@ upload instead.
   On the worker: your host's log screen.
 * Optional: set `ERROR_WEBHOOK_URL` to an error tracker's HTTP address
   (Sentry, Better Stack, Logtail…) and errors are forwarded there too.
+* Set `ALERT_EMAIL` (on Vercel, and as a GitHub Actions secret for the nightly
+  run) and every error logged is emailed there through Resend: the same error at
+  most once an hour, and no more than 20 alert emails a day. Owners are emailed
+  separately, once a night, when their DPD read fails, and at 23:00 UK time if
+  a franchise still has no successful read that night.
 * Add an uptime monitor (UptimeRobot, Better Stack…) on
   `https://<your-address>/api/health`; it returns 503 if the database cannot
   be reached.

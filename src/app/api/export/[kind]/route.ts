@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const ctx = await getContext();
   const period = periodFromParam(request.nextUrl.searchParams.get("period") ?? undefined, ctx.today);
   const { start, end } = period;
-  const filter = { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId };
+  const filter = { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds };
   const franchises = new Map(ctx.franchises.map((f) => [f.id, f.fdNumber]));
   let header: string[];
   let rows: (string | number | null)[][];
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     header = ["Date", "Franchise", "Type", "Category", "Description", "Supplier", "Vehicle", "Reference", "Belongs to", "Source", "Amount (GBP)"];
     rows = costs.map((c) => [
       c.date, c.franchiseId ? (franchises.get(c.franchiseId) ?? "") : "", c.kind === "fuel" ? "Fuel" : "Expense", c.categoryName, c.description ?? "", c.supplier ?? "", c.vehicleRegistration ?? "", c.reference ?? "",
-      c.allocation.scope === "driver" ? (names.get(c.allocation.driverId) ?? "Driver") : c.allocation.scope === "franchise" ? "Franchise (general)" : "Unallocated", SOURCE_LABEL[c.source] ?? c.source, csvMoney(c.amount),
+      c.allocation.scope === "driver" ? (names.get(c.allocation.driverId) ?? "Driver") : c.allocation.scope === "franchise" ? "Business cost" : "Unallocated", SOURCE_LABEL[c.source] ?? c.source, csvMoney(c.amount),
     ]);
   } else {
     return new NextResponse("Not found", { status: 404 });

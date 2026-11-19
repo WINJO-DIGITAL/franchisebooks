@@ -14,7 +14,7 @@ import { addDays, eachDay, formatUkDate, formatUkDateLong, formatUkDayMonth } fr
 import { periodContaining, periodLabel } from "@/lib/finance/periods";
 import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
 import { FIGURE_STATUS } from "@/lib/labels";
-import { remainingSetupSteps } from "@/lib/onboarding/steps";
+import { setupChecklist } from "@/lib/onboarding/steps";
 import { formatGBP, sumPence } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   const loadFrom = trendStart < monthStart ? trendStart : monthStart;
 
   const [data, sync] = await Promise.all([
-    loadPeriodData(supabase, { accountId, from: loadFrom, to: today, franchiseId }),
+    loadPeriodData(supabase, { accountId, from: loadFrom, to: today, franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
     loadSyncOverview(supabase, accountId),
   ]);
 
@@ -62,16 +62,24 @@ export default async function DashboardPage() {
   }
   const noFranchises = ctx.franchises.length === 0;
   const noData = data.earnings.length === 0 && data.costs.length === 0;
-  const { data: dpdConnection } = await ctx.supabase.from("integration_connections").select("config").eq("account_id", accountId).eq("provider", "dpd").maybeSingle();
+  const [{ data: dpdConnection }, { count: everRead }] = await Promise.all([
+    ctx.supabase.from("integration_connections").select("config").eq("account_id", accountId).eq("provider", "dpd").maybeSingle(),
+    // Any DPD payment ever read (not just this pay period), so the checklist does not come back at the start of each period.
+    data.earnings.length > 0 ? Promise.resolve({ count: 1 }) : ctx.supabase.from("daily_earnings").select("id", { count: "exact", head: true }).eq("account_id", accountId).limit(1),
+  ]);
   const rateDriverIds = new Set((data.dayRates ?? []).map((r) => r.driverId));
   const workedDriverIds = new Set(data.earnings.map((e) => e.driverId).filter((id): id is string => id != null));
-  const setupSteps = remainingSetupSteps({
+  const driversNeedingRate = [...workedDriverIds].filter((id) => !rateDriverIds.has(id))
+    .map((id) => ({ id, name: data.driverNames.get(id) ?? "Driver" }))
+    .sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
+  const setupItems = setupChecklist({
     franchiseCount: ctx.franchises.length,
     hasDpdLogin: dpdSetupReady(dpdConnection?.config),
-    hasEarnings: data.earnings.length > 0,
+    hasEarnings: (everRead ?? 0) > 0,
     driverCount: data.driverNames.size,
-    driversWithoutRate: [...workedDriverIds].filter((id) => !rateDriverIds.has(id)).length,
-    ratesMatter: routeIncome,
+    driversWithoutRate: driversNeedingRate.length,
+    // Pay rates always matter: driver statements and wages are worked out from them, whichever way DPD figures are read.
+    ratesMatter: true,
   });
 
   return (
@@ -83,7 +91,7 @@ export default async function DashboardPage() {
         inline
       />
 
-      <GettingStarted steps={setupSteps} />
+      {ctx.canWrite ? <GettingStarted items={setupItems} driversNeedingRate={driversNeedingRate} /> : null}
 
       {/* Today */}
       <Section
@@ -115,7 +123,7 @@ export default async function DashboardPage() {
       </Section>
 
       {/* This pay period */}
-      <Section title={periodLabel(period)} description="Pay period to date" actions={<LinkButton href="/reports" variant="secondary" size="sm">Generate Monthly Report</LinkButton>}>
+      <Section title={periodLabel(period)} description="Pay period to date" actions={<LinkButton href="/reports" variant="secondary" size="sm">Generate Pay Period Report</LinkButton>}>
         <Panel>
           {routeIncome ? (
             <>

@@ -19,6 +19,7 @@ test.describe("mobile layout", () => {
     await expect(nav.getByRole("link", { name: "Drivers" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "More" })).toBeVisible();
     await nav.getByRole("link", { name: "More" }).click();
-    await expect(page.getByRole("link", { name: "Data & Integrations" })).toBeVisible();
+    await expect(page).toHaveURL(/\/menu$/);
+    await expect(page.getByRole("link", { name: "Data & Integrations", exact: true })).toBeVisible();
   });
 });

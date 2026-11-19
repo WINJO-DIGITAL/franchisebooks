@@ -4,6 +4,7 @@
  * or the service-role client; the account filter is always applied explicitly.
  */
 
+import { isBusinessCostCategory } from "@/lib/finance/cost-summary";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ISODate } from "@/lib/dates";
 import type {
@@ -23,6 +24,14 @@ export interface PeriodFilter {
   to: ISODate;
   /** Restrict to one franchise; omit for all franchises. */
   franchiseId?: string | null;
+  /** With no single franchise chosen: franchises left out of "All franchises" (those switched off). */
+  hiddenFranchiseIds?: string[];
+}
+
+/** The PostgREST filter that leaves out switched-off franchises, keeping rows with no franchise. Null when nothing is hidden. */
+export function hiddenFranchiseFilter(filter: Pick<PeriodFilter, "franchiseId" | "hiddenFranchiseIds">): string | null {
+  if (filter.franchiseId || !filter.hiddenFranchiseIds?.length) return null;
+  return `franchise_id.is.null,franchise_id.not.in.(${filter.hiddenFranchiseIds.join(",")})`;
 }
 
 export interface CostDetail extends CostRow {
@@ -37,8 +46,13 @@ export interface CostDetail extends CostRow {
   allocationNote: string | null;
   litres: number | null;
   pricePerLitre: number | null;
-  /** The VAT the portal states for this charge, added on top of amount. Null when none is stated. */
+  /** The VAT stated for this cost, added on top of amount. Null when none is stated. */
   vat: number | null;
+  /**
+   * What the amount is. net: before VAT (DPD charges, and anything that stated its VAT). gross: the file said it includes
+   * VAT but not how much. not_stated: nothing says whether VAT is included, so it is shown on its own line.
+   */
+  vatBasis: "net" | "gross" | "not_stated";
 }
 
 export interface EarningDetail extends EarningRow {
@@ -87,6 +101,8 @@ export async function loadEarnings(db: Db, filter: PeriodFilter & { driverId?: s
       .order("report_date")
       .order("id");
     if (filter.franchiseId) q = q.eq("franchise_id", filter.franchiseId);
+    const hidden = hiddenFranchiseFilter(filter);
+    if (hidden) q = q.or(hidden);
     if (filter.driverId) q = q.eq("driver_id", filter.driverId);
     return q;
   });
@@ -127,6 +143,8 @@ export async function loadAdjustments(db: Db, filter: PeriodFilter & { driverId?
       .order("earnings_date")
       .order("id");
     if (filter.franchiseId) q = q.eq("franchise_id", filter.franchiseId);
+    const hidden = hiddenFranchiseFilter(filter);
+    if (hidden) q = q.or(hidden);
     if (filter.driverId) q = q.eq("driver_id", filter.driverId);
     return q;
   });
@@ -179,7 +197,7 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
     fetchAll(() => {
       let q = db
         .from("fuel_transactions")
-        .select("id, franchise_id, transaction_date, description, supplier, vehicle_registration, source_driver_name, litres, price_per_litre, total_cost, transaction_ref, source, imported_file_id")
+        .select("id, franchise_id, transaction_date, description, supplier, vehicle_registration, source_driver_name, litres, price_per_litre, total_cost, vat_amount, vat_basis, transaction_ref, source, imported_file_id")
         .eq("account_id", filter.accountId)
         .eq("is_void", false)
         .gte("transaction_date", filter.from)
@@ -187,6 +205,8 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
         .order("transaction_date")
         .order("id");
       if (filter.franchiseId) q = q.eq("franchise_id", filter.franchiseId);
+      const hidden = hiddenFranchiseFilter(filter);
+      if (hidden) q = q.or(hidden);
       return q;
     }),
     fetchAll(() => {
@@ -200,6 +220,8 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
         .order("expense_date")
         .order("id");
       if (filter.franchiseId) q = q.eq("franchise_id", filter.franchiseId);
+      const hidden = hiddenFranchiseFilter(filter);
+      if (hidden) q = q.or(hidden);
       return q;
     }),
     db.from("expense_categories").select("id, name, kind").eq("account_id", filter.accountId).then((r) => must(r, "Loading expense categories")),
@@ -210,6 +232,8 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
   // A charge DPD itself raises against a franchise (management fee, lease, van hire) belongs to that franchise as a whole,
   // so it needs no assigning to a driver. A person can still assign it to a driver later.
   const dpdFranchiseCharge: AllocationInfo = { allocation: { scope: "franchise" }, method: "dpd_franchise_charge", note: "Charged by DPD to the franchise" };
+  // Costs of running the business as a whole (insurance, the franchise fee, MOTs and servicing) need no driver either.
+  const businessCost: AllocationInfo = { allocation: { scope: "franchise" }, method: "business_cost", note: "Business cost" };
 
   const costs: CostDetail[] = [];
   for (const r of fuelRows) {
@@ -220,12 +244,15 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
       description: r.description, supplier: r.supplier, vehicleRegistration: r.vehicle_registration, reference: r.transaction_ref,
       sourceDriverName: r.source_driver_name, source: r.source, importedFileId: r.imported_file_id,
       allocationMethod: info.method, allocationNote: info.note,
-      litres: r.litres == null ? null : Number(r.litres), pricePerLitre: r.price_per_litre == null ? null : Number(r.price_per_litre), vat: null,
+      litres: r.litres == null ? null : Number(r.litres), pricePerLitre: r.price_per_litre == null ? null : Number(r.price_per_litre),
+      vat: r.vat_amount == null ? null : fromDb(r.vat_amount),
+      vatBasis: r.vat_basis === "net" || r.vat_basis === "gross" ? r.vat_basis : "not_stated",
     });
   }
   for (const r of expenseRows) {
-    const info = allocations.expense.get(r.id) ?? (r.source === "dpd_portal" && r.franchise_id ? dpdFranchiseCharge : unallocated);
     const category = categoryById.get(r.category_id);
+    const info = allocations.expense.get(r.id)
+      ?? (r.source === "dpd_portal" && r.franchise_id ? dpdFranchiseCharge : isBusinessCostCategory(category?.name) ? businessCost : unallocated);
     costs.push({
       id: r.id, kind: "expense", franchiseId: r.franchise_id, date: r.expense_date, amount: fromDb(r.amount),
       categoryId: r.category_id, categoryName: category?.name ?? "Uncategorised",
@@ -233,6 +260,8 @@ export async function loadCosts(db: Db, filter: PeriodFilter): Promise<CostDetai
       description: r.description, supplier: r.supplier, vehicleRegistration: r.vehicle_registration, reference: r.transaction_ref,
       sourceDriverName: r.source_driver_name, source: r.source, importedFileId: r.imported_file_id,
       allocationMethod: info.method, allocationNote: info.note, litres: null, pricePerLitre: null, vat: r.vat_amount == null ? null : fromDb(r.vat_amount),
+      // DPD's portal states its charges before VAT; anything else is before VAT only when its VAT was stated.
+      vatBasis: r.source === "dpd_portal" || r.vat_amount != null ? "net" : "not_stated",
     });
   }
   return costs;
@@ -249,6 +278,8 @@ export async function loadCovers(db: Db, filter: PeriodFilter): Promise<(CoverRo
       .order("cover_date", { ascending: false })
       .order("id");
     if (filter.franchiseId) q = q.eq("franchise_id", filter.franchiseId);
+    const hidden = hiddenFranchiseFilter(filter);
+    if (hidden) q = q.or(hidden);
     return q;
   });
   return rows.map((r) => ({
@@ -281,6 +312,8 @@ export async function loadRevenue(db: Db, filter: PeriodFilter): Promise<(Revenu
       .order("period_start")
       .order("id");
     if (filter.franchiseId) q = q.eq("franchise_id", filter.franchiseId);
+    const hidden = hiddenFranchiseFilter(filter);
+    if (hidden) q = q.or(hidden);
     return q;
   });
   return rows.map((r) => ({
@@ -334,6 +367,8 @@ export async function loadOtherPayments(db: Db, filter: PeriodFilter): Promise<O
       .order("period_start")
       .order("id");
     if (filter.franchiseId) q = q.eq("franchise_id", filter.franchiseId);
+    const hidden = hiddenFranchiseFilter(filter);
+    if (hidden) q = q.or(hidden);
     return q;
   });
   return otherPaymentsFromInvoices(rows);

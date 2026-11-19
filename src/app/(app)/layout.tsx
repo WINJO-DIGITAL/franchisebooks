@@ -43,6 +43,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <FranchiseSwitcher
             franchises={ctx.franchises.filter((f) => f.isActive || f.id === ctx.franchiseId).map((f) => ({ id: f.id, label: franchiseLabel(f) }))}
             selected={ctx.franchiseId}
+            showAll={ctx.franchises.length > 1}
           />
           <AlertsBell count={attention.total} />
         </header>

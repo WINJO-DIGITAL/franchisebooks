@@ -55,6 +55,28 @@ export function invoiceNumbersMatch(portalNo: string, readNo: string): boolean {
   return true;
 }
 
+/**
+ * The FD number printed on the invoice, as read: "FD75486". Spaces inside it are removed, and O, I and l in the digits are
+ * read as 0 and 1 (an FD number is always FD and digits). S, B and Z are left as read: they could be more than one digit,
+ * so fdNumbersMatch decides.
+ */
+export function readFdNumber(text: string): string | undefined {
+  // Spaces (never line breaks) may split the digits; the number must end at a word boundary, so the next word is not read in.
+  const m = /F[ \t]?D[ \t]*n[uo]mber[ \t]*\.?:?[ \t]*(F[ \t]?D)[ \t]?((?:[0-9OoIlSBZ][ \t]?){4,6})(?![0-9A-Za-z])/i.exec(text);
+  if (!m) return undefined;
+  const digits = m[2]!.replace(/\s/g, "").toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1");
+  return `FD${digits}`;
+}
+
+/**
+ * Whether the FD number read from an invoice is this franchise's. Exact after readFdNumber's clean-up, or the same number
+ * with one look-alike slip ("S" read where the franchise has a 9). Sibling franchises differ in real digits (75486 and 75488),
+ * which never match.
+ */
+export function fdNumbersMatch(franchiseFd: string, readFd: string): boolean {
+  return invoiceNumbersMatch(franchiseFd.replace(/\s/g, ""), readFd.replace(/\s/g, ""));
+}
+
 /** Lines the daily Payments figures already contain (stop pay and excess parcels). Everything else is an extra payment. */
 export const DAILY_PAYMENT_LINE = /successful|collection|delivery\s+stops|\bstops\b|excess\s*parcels|\b(?:mon|tues|wednes|thurs|fri|satur|sun)day\b/i;
 
@@ -67,8 +89,9 @@ function money(text: string | undefined): Pence | null {
 export function parseSelfBilledInvoice(rawText: string): ParsedInvoice | null {
   const text = rawText.replace(/\r/g, "");
   const problems: string[] = [];
-  const invoiceNo = /Invoice\s*no:?\s*([A-Z]{1,3}\d{5,})/i.exec(text)?.[1];
-  const fdNumber = /FD\s*number:?\s*(FD\d{4,6})/i.exec(text)?.[1];
+  // Recognition puts stray spaces and full stops in ("Invoice No.: SB 123456", "FD Number: FD 75486"); both are tolerated.
+  const invoiceNo = /Invoice\s*n[o0]\.?:?\s*([A-Z]{1,3})\s?(\d{5,})/i.exec(text)?.slice(1, 3).join("").toUpperCase();
+  const fdNumber = readFdNumber(text);
   const invoiceDate = parseUkDate(/Invoice\s*date:?\s*(\d{2}\/\d{2}\/\d{4})/i.exec(text)?.[1]);
   const dueText = /Due\s*date:?\s*(\d{2}\/\d{2}\/\d{4})/i.exec(text)?.[1];
   const dueDate = parseUkDate(dueText);

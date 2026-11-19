@@ -24,7 +24,8 @@ import { discoverPortal, inventoryMarkdown } from "./discovery";
 import { PortalError } from "./errors";
 import { portalMapSchema, type PortalMap } from "./portal-map";
 import { PortalSession, type PortalCredentials } from "./session";
-import { ownerEmail, sendEmail } from "@/lib/notify/email";
+import { alertOwnerOfSyncFailure } from "@/lib/notify/alerts";
+import { ownerEmail } from "@/lib/notify/email";
 import { listDpdLogins, loadAllDpdLogins, loadDpdLoginById, recordLoginOutcome } from "./logins";
 import { ownPortalMap } from "./readiness";
 import { SHARED_PORTAL_MAP } from "./shared-map";
@@ -80,15 +81,9 @@ async function logSync(db: AdminClient, job: Job, level: "info" | "warning" | "e
 async function touchConnection(db: AdminClient, accountId: string, patch: { success?: boolean; error?: string | null }) {
   const now = new Date().toISOString();
   if (patch.error) {
-    // Tell the owner once, when a read goes wrong, rather than leaving them to find it on payday.
+    // Tell the owner when a read goes wrong, rather than leaving them to find it on payday: once a night, not once per retry.
     const to = await ownerEmail(db, accountId).catch(() => null);
-    if (to) {
-      await sendEmail({
-        to,
-        subject: "Franchise Books could not read your DPD account",
-        text: `Tonight's read of your DPD account did not finish.\n\n${patch.error}\n\nOpen Settings in Franchise Books to check your DPD logins. Nothing has been changed on the DPD side.`,
-      });
-    }
+    await alertOwnerOfSyncFailure(db, accountId, to, patch.error);
   }
   await db.from("integration_connections").upsert(
     {
@@ -134,9 +129,14 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
   const outcomes: ImportOutcome[] = [];
   const invoices: InvoiceImportOutcome[] = [];
   const failures: { report: string; message: string }[] = [];
-  // Invoices already stored are not downloaded again; a new invoice is fetched on the first night it is listed.
-  const { data: storedInvoices } = await db.from("dpd_invoices").select("invoice_no").eq("account_id", job.account_id).eq("franchise_id", franchise.id);
+  // Invoices already stored (for any franchise in the business: one login can list a sibling franchise's invoices) are not
+  // downloaded again; a new invoice is fetched on the first night it is listed.
+  const [{ data: storedInvoices }, { data: accountFranchises }] = await Promise.all([
+    db.from("dpd_invoices").select("invoice_no").eq("account_id", job.account_id),
+    db.from("franchises").select("id, fd_number").eq("account_id", job.account_id),
+  ]);
   const knownInvoiceNumbers = new Set((storedInvoices ?? []).map((r) => r.invoice_no));
+  const siblings = (accountFranchises ?? []).map((f) => ({ id: f.id, fdNumber: f.fd_number }));
 
   for (const report of map.reports) {
     try {
@@ -145,11 +145,18 @@ export async function runDpdSyncJob(db: AdminClient, job: Job, pool: PortalSessi
       const documents = await session.collectReport(report, franchise.fd_number, date, { knownInvoiceNumbers });
       if (report.kind === "invoices") {
         for (const document of documents) {
-          const outcome = await importSelfBilledInvoice(db, { accountId: job.account_id, franchiseId: franchise.id, fdNumber: franchise.fd_number, portalInvoiceNo: document.filename.replace(/\.pdf$/i, ""), bytes: document.bytes });
+          const outcome = await importSelfBilledInvoice(db, {
+            accountId: job.account_id, franchiseId: franchise.id, fdNumber: franchise.fd_number, portalInvoiceNo: document.filename.replace(/\.pdf$/i, ""),
+            bytes: document.bytes, accountFranchises: siblings,
+          });
           invoices.push(outcome);
           if (outcome.status === "stored" && outcome.invoiceNo) knownInvoiceNumbers.add(outcome.invoiceNo);
           if (outcome.status !== "stored" || !outcome.totalsAgree) {
-            await logSync(db, job, "warning", "invoice_needs_checking", outcome.message, { invoiceNo: outcome.invoiceNo, status: outcome.status, reconciled: outcome.reconciled });
+            await logSync(db, job, "warning", "invoice_needs_checking", outcome.message, {
+              invoiceNo: outcome.invoiceNo, status: outcome.status, reconciled: outcome.reconciled, fdRead: outcome.fdRead ?? null, diagnosticsPath: outcome.diagnosticsPath ?? null,
+            });
+            // Also in the run's own log, so the reason can be seen in GitHub Actions without opening the database.
+            logger.warn({ jobId: job.id, invoiceNo: outcome.invoiceNo, status: outcome.status, fdRead: outcome.fdRead ?? null }, outcome.message);
           }
         }
         continue;

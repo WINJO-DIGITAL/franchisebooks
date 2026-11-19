@@ -25,7 +25,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const ctx = await getContext();
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
 
-  const { data: driver } = await ctx.supabase.from("drivers").select("id, display_name, dpd_driver_ref, phone, email, start_date, leaving_date, is_active, notes").eq("id", id).maybeSingle();
+  const { data: driver } = await ctx.supabase.from("drivers").select("id, display_name, dpd_driver_ref, phone, email, start_date, leaving_date, is_active, notes, vat_number, self_billing_agreement").eq("id", id).maybeSingle();
   if (!driver) notFound();
 
   const period = periodContaining(ctx.today);
@@ -282,7 +282,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       {ctx.canWrite ? (
         <Section title="Driver Details">
           <Panel>
-            <EditDriverForm driver={{ id, displayName: driver.display_name, dpdDriverRef: driver.dpd_driver_ref, phone: driver.phone, email: driver.email, startDate: driver.start_date, leavingDate: driver.leaving_date, isActive: driver.is_active, notes: driver.notes }} />
+            <EditDriverForm driver={{ id, displayName: driver.display_name, dpdDriverRef: driver.dpd_driver_ref, phone: driver.phone, email: driver.email, startDate: driver.start_date, leavingDate: driver.leaving_date, isActive: driver.is_active, notes: driver.notes, vatNumber: driver.vat_number, selfBillingAgreement: driver.self_billing_agreement }} />
           </Panel>
         </Section>
       ) : null}

@@ -15,7 +15,7 @@ export default async function MyPayPage({ searchParams }: { searchParams: Promis
   const ctx = await getDriverContext();
   const today = londonToday();
   const period = isISODate(params.period) ? periodContaining(params.period) : periodContaining(today);
-  const { name, statement: s } = await loadDriverPage(ctx, period);
+  const { name, statement: s, files } = await loadDriverPage(ctx, period);
 
   return (
     <>
@@ -89,6 +89,24 @@ export default async function MyPayPage({ searchParams }: { searchParams: Promis
           </TableWrap>
         </Section>
       ) : null}
+
+      <Section title="Your Statements" description="A statement of your pay for each pay period, made when the period closes.">
+        {files.length === 0 ? (
+          <EmptyState title="No Statements Yet">Your first statement appears here once a pay period has closed.</EmptyState>
+        ) : (
+          <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+            {files.map((f) => (
+              <li key={f.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium">{periodLabel({ start: f.periodStart, end: f.periodEnd })}</p>
+                  <p className="text-sm text-ink-soft"><span className="num">{f.number}</span> · Total <span className="num">{formatGBP(f.totalPayable)}</span></p>
+                </div>
+                <a className={`${buttonClass("secondary", "sm")} shrink-0`} href={`/api/my/statements/${f.id}`} download>Download {f.title === "Self-billed invoice" ? "invoice" : "statement"}</a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
     </>
   );
 }

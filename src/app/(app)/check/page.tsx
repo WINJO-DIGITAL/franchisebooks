@@ -6,7 +6,7 @@ import type { Tone } from "@/components/ui/bits";
 import { resolveAnomalyConfig } from "@/lib/anomalies/detect";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
-import { loadCosts, loadEarnings } from "@/lib/data/period";
+import { loadCosts, loadEarnings, hiddenFranchiseFilter } from "@/lib/data/period";
 import { formatUkDate, isISODate } from "@/lib/dates";
 import { checkPeriod, type CheckInvoice, type IncomeStatus } from "@/lib/finance/period-check";
 import { checkStopRates, normaliseFuel, type ScaleBand } from "@/lib/finance/sliding-scale";
@@ -32,8 +32,8 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
 
   const franchises = ctx.franchise ? [ctx.franchise] : ctx.franchises.filter((f) => f.isActive);
   const [earnings, costs, invoiceRows, settings, vehicleRows, scaleRows] = await Promise.all([
-    loadEarnings(ctx.supabase, { accountId: ctx.accountId, from: period.start, to: period.end, franchiseId: ctx.franchiseId }),
-    loadCosts(ctx.supabase, { accountId: ctx.accountId, from: period.start, to: period.end, franchiseId: ctx.franchiseId }),
+    loadEarnings(ctx.supabase, { accountId: ctx.accountId, from: period.start, to: period.end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
+    loadCosts(ctx.supabase, { accountId: ctx.accountId, from: period.start, to: period.end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
     fetchAll(() => {
       let q = ctx.supabase
         .from("dpd_invoices")
@@ -42,6 +42,8 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
         .eq("period_start", period.start)
         .order("id");
       if (ctx.franchiseId) q = q.eq("franchise_id", ctx.franchiseId);
+      const hiddenFilter = hiddenFranchiseFilter(ctx);
+      if (hiddenFilter) q = q.or(hiddenFilter);
       return q;
     }),
     ctx.supabase.from("app_settings").select("anomaly_config").eq("account_id", ctx.accountId).maybeSingle(),

@@ -71,7 +71,7 @@ export async function assignCost(_prev: ActionState, formData: FormData): Promis
   });
   if (error) return dbFailure(error, "The cost could not be assigned. Nothing was changed.");
   revalidatePath("/", "layout");
-  return ok(d.assignTo === "unallocated" ? "Moved back to unallocated." : d.assignTo === "driver" ? "Assigned to the driver." : "Assigned to the franchise generally.");
+  return ok(d.assignTo === "unallocated" ? "Moved back to unallocated." : d.assignTo === "driver" ? "Assigned to the driver." : "Counted as a business cost.");
 }
 
 export async function setCostFranchise(_prev: ActionState, formData: FormData): Promise<ActionState> {

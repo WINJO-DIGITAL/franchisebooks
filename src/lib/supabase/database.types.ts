@@ -199,6 +199,42 @@ isOneToOne: false
                     "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: []
+                },"sync_dispatches": {
+                  Row: {
+                    "night": string,"attempt": number,"dispatched_at": string,"started": boolean,"message": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "night": string,"attempt": number,"dispatched_at"?: string,"started"?: boolean,"message"?: string | null
+                  }
+                  Update: {
+                    "night"?: string,"attempt"?: number,"dispatched_at"?: string,"started"?: boolean,"message"?: string | null
+                  }
+                  Relationships: []
+                },"alert_log": {
+                  Row: {
+                    "alert_key": string,"bucket": string,"sent_at": string,"recipient": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "alert_key": string,"bucket": string,"sent_at"?: string,"recipient"?: string | null
+                  }
+                  Update: {
+                    "alert_key"?: string,"bucket"?: string,"sent_at"?: string,"recipient"?: string | null
+                  }
+                  Relationships: []
+                },"driver_statements": {
+                  Row: {
+                    "id": string,"account_id": string,"franchise_id": string,"driver_id": string,"period_start": string,"period_end": string,"statement_no": string,"title": string,"storage_path": string,"totals": Json,"trigger": string,"generated_by": string | null,"generated_at": string,"emailed_at": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "id"?: string,"account_id": string,"franchise_id": string,"driver_id": string,"period_start": string,"period_end": string,"statement_no": string,"title": string,"storage_path": string,"totals"?: Json,"trigger": string,"generated_by"?: string | null,"generated_at"?: string,"emailed_at"?: string | null
+                  }
+                  Update: {
+                    "id"?: string,"account_id"?: string,"franchise_id"?: string,"driver_id"?: string,"period_start"?: string,"period_end"?: string,"statement_no"?: string,"title"?: string,"storage_path"?: string,"totals"?: Json,"trigger"?: string,"generated_by"?: string | null,"generated_at"?: string,"emailed_at"?: string | null
+                  }
+                  Relationships: []
                 },"account_closure_requests": {
                   Row: {
                     "account_id": string,"completed_at": string | null,"id": string,"note": string | null,"requested_at": string,"requested_by": string | null,"status": string
@@ -353,14 +389,14 @@ isOneToOne: false
                   ]
                 },"drivers": {
                   Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"display_name": string,"dpd_driver_ref": string | null,"email": string | null,"id": string,"is_active": boolean,"leaving_date": string | null,"notes": string | null,"phone": string | null,"start_date": string | null,"updated_at": string
+                    "account_id": string,"created_at": string,"created_by": string | null,"display_name": string,"dpd_driver_ref": string | null,"email": string | null,"id": string,"is_active": boolean,"leaving_date": string | null,"notes": string | null,"phone": string | null,"start_date": string | null,"updated_at": string,"vat_number": string | null,"self_billing_agreement": boolean,"statement_no": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"display_name": string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"display_name": string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"self_billing_agreement"?: boolean,"statement_no"?: number | null
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"display_name"?: string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"display_name"?: string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"self_billing_agreement"?: boolean,"statement_no"?: number | null
                   }
                   Relationships: [
                     {
@@ -533,14 +569,14 @@ isOneToOne: false
                   ]
                 },"fuel_transactions": {
                   Row: {
-                    "account_id": string,"card_reference": string | null,"created_at": string,"created_by": string | null,"dedupe_key": string,"description": string | null,"franchise_id": string | null,"id": string,"imported_file_id": string | null,"is_void": boolean,"litres": number | null,"price_per_litre": number | null,"source": string,"source_driver_name": string | null,"supplier": string | null,"total_cost": number,"transaction_date": string,"transaction_ref": string | null,"transaction_time": string | null,"vehicle_registration": string | null,"void_reason": string | null,"voided_at": string | null,"voided_by": string | null
+                    "account_id": string,"card_reference": string | null,"created_at": string,"created_by": string | null,"dedupe_key": string,"description": string | null,"franchise_id": string | null,"id": string,"imported_file_id": string | null,"is_void": boolean,"litres": number | null,"price_per_litre": number | null,"source": string,"source_driver_name": string | null,"supplier": string | null,"total_cost": number,"transaction_date": string,"transaction_ref": string | null,"transaction_time": string | null,"vehicle_registration": string | null,"void_reason": string | null,"voided_at": string | null,"voided_by": string | null,"vat_amount": number | null,"vat_basis": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"card_reference"?: string | null,"created_at"?: string,"created_by"?: string | null,"dedupe_key": string,"description"?: string | null,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"litres"?: number | null,"price_per_litre"?: number | null,"source": string,"source_driver_name"?: string | null,"supplier"?: string | null,"total_cost": number,"transaction_date": string,"transaction_ref"?: string | null,"transaction_time"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
+                    "account_id": string,"card_reference"?: string | null,"created_at"?: string,"created_by"?: string | null,"dedupe_key": string,"description"?: string | null,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"litres"?: number | null,"price_per_litre"?: number | null,"source": string,"source_driver_name"?: string | null,"supplier"?: string | null,"total_cost": number,"transaction_date": string,"transaction_ref"?: string | null,"transaction_time"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null,"vat_amount"?: number | null,"vat_basis"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"card_reference"?: string | null,"created_at"?: string,"created_by"?: string | null,"dedupe_key"?: string,"description"?: string | null,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"litres"?: number | null,"price_per_litre"?: number | null,"source"?: string,"source_driver_name"?: string | null,"supplier"?: string | null,"total_cost"?: number,"transaction_date"?: string,"transaction_ref"?: string | null,"transaction_time"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
+                    "account_id"?: string,"card_reference"?: string | null,"created_at"?: string,"created_by"?: string | null,"dedupe_key"?: string,"description"?: string | null,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"litres"?: number | null,"price_per_litre"?: number | null,"source"?: string,"source_driver_name"?: string | null,"supplier"?: string | null,"total_cost"?: number,"transaction_date"?: string,"transaction_ref"?: string | null,"transaction_time"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null,"vat_amount"?: number | null,"vat_basis"?: string | null
                   }
                   Relationships: [
                     {

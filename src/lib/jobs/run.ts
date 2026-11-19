@@ -6,7 +6,7 @@
 
 import "server-only";
 import { runAnomalyScan } from "@/lib/anomalies/run";
-import { addDays, isISODate, isYearMonth, londonToday, monthOf, monthRange } from "@/lib/dates";
+import { addDays, isISODate, isYearMonth, londonMinutesOfDay, londonToday, monthOf, monthRange } from "@/lib/dates";
 import { lastCompletedPeriod, type DpdPeriod } from "@/lib/finance/periods";
 import { runDropboxSync } from "@/lib/dropbox/sync";
 import { PortalError } from "@/lib/dpd/errors";
@@ -18,6 +18,7 @@ import { generateMonthlyReport } from "@/lib/reports/generate";
 import type { AdminClient } from "@/lib/supabase/admin";
 import type { JsonObject } from "@/lib/supabase/json";
 import { claimNextJob, completeJob, enqueueJob, failJob, WORKER_JOB_TYPES, type Job, type JobOutcome, type JobType } from "./queue";
+import { checkMissedSync, missedSyncDeadline } from "./nightly";
 import { decideSchedule, staggeredSyncTime } from "./schedule";
 
 export interface RunContext {
@@ -71,7 +72,24 @@ async function execute(db: AdminClient, job: Job, ctx: RunContext): Promise<JobO
         const report = await generateMonthlyReport(db, { accountId: job.account_id, month, period, franchiseId, trigger: "auto" });
         generated.push(report.label);
       }
-      return { status: "succeeded", message: `Report${generated.length === 1 ? "" : "s"} generated: ${generated.join("; ")}.`, result: { generated } };
+      let message = `Report${generated.length === 1 ? "" : "s"} generated: ${generated.join("; ")}.`;
+      const statements: { franchiseId: string; made: number; skipped: { name: string; reason: string }[] }[] = [];
+      // At the close of a pay period, each driver also gets their statement (drivers with no pay rate are listed instead).
+      if (period) {
+        const { generateDriverStatements, statementRunSummary } = await import("@/lib/statements/generate");
+        for (const franchise of franchises ?? []) {
+          const run = await generateDriverStatements(db, { accountId: job.account_id, franchiseId: franchise.id, period, trigger: "auto" });
+          statements.push({ franchiseId: franchise.id, made: run.made.length, skipped: run.skipped.map(({ name, reason }) => ({ name, reason })) });
+          if (run.made.length + run.skipped.length > 0) message += ` ${statementRunSummary(run, period)}`;
+          if (run.skipped.length > 0) {
+            await db.from("sync_logs").insert({
+              account_id: job.account_id, integration: "system", import_job_id: job.id, franchise_id: franchise.id, level: "warning",
+              event: "driver_statement_skipped", message: statementRunSummary(run, period), detail: { period, skipped: run.skipped } as unknown as JsonObject,
+            });
+          }
+        }
+      }
+      return { status: "succeeded", message, result: { generated, statements } };
     }
     default:
       throw new Error(`Unknown job type ${job.job_type}`);
@@ -135,6 +153,8 @@ export interface TickResult {
   accounts: number;
   queued: { dpdSync: number; dropboxSync: number; anomalyScan: number; monthlyReport: number };
   released: number;
+  /** Accounts with a franchise still not read after the evening deadline (23:00 UK). */
+  missedSync: number;
 }
 
 /**
@@ -142,7 +162,7 @@ export interface TickResult {
  * places at once: every decision is "queue it unless it already exists".
  */
 export async function runSchedulerTick(db: AdminClient, now: Date = new Date()): Promise<TickResult> {
-  const result: TickResult = { accounts: 0, queued: { dpdSync: 0, dropboxSync: 0, anomalyScan: 0, monthlyReport: 0 }, released: 0 };
+  const result: TickResult = { accounts: 0, queued: { dpdSync: 0, dropboxSync: 0, anomalyScan: 0, monthlyReport: 0 }, released: 0, missedSync: 0 };
   const { data: released } = await db.rpc("release_stale_jobs", { p_older_than: "45 minutes" });
   result.released = Number(released ?? 0);
 
@@ -157,7 +177,7 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
 
     const [{ data: connections }, { data: franchises }] = await Promise.all([
       db.from("integration_connections").select("provider, status, config, last_sync_at").eq("account_id", accountId),
-      db.from("franchises").select("id").eq("account_id", accountId).eq("is_active", true),
+      db.from("franchises").select("id, fd_number").eq("account_id", accountId).eq("is_active", true),
     ]);
     const dpd = connections?.find((c) => c.provider === "dpd");
     const dropbox = connections?.find((c) => c.provider === "dropbox");
@@ -181,6 +201,12 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
       if ((scans ?? 0) === 0 && (franchises?.length ?? 0) > 0) {
         await enqueueJob(db, { accountId, type: "anomaly_scan", reportDate: decision.reportDate, trigger: "schedule", payload: { from: addDays(decision.reportDate, -7) } });
         result.queued.anomalyScan += 1;
+      }
+      // By 23:00 UK time every franchise should have a successful read for tonight; if not, tell the owner (once a night).
+      const deadline = missedSyncDeadline(staggeredSyncTime(settings.sync_time_local, accountId));
+      if (dpdReady && londonMinutesOfDay(now, settings.sync_timezone || "Europe/London") >= deadline) {
+        const missing = await checkMissedSync(db, { accountId, reportDate: decision.reportDate, franchises: franchises ?? [] }, now);
+        if (missing.length > 0) result.missedSync += 1;
       }
     }
 

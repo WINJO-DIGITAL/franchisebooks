@@ -62,6 +62,11 @@ const updateSchema = z.object({
   ...driverFields,
   leavingDate: optionalIsoDate,
   isActive: z.enum(["true", "false"]),
+  // The driver's own VAT number, if they are VAT registered: GB and 9 or 12 digits, or another country's format.
+  vatNumber: z.string().max(30).optional()
+    .transform((v) => (v ? v.replace(/\s+/g, "").toUpperCase() : null))
+    .refine((v) => v == null || /^[A-Z]{2}[A-Z0-9]{2,18}$|^\d{9}(\d{3})?$/.test(v), "That VAT number does not look right (for example GB123456789)."),
+  selfBillingAgreement: z.enum(["true"]).optional(),
 });
 
 export async function updateDriver(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -79,6 +84,7 @@ export async function updateDriver(_prev: ActionState, formData: FormData): Prom
     .update({
       display_name: d.displayName, dpd_driver_ref: d.dpdDriverRef, phone: d.phone, email: d.email, start_date: d.startDate,
       leaving_date: d.leavingDate, is_active: d.isActive === "true", notes: d.notes,
+      vat_number: d.vatNumber, self_billing_agreement: d.selfBillingAgreement === "true",
     })
     .eq("id", d.id)
     .select("id");

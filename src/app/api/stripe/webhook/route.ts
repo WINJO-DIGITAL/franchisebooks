@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true });
   } catch (error) {
     await reportError(error, { where: "stripe.webhook", eventType: event.type });
-    logger.error({ err: describeError(error).message, type: event.type }, "stripe webhook failed");
     return NextResponse.json({ error: "Could not process the event." }, { status: 500 });
   }
 }

@@ -2,16 +2,18 @@ name: DPD nightly sync
 
 # The DPD portal sync, run on a GitHub-hosted runner. Nothing runs between syncs, so there is no server to pay for.
 #
-# GitHub's scheduled runs are often late or skipped, so this checks every 15 minutes between 19:00 and 23:59 UK time
-# (cron is UTC-only, so the hours cover both GMT and BST). The first step lets a run through only inside the evening
-# window (20:30 to 21:29 UK time); the others stop in seconds. Once the day's reads have been queued, later runs in the
-# window find nothing new to do. See docs/GITHUB_ACTIONS_WORKER.md.
+# GitHub's scheduled runs are often late or skipped, so this checks every 15 minutes from 19:00 UTC to 01:59 UTC (cron is
+# UTC-only, so the hours cover both GMT and BST). The first step lets a run through in full inside the evening window
+# (20:30 to 21:29 UK time). After the window, until 01:59 UK time, a late run still goes ahead if any DPD read is waiting
+# in the queue, so a late start never drops the night's work; otherwise it stops in seconds. The website's own scheduler
+# (Vercel Cron) also starts this workflow once the night's reads are queued. See docs/GITHUB_ACTIONS_WORKER.md.
 #
 # NOTE: GitHub only runs scheduled workflows from the repository's default branch, so this file must be on it (main).
 
 on:
   schedule:
     - cron: "*/15 19-23 * * *"
+    - cron: "*/15 0-1 * * *"
   workflow_dispatch:
     inputs:
       force:
@@ -44,22 +46,36 @@ jobs:
       # Evening window in UK time (HHMM). Keep in step with the time set in Settings.
       WINDOW_START: ${{ vars.SYNC_WINDOW_START || '2030' }}
       WINDOW_END: ${{ vars.SYNC_WINDOW_END || '2129' }}
+      LATE_END: ${{ vars.SYNC_LATE_END || '0159' }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
 
       - name: Check the UK time window
         id: gate
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           if [ "${{ github.event_name }}" != "schedule" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "Started by hand: running now."
+            echo "Started by hand or by the website: running now."
             exit 0
           fi
           echo "UK time now: $(TZ=Europe/London date '+%H:%M %Z')"
-          run=$(.github/scripts/in-window.sh)
+          window=$(.github/scripts/in-window.sh)
+          run=false
+          if [ "$window" = "true" ]; then
+            run=true; echo "Inside the evening window: running."
+          elif [ "$window" = "late" ]; then
+            # A late scheduled run: go ahead only if a DPD read is still waiting (a sync that already succeeded is not queued).
+            waiting=$(.github/scripts/waiting-jobs.sh || echo "unknown")
+            echo "DPD reads waiting: ${waiting}"
+            if [ "$waiting" != "0" ]; then run=true; echo "After the window, but work is waiting: running."; else echo "After the window and nothing is waiting: nothing to do."; fi
+          else
+            echo "Outside the evening window: nothing to do."
+          fi
           echo "run=$run" >> "$GITHUB_OUTPUT"
-          if [ "$run" = "true" ]; then echo "Inside the evening window: running."; else echo "Outside the evening window: nothing to do."; fi
 
       - name: Set up Node
         if: steps.gate.outputs.run == 'true'
@@ -99,6 +115,10 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           APP_URL: ${{ vars.APP_URL }}
+          # Optional: lets the run email the owner when a read fails, and email ALERT_EMAIL about errors (rate-limited).
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
           INPUT_FORCE: ${{ inputs.force }}
           INPUT_DATE: ${{ inputs.report_date }}
           INPUT_DISCOVERY: ${{ inputs.discovery }}

@@ -9,7 +9,7 @@ const externalBase = process.env.E2E_BASE_URL?.replace(/\/$/, "");
 const baseURL = externalBase ?? `http://127.0.0.1:${PORT}`;
 
 const DEMO_STATE = "tests/e2e/.auth/demo-owner.json";
-const JOURNEY_FILES = /journeys\.spec\.ts|demo-phone\.spec\.ts/;
+const JOURNEY_FILES = /journeys\.spec\.ts|demo-phone\.spec\.ts|launch-fixes\.spec\.ts/;
 const SETUP_FILES = /auth\.setup\.ts|demo\.setup\.ts/;
 const SIGNED_OUT_FILES = /api-guards\.spec\.ts/;
 
@@ -62,7 +62,7 @@ export default defineConfig({
     },
     {
       name: "journeys",
-      testMatch: /journeys\.spec\.ts/,
+      testMatch: /journeys\.spec\.ts|launch-fixes\.spec\.ts/,
       dependencies: ["demo-setup"],
       fullyParallel: false,
       use: { ...devices["Desktop Chrome"], storageState: DEMO_STATE },

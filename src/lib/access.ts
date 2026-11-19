@@ -60,3 +60,10 @@ export function outsideAccessMessage(filename: string, fdNumbers: string[]): str
   const list = fdNumbers.length === 1 ? fdNumbers[0] : `${fdNumbers.slice(0, -1).join(", ")} and ${fdNumbers[fdNumbers.length - 1]}`;
   return `“${filename}” is for ${list}, which your login doesn't cover. Ask the owner to upload it. Nothing was imported.`;
 }
+
+/** Franchises left out of "All franchises": the switched-off ones, unless one is chosen or every franchise is switched off. */
+export function hiddenFranchiseIds(franchises: { id: string; isActive: boolean }[], selectedId: string | null): string[] {
+  if (selectedId) return [];
+  const off = franchises.filter((f) => !f.isActive).map((f) => f.id);
+  return off.length === franchises.length ? [] : off;
+}

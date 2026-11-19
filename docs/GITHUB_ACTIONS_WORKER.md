@@ -15,7 +15,7 @@ of the day, so there is no server to host or pay for.
 `npm run worker:once` (`worker/run-once.ts`) does the same work as the
 always-on worker (`worker/index.ts`), then exits:
 
-1. Starts at 20:32 UK time and starts headless Chromium.
+1. Starts in the evening window (started by the website, or by GitHub's schedule) and starts headless Chromium.
 2. Queues what is due: the DPD sync for each **active franchise (FD number)**, a Dropbox catch-up, the daily checks.
 3. Signs in to the DPD portal once, reads each franchise's reports, and passes every document through the import pipeline (validate, de-duplicate, store in Supabase).
 4. Records success or failure on the job (`import_jobs`) and in the sync log, both visible under **Data & Integrations**.
@@ -29,17 +29,29 @@ the workflow twice, or pressing manual run after a scheduled one, cannot double 
 (2 minutes, then 8), up to 3 attempts. The run stays alive for those retries, up
 to 25 minutes. A job still waiting after that is picked up by the next run.
 
-## UK time
+## UK time, late runs and the website starting the run
 
-GitHub cron is UTC only and does not follow daylight saving. The workflow is
-scheduled at **19:32 and 20:32 UTC**. In summer (BST) the first is 20:32 UK; in
-winter (GMT) the second is. A first step (`.github/scripts/in-window.sh`) checks
-the UK clock and lets only the one inside **20:30 to 21:29 UK** continue. The
-other stops within seconds. The window end leaves room for GitHub starting a
-scheduled run late. Checked across both clock changes (29 March and 25 October 2026).
+GitHub cron is UTC only and does not follow daylight saving, and GitHub often
+starts scheduled runs late or skips them. So:
 
-If you change the sync time in **Settings**, change the cron lines and the window
-to match (repository variables `SYNC_WINDOW_START` and `SYNC_WINDOW_END`, as `HHMM`).
+* The workflow is scheduled every 15 minutes from 19:00 to 01:59 UTC. A first
+  step (`.github/scripts/in-window.sh`) reads the UK clock. Inside **20:30 to
+  21:29 UK** the run goes ahead in full. After that, until **01:59 UK**, a late
+  run goes ahead only if a DPD read is still waiting in the queue
+  (`.github/scripts/waiting-jobs.sh`); a night whose sync already succeeded has
+  nothing waiting, so the run stops in seconds.
+* The website's scheduler (Vercel Cron, every 5 minutes) queues each active
+  franchise's read once a night after the sync time, then starts this workflow
+  itself through `GITHUB_SYNC_TOKEN` (the same dispatch the "Sync DPD" button
+  uses). It starts it only while reads are waiting, no more than once every 30
+  minutes and at most 4 times a night (recorded in `sync_dispatches`).
+* If a franchise has no successful read by **23:00 UK** (or an hour after a late
+  sync time), the owner is emailed once and a `nightly_sync_missing` line is
+  written to the sync log.
+
+If you change the sync time in **Settings**, change the window to match
+(repository variables `SYNC_WINDOW_START`, `SYNC_WINDOW_END` and `SYNC_LATE_END`,
+as `HHMM`).
 
 ## One-time setup
 
@@ -55,6 +67,7 @@ Secrets (never put these in code or chat):
 | `DPD_PORTAL_URL` | The DPD portal address. Each account's own DPD login is saved in the app (Settings), encrypted with `ENCRYPTION_KEY`; there is no shared username or password any more |
 | `DPD_LOGIN_SECRET` | Only if the portal has an extra login field (it has not needed one so far; leave it out) |
 | `DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET` | Only once Dropbox is connected |
+| `RESEND_API_KEY`, `ALERT_EMAIL` | Optional: so the run can email the owner when a read fails, and email `ALERT_EMAIL` about errors |
 
 An old `DPD_USERNAME` or `DPD_PASSWORD` secret is not read by anything and can be deleted.
 
@@ -64,7 +77,8 @@ Variables (not secret):
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | The project URL, `https://<ref>.supabase.co` |
 | `APP_URL` | The Vercel app address (optional) |
-| `SYNC_WINDOW_START`, `SYNC_WINDOW_END` | Optional, default `2030` and `2129` |
+| `EMAIL_FROM` | Optional: the sending address, the same as on Vercel |
+| `SYNC_WINDOW_START`, `SYNC_WINDOW_END`, `SYNC_LATE_END` | Optional, default `2030`, `2129` and `0159` |
 | `ACTIONS_MONTHLY_LIMIT_MINUTES` | Optional, default `2000` |
 
 ## The portal map (what the sync reads)

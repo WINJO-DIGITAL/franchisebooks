@@ -58,7 +58,15 @@ export interface ParsedFuelRow {
   cardReference: string | null;
   litres: string | null;
   pricePerLitre: string | null;
+  /** Before VAT when vatBasis is "net"; as charged (VAT included) when "gross"; as stated when "not_stated". */
   total: Pence;
+  /** The VAT the file states for the row. Null when it states none. */
+  vat: Pence | null;
+  /**
+   * What the amount is. net: before VAT (a net column, or a total less the VAT the file states). gross: the file says the
+   * total includes VAT but not how much. not_stated: the file says nothing about VAT. No rate is ever assumed.
+   */
+  vatBasis: "net" | "gross" | "not_stated";
   reference: string | null;
 }
 
@@ -522,8 +530,16 @@ function parseFuelTable(
     confidence.limit(0);
     return { rows: out, totalsVerified: null };
   }
+  // A total whose heading says it includes VAT ("Total (inc. VAT)") is the amount charged, with VAT in it.
+  const totalHeading = col.total !== undefined ? normaliseHeader(header[col.total] ?? "") : "";
+  const totalIncludesVat = /\binc(l|luding)?\b.*\bvat\b/.test(totalHeading);
   if (col.net === undefined && col.vat === undefined) {
-    issues.push({ level: "warning", message: "Only a total was found and no VAT is stated, so the amount before VAT is not known. It has been held for a person to check." });
+    issues.push({
+      level: "warning",
+      message: totalIncludesVat
+        ? "The file says its totals include VAT but not how much, so they are shown as VAT-inclusive and the amount before VAT is not known."
+        : "Only a total was found and no VAT is stated, so the amount before VAT is not known. It is shown as \"VAT not stated\" and has been held for a person to check.",
+    });
     confidence.limit(0.8);
   }
   let grossSum = 0;
@@ -559,6 +575,8 @@ function parseFuelTable(
       continue;
     }
     let total = stated;
+    let rowVat: Pence | null = null;
+    let vatBasis: ParsedFuelRow["vatBasis"] = col.net !== undefined ? "net" : totalIncludesVat ? "gross" : "not_stated";
     if (netFromTotal) {
       const vatText = cell(row, col.vat);
       const vat = parseMoney(vatText);
@@ -571,8 +589,19 @@ function parseFuelTable(
         continue;
       } else {
         total = (stated - vat) as Pence;
+        rowVat = vat;
+        vatBasis = "net";
       }
       grossSum += stated;
+    } else if (col.net !== undefined && col.vat !== undefined) {
+      // A net column with a VAT column beside it: keep the stated VAT.
+      const vatText = cell(row, col.vat);
+      const vat = vatText === "" ? null : parseMoney(vatText);
+      if (vatText !== "" && vat == null) {
+        issues.push({ level: "warning", row: line, message: `Line ${line}: VAT "${vatText}" could not be read, so it was not stored.` });
+        confidence.reduce(0.05);
+      }
+      rowVat = vat;
     }
     const litres = parseDecimal(cell(row, col.litres), 3);
     let ppl = parseDecimal(cell(row, col.pricePerLitre).replace(/^£/, "").replace(/p$/i, ""), 4);
@@ -593,6 +622,8 @@ function parseFuelTable(
       litres: litres === "invalid" ? null : litres,
       pricePerLitre: ppl === "invalid" ? null : ppl,
       total,
+      vat: rowVat,
+      vatBasis,
       reference: cell(row, col.reference) || null,
     });
   }

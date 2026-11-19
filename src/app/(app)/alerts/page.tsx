@@ -4,6 +4,7 @@ import { AlertStatusForm } from "@/components/alerts/status-form";
 import { AllClear, AttentionPanel } from "@/components/attention-panel";
 import { Badge, EmptyState, PageHeader, Panel } from "@/components/ui/bits";
 import { cn } from "@/components/ui/cn";
+import { hiddenFranchiseFilter } from "@/lib/data/period";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadAttentionCount } from "@/lib/data/attention";
 import { loadSyncOverview } from "@/lib/data/status";
@@ -30,6 +31,8 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
     .order("detected_at", { ascending: false })
     .limit(100);
   if (ctx.franchiseId) query = query.eq("franchise_id", ctx.franchiseId);
+  const hiddenFilter = hiddenFranchiseFilter(ctx);
+  if (hiddenFilter) query = query.or(hiddenFilter);
   const { data: alerts } = await query;
   // The bell's whole story: alongside the alerts, the sync and import checks that also need a look.
   const [attention, sync, firstReview] = view.key === "open"

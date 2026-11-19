@@ -1,7 +1,7 @@
 import "server-only";
 import type { z } from "zod";
 import { MissingConfigError } from "@/lib/env";
-import { describeError, logger } from "@/lib/logger";
+import { describeError, logger, reportError } from "@/lib/logger";
 
 /** What every server action returns to its form. Messages are always plain English. */
 export interface ActionState {
@@ -50,7 +50,8 @@ export function dbFailure(error: DbError, fallback = "That could not be saved. N
 export function unexpectedFailure(error: unknown, fallback = "Something went wrong. Nothing was changed."): ActionState {
   if (error instanceof MissingConfigError) return fail(error.plainEnglish, `Missing environment variable ${error.variable}`);
   const detail = describeError(error);
-  logger.error({ err: detail }, "Action failed");
+  // Logged and alerted (rate-limited); the form still gets its answer straight away.
+  void reportError(error, { where: "action" });
   return fail(fallback, `${detail.name}: ${detail.message}`);
 }
 

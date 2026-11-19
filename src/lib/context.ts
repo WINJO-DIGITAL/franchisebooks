@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { seesAllFranchises, type Role } from "@/lib/access";
+import { hiddenFranchiseIds, seesAllFranchises, type Role } from "@/lib/access";
 import { londonToday } from "@/lib/dates";
 import { requireBillingAccess } from "@/lib/billing/gate";
 import { isDriverLogin } from "@/lib/driver/context";
@@ -69,6 +69,11 @@ export const getContext = cache(async () => {
     /** The franchise chosen in the header switcher, or null for "All franchises". */
     franchise,
     franchiseId: franchise?.id ?? null,
+    /**
+     * With "All franchises" chosen, the switched-off franchises are left out so the page matches the franchise picker.
+     * If every franchise is switched off, none is left out.
+     */
+    hiddenFranchiseIds: hiddenFranchiseIds(franchises, franchise?.id ?? null),
     today: londonToday(),
   };
 });

@@ -23,7 +23,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
   const ctx = await getContext();
   const period = periodFromParam(params.period, ctx.today);
   const { start, end } = period;
-  const filter = { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId };
+  const filter = { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds };
   const [adjustments, covers, names] = await Promise.all([loadAdjustments(ctx.supabase, filter), loadCovers(ctx.supabase, filter), loadDriverNames(ctx.supabase, ctx.accountId)]);
   const totals = totalAdjustments(adjustments);
   const reversed = new Set(adjustments.filter((a) => a.reversesId).map((a) => a.reversesId as string));

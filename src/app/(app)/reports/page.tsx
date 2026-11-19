@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { GenerateReportForm } from "@/components/reports/generate-form";
+import { EmailStatementButton, MakeStatementsForm } from "@/components/reports/statements";
 import { Badge, EmptyState, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { buttonClass } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
-import { addMonths, formatMonth, formatUkDateTime, monthOf } from "@/lib/dates";
-import { lastCompletedPeriod, periodLabel, recentPeriods } from "@/lib/finance/periods";
+import { addMonths, formatMonth, formatUkDateTime, isISODate, monthOf } from "@/lib/dates";
+import { lastCompletedPeriod, periodContaining, periodLabel, previousPeriod, recentPeriods, type DpdPeriod } from "@/lib/finance/periods";
+import { planDriverStatements } from "@/lib/statements/generate";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatGBP, fromDb } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Reports" };
@@ -22,8 +26,9 @@ interface Totals {
   profitStatus?: string;
 }
 
-export default async function ReportsPage() {
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ statements?: string }> }) {
   const ctx = await getContext();
+  const params = await searchParams;
   const current = monthOf(ctx.today);
   const months = Array.from({ length: 24 }, (_, i) => addMonths(current, -i)).map((m) => ({ id: m, label: formatMonth(m) }));
   const periods = recentPeriods(ctx.today, 13).map((p) => ({ id: `period:${p.start}`, label: periodLabel(p) }));
@@ -37,6 +42,10 @@ export default async function ReportsPage() {
     .order("generated_at", { ascending: false })
     .limit(60);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
+  const closed = lastCompletedPeriod(ctx.today);
+  const statementPeriods = [closed, previousPeriod(closed), previousPeriod(previousPeriod(closed)), previousPeriod(previousPeriod(previousPeriod(closed)))];
+  const statementPeriod = isISODate(params.statements) && params.statements <= closed.start ? periodContaining(params.statements) : closed;
+  const statements = ctx.canWrite ? await loadStatementRows(ctx, statementPeriod) : null;
 
   return (
     <>
@@ -54,6 +63,57 @@ export default async function ReportsPage() {
           <p className="mt-3 text-sm text-muted">Reports use the figures held at the moment you press the button. Generating again later creates a new copy; earlier copies are kept.</p>
         </Panel>
       </Section>
+
+      {statements ? (
+        <Section title="Driver Statements" description="A one-page statement for each driver, for each DPD pay period, made automatically when the period closes. Drivers can download their own from their page.">
+          <nav aria-label="Statement pay period" className="mb-4 flex flex-wrap gap-2">
+            {statementPeriods.map((p) => (
+              <Link key={p.start} href={`/reports?statements=${p.start}`} className={buttonClass(p.start === statementPeriod.start ? "primary" : "secondary", "sm")}>{periodLabel(p)}</Link>
+            ))}
+          </nav>
+          {statements.rows.length === 0 ? (
+            <EmptyState title="No Drivers in This Period">Statements appear here for each driver who worked in the period.</EmptyState>
+          ) : (
+            <TableWrap>
+              <table className="ledger" data-testid="driver-statements">
+                <thead>
+                  <tr><th>Driver</th>{statements.manyFranchises ? <th className="hidden sm:table-cell">Franchise</th> : null}<th className="hidden sm:table-cell">Number</th><th className="r">Total</th><th>Statement</th></tr>
+                </thead>
+                <tbody>
+                  {statements.rows.map((r) => (
+                    <tr key={`${r.franchiseId}-${r.driverId}`}>
+                      <td className="font-medium">{r.name}{r.title === "Self-billed invoice" ? <Badge className="ml-2">Self-billed</Badge> : null}</td>
+                      {statements.manyFranchises ? <td className="hidden sm:table-cell">{franchiseName.get(r.franchiseId) ?? ""}</td> : null}
+                      <td className="num hidden sm:table-cell">{r.number ?? "—"}</td>
+                      <td className="r num">{r.total == null ? "—" : formatGBP(r.total)}</td>
+                      <td>
+                        {r.id ? (
+                          <span className="flex flex-wrap items-center gap-1">
+                            <a className={buttonClass("secondary", "sm")} href={`/api/statements/${r.id}`}>Download PDF</a>
+                            {ctx.isOwner ? <EmailStatementButton id={r.id} emailedAt={r.emailedAt} /> : null}
+                            {r.emailedAt ? <span className="text-xs text-muted">Emailed {formatUkDateTime(r.emailedAt)}</span> : null}
+                          </span>
+                        ) : r.reason ? (
+                          <span className="text-sm"><Badge tone="warn" className="mr-2">Not made</Badge>{r.reason} <Link className="underline" href={`/drivers/${r.driverId}`}>Open driver</Link></span>
+                        ) : (
+                          <span className="text-sm text-muted">Not made yet</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableWrap>
+          )}
+          <div className="mt-4 flex flex-wrap items-start gap-3">
+            {statements.rows.some((r) => r.id) ? (
+              <a className={buttonClass("primary")} href={`/api/statements/zip?period=${statementPeriod.start}${ctx.franchiseId ? `&franchise=${ctx.franchiseId}` : ""}`}>Download All (Zip)</a>
+            ) : null}
+            {statements.rows.length > 0 ? <MakeStatementsForm periodStart={statementPeriod.start} franchiseId={ctx.franchiseId} label={statements.rows.some((r) => r.id) ? "Make Statements Again" : "Make Statements Now"} /> : null}
+          </div>
+          <p className="mt-3 text-sm text-muted">Titled &ldquo;Driver statement&rdquo; with no VAT, unless the driver has a VAT number or a signed self-billing agreement (set on the driver&rsquo;s page). Nothing is emailed to drivers unless you press &ldquo;Email to driver&rdquo;.</p>
+        </Section>
+      ) : null}
 
       <Section title="Previous Reports">
         {(reports ?? []).length === 0 ? (
@@ -92,4 +152,39 @@ export default async function ReportsPage() {
       </Section>
     </>
   );
+}
+
+interface StatementRow {
+  driverId: string;
+  franchiseId: string;
+  name: string;
+  id: string | null;
+  number: string | null;
+  title: string | null;
+  total: number | null;
+  emailedAt: string | null;
+  reason: string | null;
+}
+
+/** Each driver who worked in the period, with their stored statement or why there is none. */
+async function loadStatementRows(ctx: Awaited<ReturnType<typeof getContext>>, period: DpdPeriod): Promise<{ rows: StatementRow[]; manyFranchises: boolean }> {
+  const targets = ctx.franchiseId ? ctx.franchises.filter((f) => f.id === ctx.franchiseId) : ctx.franchises.filter((f) => f.isActive);
+  const { data: stored } = await ctx.supabase.from("driver_statements").select("id, driver_id, franchise_id, statement_no, title, totals, emailed_at").eq("period_start", period.start);
+  const admin = createAdminClient();
+  const rows: StatementRow[] = [];
+  for (const f of targets) {
+    const plans = await planDriverStatements(admin, { accountId: ctx.accountId, franchiseId: f.id, period });
+    for (const plan of plans) {
+      const file = (stored ?? []).find((s) => s.franchise_id === f.id && s.driver_id === plan.driver.id);
+      const payable = (file?.totals as { totalPayable?: number } | null)?.totalPayable;
+      rows.push({
+        driverId: plan.driver.id, franchiseId: f.id, name: plan.driver.name,
+        id: file?.id ?? null, number: file?.statement_no ?? null, title: file?.title ?? null,
+        total: payable != null ? fromDb(payable) : plan.build.ok ? plan.build.content.totalPayable : null,
+        emailedAt: file?.emailed_at ?? null,
+        reason: plan.build.ok ? null : plan.build.reason,
+      });
+    }
+  }
+  return { rows, manyFranchises: targets.length > 1 };
 }

@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge, EmptyState, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
 import { buttonClass, LinkButton } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
-import { loadPeriodData } from "@/lib/data/period";
+import { loadPeriodData, hiddenFranchiseFilter } from "@/lib/data/period";
 import { addDays, formatUkDate, formatUkDateLong, isISODate } from "@/lib/dates";
 import { periodContaining, periodFromParam, periodLabel } from "@/lib/finance/periods";
 import { PeriodNav } from "@/components/ui/period-nav";
@@ -24,7 +24,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
   if (isISODate(params.period)) {
     const period = periodFromParam(params.period, ctx.today);
     const { start, end } = period;
-    const data = await loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId });
+    const data = await loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds });
     const summary = summarisePeriod(data);
     const t = summary.combined;
     const routeIncome = t.earningsMeaning === "route_income";
@@ -137,10 +137,12 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
   if (!date) {
     let q = ctx.supabase.from("daily_earnings").select("report_date").eq("is_current", true).lte("report_date", ctx.today).order("report_date", { ascending: false }).limit(1);
     if (ctx.franchiseId) q = q.eq("franchise_id", ctx.franchiseId);
+    const hiddenFilter = hiddenFranchiseFilter(ctx);
+    if (hiddenFilter) q = q.or(hiddenFilter);
     const { data: latest } = await q;
     date = latest?.[0]?.report_date ?? ctx.today;
   }
-  const data = await loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: date, to: date, franchiseId: ctx.franchiseId });
+  const data = await loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: date, to: date, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds });
   const days = buildDriverDays(data.earnings, data.adjustments, data.driverNames).sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
   const fileByKey = new Map(data.earnings.map((e) => [`${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`, e]));
   const totalOriginal = sumPence(days.map((d) => d.originalEarnings));

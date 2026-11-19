@@ -68,6 +68,8 @@ export interface DriverDetails {
   leavingDate: string | null;
   isActive: boolean;
   notes: string | null;
+  vatNumber: string | null;
+  selfBillingAgreement: boolean;
 }
 
 export function EditDriverForm({ driver }: { driver: DriverDetails }) {
@@ -101,6 +103,18 @@ export function EditDriverForm({ driver }: { driver: DriverDetails }) {
                 <option value="false">Inactive (left or not working)</option>
               </Select>
             </Field>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field label="Driver's VAT number" hint="Only if the driver is VAT registered. Their statements then show VAT." error={state.fieldErrors?.vatNumber}>
+              <Input name="vatNumber" defaultValue={driver.vatNumber ?? ""} placeholder="GB123456789" />
+            </Field>
+            <div className="flex items-start gap-3 pt-6">
+              <input id={`sba-${driver.id}`} type="checkbox" name="selfBillingAgreement" value="true" defaultChecked={driver.selfBillingAgreement} className="mt-1 h-4 w-4" />
+              <label htmlFor={`sba-${driver.id}`} className="text-sm">
+                <span className="font-medium">Self-billing agreement signed</span>
+                <span className="block text-muted">Tick only when the driver has signed one. Their statements are then titled &ldquo;Self-billed invoice&rdquo;.</span>
+              </label>
+            </div>
           </div>
           <Field label="Notes">
             <Textarea name="notes" defaultValue={driver.notes ?? ""} />
