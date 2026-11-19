@@ -1,5 +1,5 @@
 {
-  "name": "dpd-franchise-manager",
+  "name": "franchise-books",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -65,5 +65,10 @@
     "tsx": "^4.23.15",
     "typescript": "~6.0",
     "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
   }
 }
