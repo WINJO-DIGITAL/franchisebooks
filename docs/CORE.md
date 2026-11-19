@@ -16,6 +16,8 @@ A DPD franchisee reads their own portal figures nightly, so they can **invoice t
 6. **No data is not zero, and a stated zero is zero.** Days we have not read are missing, not "£0 earned", so nothing is compared with them. A page that says zero or "no records" is zero: some franchises carry no transaction charges because other accounts cover their running costs (for example FD78797).
 7. **Show only what is stated.** A figure goes on a page or an export only if the portal or the invoice states it. Adding up or subtracting stated figures is fine (a total, a difference). Anything that has to be estimated or worked out with an assumption (VAT at a standard rate, a computed due date, an allocated share) is not shown. The Period Check page shows the charges excluding VAT as the portal states them, and the invoice's own printed total, VAT and due date.
 8. **Money out is what the portal says it is.** Charges are the portal's charges: the amount is before VAT, and the bracketed "(excl. £2.29 VAT)" is the VAT the portal states on top. Both are kept as stated (amount, stated VAT, and their sum as the including-VAT figure); a charge with no VAT stated shows none. Credit notes are franchise income, never driver pay.
+9. **DPD figures are the franchise's income, never a driver's pay.** A driver sees only the pay rate set for them; with no rate the pay is blank. The app has no estimate setting: revenue entries are always confirmed, and revenue is never shared out between drivers.
+10. **Earlier periods are read from the portal, not typed in.** Back-filling queues the same read-only sync for an earlier pay period, and the duplicate rules mean a repeat read adds only what is new.
 
 ## Why
 
@@ -24,5 +26,3 @@ An accountant or a driver must be able to put the app's figures next to the port
 ## Wording style
 
 Headings, page and section titles, menu items, buttons and table headers use **Title Case** ("Data & Integrations", "Add Franchise", "Daily Payments"). Small words (a, an, the, and, of, to, in, on, for) stay lower case unless first or last; acronyms and codes (DPD, FD42102, PDF) keep their capitals. Paragraphs, hints and form field labels stay in normal sentence case. To apply this to new text, run `python3 scripts/title-case.py --apply`.
-9. **DPD figures are the franchise's income, never a driver's pay.** A driver sees only the pay rate set for them; with no rate the pay is blank. The app has no estimate setting: revenue entries are always confirmed, and revenue is never shared out between drivers.
-10. **Earlier periods are read from the portal, not typed in.** Back-filling queues the same read-only sync for an earlier pay period, and the duplicate rules mean a repeat read adds only what is new.
