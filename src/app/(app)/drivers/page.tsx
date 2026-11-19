@@ -6,7 +6,8 @@ import { buttonClass, LinkButton } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
 import { loadPeriodData } from "@/lib/data/period";
-import { formatMonth, formatUkDate, monthOf, monthRange } from "@/lib/dates";
+import { formatUkDate } from "@/lib/dates";
+import { periodContaining, periodLabel } from "@/lib/finance/periods";
 import { summarisePeriod } from "@/lib/finance/calc";
 import { formatGBP } from "@/lib/money";
 
@@ -15,8 +16,8 @@ export const metadata: Metadata = { title: "Drivers" };
 export default async function DriversPage({ searchParams }: { searchParams: Promise<{ show?: string; q?: string; sort?: string }> }) {
   const { show, q: searchText, sort: sortParam } = await searchParams;
   const ctx = await getContext();
-  const month = monthOf(ctx.today);
-  const { start } = monthRange(month);
+  const period = periodContaining(ctx.today);
+  const { start } = period;
 
   const [drivers, assignments, data, unregisteredRows] = await Promise.all([
     fetchAll(() => ctx.supabase.from("drivers").select("id, display_name, is_active, start_date, leaving_date, dpd_driver_ref").order("display_name").order("id")),
@@ -32,7 +33,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const summary = summarisePeriod(data).combined;
   const routeIncome = summary.earningsMeaning === "route_income";
-  // Per driver this month: income (DPD payments), wage (day rate × days) and days worked, across all franchises.
+  // Per driver this pay period: income (DPD payments), wage (day rate × days) and days worked, across all franchises.
   const byDriver = new Map<string, { income: number; wage: number; wageComplete: boolean; days: number }>();
   for (const d of summary.drivers) {
     if (!d.driverId) continue;
@@ -67,7 +68,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
       if (sort === "days") return (byDriver.get(b.id)?.days ?? 0) - (byDriver.get(a.id)?.days ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
       return a.display_name.localeCompare(b.display_name, "en-GB");
     });
-  const workedThisMonth = visible.filter((d) => (byDriver.get(d.id)?.days ?? 0) > 0).length;
+  const workedThisPeriod = visible.filter((d) => (byDriver.get(d.id)?.days ?? 0) > 0).length;
   const inactiveCount = drivers.filter((d) => !d.is_active).length;
 
   const unregistered = new Map<string, { franchiseId: string; driverKey: string; name: string; days: number; latest: string }>();
@@ -82,7 +83,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Drivers"
-        description={`${workedThisMonth} worked in ${formatMonth(month).split(" ")[0]} · ${visible.filter((d) => d.is_active).length} on the books${ctx.franchise ? ` on ${franchiseLabel(ctx.franchise)}` : ""}`}
+        description={`${workedThisPeriod} worked in ${periodLabel(period)} · ${visible.filter((d) => d.is_active).length} on the books${ctx.franchise ? ` on ${franchiseLabel(ctx.franchise)}` : ""}`}
         actions={ctx.canWrite ? <LinkButton href="/drivers/new">Add Driver</LinkButton> : null}
       />
 
@@ -122,8 +123,8 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             <label className="sr-only" htmlFor="driver-sort">Sort by</label>
             <select id="driver-sort" name="sort" defaultValue={sort} className="h-10 rounded-lg border border-line-strong bg-surface px-2 text-sm">
               <option value="name">Name</option>
-              <option value="income">Income this month</option>
-              <option value="days">Days worked this month</option>
+              <option value="income">Income this pay period</option>
+              <option value="days">Days worked this pay period</option>
             </select>
             <button type="submit" className={buttonClass("secondary", "sm")}>Apply</button>
           </form>
@@ -174,7 +175,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             <thead>
               <tr>
                 <th>Driver</th><th>Franchise</th><th>Route</th><th>Vehicle</th>
-                <th className="r">Days in {formatMonth(month).split(" ")[0]}</th><th className="r">Pay This Month</th>
+                <th className="r">Days This Period</th><th className="r">Pay This Period</th>
               </tr>
             </thead>
             <tbody>

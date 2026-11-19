@@ -7,7 +7,9 @@ import { ReasonDialog } from "@/components/ui/reason-dialog";
 import { cancelCover, reverseAdjustment } from "@/lib/actions/adjustments";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadAdjustments, loadCovers, loadDriverNames } from "@/lib/data/period";
-import { addMonths, formatMonth, formatUkDate, formatUkDateTime, isYearMonth, monthOf, monthRange } from "@/lib/dates";
+import { formatUkDate, formatUkDateTime } from "@/lib/dates";
+import { periodFromParam, periodLabel } from "@/lib/finance/periods";
+import { PeriodNav } from "@/components/ui/period-nav";
 import { totalAdjustments } from "@/lib/finance/calc";
 import { adjustmentLabel } from "@/lib/labels";
 import { formatGBP } from "@/lib/money";
@@ -16,11 +18,11 @@ export const metadata: Metadata = { title: "Adjustments" };
 
 const EXPENSE_TEXT: Record<string, string> = { original: "stay with the original driver", covering: "count against the covering driver", franchise: "count against the franchise" };
 
-export default async function AdjustmentsPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+export default async function AdjustmentsPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const params = await searchParams;
   const ctx = await getContext();
-  const month = isYearMonth(params.month) ? params.month : monthOf(ctx.today);
-  const { start, end } = monthRange(month);
+  const period = periodFromParam(params.period, ctx.today);
+  const { start, end } = period;
   const filter = { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId };
   const [adjustments, covers, names] = await Promise.all([loadAdjustments(ctx.supabase, filter), loadCovers(ctx.supabase, filter), loadDriverNames(ctx.supabase, ctx.accountId)]);
   const totals = totalAdjustments(adjustments);
@@ -36,12 +38,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
         description="Manual changes to driver pay. The original DPD figures are never altered: every adjustment is a separate, permanent entry."
         actions={ctx.canWrite ? (<><LinkButton href="/adjustments/new">Add Pay Adjustment</LinkButton><LinkButton href="/adjustments/cover" variant="secondary">Record Driver Cover</LinkButton></>) : null}
       />
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        <Link href={`/adjustments?month=${addMonths(month, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous month"><ChevronLeft className="size-4" aria-hidden /></Link>
-        <span className="min-w-36 text-center font-medium">{formatMonth(month)}</span>
-        {addMonths(month, 1) <= monthOf(ctx.today) ? <Link href={`/adjustments?month=${addMonths(month, 1)}`} className={buttonClass("secondary", "sm")} aria-label="Next month"><ChevronRight className="size-4" aria-hidden /></Link> : null}
-        <a className={`${buttonClass("quiet", "sm")} ml-auto`} href={`/api/export/adjustments?month=${month}`}>Download spreadsheet</a>
-      </div>
+      <PeriodNav period={period} today={ctx.today} hrefFor={(p) => `/adjustments?period=${p}`} exportHref={`/api/export/adjustments?period=${period.start}`} />
 
       <Section>
         <Panel>
@@ -55,7 +52,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
 
       <Section title="Pay Adjustments">
         {list.length === 0 ? (
-          <EmptyState title={`No adjustments in ${formatMonth(month)}`} />
+          <EmptyState title={`No adjustments in ${periodLabel(period)}`} />
         ) : (
           <TableWrap>
             <table className="ledger">
@@ -99,7 +96,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
       </Section>
 
       <Section title="Driver Cover" description="Who covered whose work, and the pay allocation you agreed.">
-        {covers.length === 0 ? <EmptyState title={`No cover recorded in ${formatMonth(month)}`} /> : (
+        {covers.length === 0 ? <EmptyState title={`No cover recorded in ${periodLabel(period)}`} /> : (
           <TableWrap>
             <table className="ledger">
               <thead><tr><th>Date</th><th>Covered By</th><th>For</th><th>Route</th><th>Pay Allocation</th><th>Costs That Day</th><th /></tr></thead>

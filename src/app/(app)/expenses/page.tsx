@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { PeriodNav } from "@/components/ui/period-nav";
 import { AddExpenseButton, AssignCostButton } from "@/components/expenses/forms";
 import { Badge, EmptyState, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
 import { cn } from "@/components/ui/cn";
@@ -10,7 +10,8 @@ import { voidCost } from "@/lib/actions/expenses";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
 import { loadCosts, loadDriverNames } from "@/lib/data/period";
-import { addDays, addMonths, formatMonth, formatUkDate, isYearMonth, monthOf, monthRange } from "@/lib/dates";
+import { addDays, formatUkDate } from "@/lib/dates";
+import { periodFromParam, periodLabel } from "@/lib/finance/periods";
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
 
@@ -23,12 +24,12 @@ const FILTERS = [
   { key: "unallocated", label: "Unallocated" },
 ] as const;
 
-export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ month?: string; show?: string; add?: string }> }) {
+export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ period?: string; show?: string; add?: string }> }) {
   const params = await searchParams;
   const ctx = await getContext();
-  const month = isYearMonth(params.month) ? params.month : monthOf(ctx.today);
+  const period = periodFromParam(params.period, ctx.today);
   const show = FILTERS.some((f) => f.key === params.show) ? (params.show as (typeof FILTERS)[number]["key"]) : "all";
-  const { start, end } = monthRange(month);
+  const { start, end } = period;
 
   const [costs, names, categories] = await Promise.all([
     loadCosts(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId }),
@@ -47,13 +48,13 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const visible = costs
     .filter((c) => (show === "fuel" ? isFuel(c) : show === "other" ? !isFuel(c) : show === "unallocated" ? c.allocation.scope === "unallocated" : true))
     .sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
-  const query = (next: Record<string, string>) => `/expenses?${new URLSearchParams({ month, show, ...next }).toString()}`;
+  const query = (next: Record<string, string>) => `/expenses?${new URLSearchParams({ period: period.start, show, ...next }).toString()}`;
 
   return (
     <>
       <PageHeader
         title="Expenses"
-        description={`${formatMonth(month)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
+        description={`${periodLabel(period)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
         actions={ctx.canWrite ? (
           <AddExpenseButton
             franchises={ctx.franchises.filter((f) => f.isActive).map((f) => ({ id: f.id, label: franchiseLabel(f) }))}
@@ -61,12 +62,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           />
         ) : null}
       />
-      <div className="mb-6 flex flex-wrap items-center gap-2">
-        <Link href={query({ month: addMonths(month, -1) })} className={buttonClass("secondary", "sm")} aria-label="Previous month"><ChevronLeft className="size-4" aria-hidden /></Link>
-        <span className="min-w-36 text-center font-medium">{formatMonth(month)}</span>
-        {addMonths(month, 1) <= monthOf(ctx.today) ? <Link href={query({ month: addMonths(month, 1) })} className={buttonClass("secondary", "sm")} aria-label="Next month"><ChevronRight className="size-4" aria-hidden /></Link> : null}
-        <a className={`${buttonClass("quiet", "sm")} ml-auto`} href={`/api/export/costs?month=${month}`}>Download spreadsheet</a>
-      </div>
+      <PeriodNav period={period} today={ctx.today} hrefFor={(p) => query({ period: p })} exportHref={`/api/export/costs?period=${period.start}`} />
 
       <Section>
         <Panel>
@@ -91,8 +87,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       </nav>
 
       {visible.length === 0 ? (
-        <EmptyState title={show === "unallocated" ? "Nothing is waiting to be assigned" : `No expenses recorded for ${formatMonth(month)}`}>
-          {show === "unallocated" ? "Every expense this month has been assigned to a driver or to the franchise." : "Fuel and expense reports appear here when they are synced or uploaded. You can also add an expense by hand."}
+        <EmptyState title={show === "unallocated" ? "Nothing is waiting to be assigned" : `No expenses recorded for ${periodLabel(period)}`}>
+          {show === "unallocated" ? "Every expense this pay period has been assigned to a driver or to the franchise." : "Fuel and expense reports appear here when they are synced or uploaded. You can also add an expense by hand."}
         </EmptyState>
       ) : (
         <TableWrap>

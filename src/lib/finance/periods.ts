@@ -9,7 +9,7 @@
  * to update; the tests pin the dates seen in the portal.
  */
 
-import { addDays, daysBetween, formatUkDate, type ISODate } from "@/lib/dates";
+import { addDays, daysBetween, formatUkDate, isISODate, type ISODate } from "@/lib/dates";
 
 /** The start of a known period (the first in the exported history). */
 export const DPD_PERIOD_ANCHOR: ISODate = "2024-12-09";
@@ -64,4 +64,15 @@ export function recentPeriods(today: ISODate, count: number): DpdPeriod[] {
 /** "9 Nov to 6 Dec 2026" style label, using UK dates. */
 export function periodLabel(period: DpdPeriod): string {
   return `${formatUkDate(period.start)} to ${formatUkDate(period.end)}`;
+}
+
+/** The period a page should show: the one containing the date in the address, or the current one when there is none. */
+export function periodFromParam(param: string | undefined, today: ISODate): DpdPeriod {
+  return periodContaining(isISODate(param) ? param : today);
+}
+
+/** The period after this one, or null when it has not started yet (so there is nothing to show). */
+export function nextPeriodIfStarted(period: DpdPeriod, today: ISODate): DpdPeriod | null {
+  const start = addDays(period.start, DPD_PERIOD_DAYS);
+  return start <= today ? { start, end: addDays(start, DPD_PERIOD_DAYS - 1) } : null;
 }

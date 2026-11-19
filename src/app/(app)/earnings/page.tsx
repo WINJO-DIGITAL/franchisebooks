@@ -5,23 +5,25 @@ import { Badge, EmptyState, PageHeader, Panel, Section, Stat, TableWrap } from "
 import { buttonClass, LinkButton } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadPeriodData } from "@/lib/data/period";
-import { addDays, addMonths, formatMonth, formatUkDate, formatUkDateLong, isISODate, isYearMonth, monthOf, monthRange } from "@/lib/dates";
+import { addDays, formatUkDate, formatUkDateLong, isISODate } from "@/lib/dates";
+import { periodContaining, periodFromParam, periodLabel } from "@/lib/finance/periods";
+import { PeriodNav } from "@/components/ui/period-nav";
 import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Income" };
 
-export default async function EarningsPage({ searchParams }: { searchParams: Promise<{ date?: string; month?: string }> }) {
+export default async function EarningsPage({ searchParams }: { searchParams: Promise<{ date?: string; period?: string }> }) {
   const params = await searchParams;
   const ctx = await getContext();
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const showFranchise = !ctx.franchise && ctx.franchises.length > 1;
 
-  // ── Month view ────────────────────────────────────────────────────────────
-  if (isYearMonth(params.month)) {
-    const month = params.month;
-    const { start, end } = monthRange(month);
+  // ── Pay period view ────────────────────────────────────────────────────────────
+  if (isISODate(params.period)) {
+    const period = periodFromParam(params.period, ctx.today);
+    const { start, end } = period;
     const data = await loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId });
     const summary = summarisePeriod(data);
     const t = summary.combined;
@@ -31,14 +33,10 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
       <>
         <PageHeader
           title="Income"
-          description={`${formatMonth(month)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
-          actions={<><LinkButton href="/earnings" variant="secondary">Daily View</LinkButton><a className={buttonClass("secondary")} href={`/api/export/drivers?month=${month}`}>Download spreadsheet</a></>}
+          description={`${periodLabel(period)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
+          actions={<><LinkButton href="/earnings" variant="secondary">Daily View</LinkButton><a className={buttonClass("secondary")} href={`/api/export/drivers?period=${period.start}`}>Download Spreadsheet</a></>}
         />
-        <div className="mb-6 flex flex-wrap items-center gap-2">
-          <Link href={`/earnings?month=${addMonths(month, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous month"><ChevronLeft className="size-4" aria-hidden /></Link>
-          <span className="min-w-36 text-center font-medium">{formatMonth(month)}</span>
-          {addMonths(month, 1) <= monthOf(ctx.today) ? <Link href={`/earnings?month=${addMonths(month, 1)}`} className={buttonClass("secondary", "sm")} aria-label="Next month"><ChevronRight className="size-4" aria-hidden /></Link> : null}
-        </div>
+        <PeriodNav period={period} today={ctx.today} hrefFor={(p) => `/earnings?period=${p}`} />
         <Section>
           <Panel>
             {routeIncome ? (
@@ -58,7 +56,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
             )}
           </Panel>
         </Section>
-        {rows.length === 0 ? <EmptyState title="No Earnings for This Month" /> : routeIncome ? (
+        {rows.length === 0 ? <EmptyState title="No Earnings for This Pay Period" /> : routeIncome ? (
           <TableWrap>
             <table className="ledger">
               <thead>
@@ -152,7 +150,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Income"
         description={`${formatUkDateLong(date)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
-        actions={<><LinkButton href={`/earnings?month=${monthOf(date)}`} variant="secondary">Monthly View</LinkButton>{ctx.canWrite ? <LinkButton href={`/adjustments/new?date=${date}`}>Add Pay Adjustment</LinkButton> : null}</>}
+        actions={<><LinkButton href={`/earnings?period=${periodContaining(date).start}`} variant="secondary">Pay Period View</LinkButton>{ctx.canWrite ? <LinkButton href={`/adjustments/new?date=${date}`}>Add Pay Adjustment</LinkButton> : null}</>}
       />
       <form method="get" className="mb-6 flex flex-wrap items-center gap-2">
         <Link href={`/earnings?date=${addDays(date, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous day"><ChevronLeft className="size-4" aria-hidden /></Link>

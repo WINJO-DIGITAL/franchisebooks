@@ -42,3 +42,23 @@ describe("DPD four-week periods", () => {
     expect(periodLabel({ start: "2026-11-09", end: "2026-12-06" })).toBe("09/11/2026 to 06/12/2026");
   });
 });
+
+describe("choosing the period a page shows", () => {
+  it("uses the period containing the date in the address, so pages match the DPD portal's dates", async () => {
+    const { periodFromParam, periodLabel } = await import("@/lib/finance/periods");
+    expect(periodLabel(periodFromParam("2026-09-14", "2026-11-19"))).toBe("14/09/2026 to 11/10/2026");
+    expect(periodLabel(periodFromParam("2026-10-05", "2026-11-19"))).toBe("14/09/2026 to 11/10/2026");
+  });
+
+  it("falls back to the current period when the address has no usable date", async () => {
+    const { periodFromParam, periodLabel } = await import("@/lib/finance/periods");
+    expect(periodLabel(periodFromParam(undefined, "2026-11-19"))).toBe("09/11/2026 to 06/12/2026");
+    expect(periodLabel(periodFromParam("not-a-date", "2026-11-19"))).toBe("09/11/2026 to 06/12/2026");
+  });
+
+  it("offers a next period only once it has started", async () => {
+    const { nextPeriodIfStarted, periodContaining } = await import("@/lib/finance/periods");
+    expect(nextPeriodIfStarted(periodContaining("2026-10-05"), "2026-11-19")?.start).toBe("2026-10-12");
+    expect(nextPeriodIfStarted(periodContaining("2026-11-19"), "2026-11-19")).toBeNull();
+  });
+});

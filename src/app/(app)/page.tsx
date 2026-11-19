@@ -10,7 +10,8 @@ import { franchiseLabel, getContext } from "@/lib/context";
 import { loadPeriodData } from "@/lib/data/period";
 import { loadSyncOverview } from "@/lib/data/status";
 import { dpdSetupReady } from "@/lib/dpd/readiness";
-import { addDays, eachDay, formatMonth, formatUkDate, formatUkDateLong, formatUkDayMonth, monthOf, monthRange } from "@/lib/dates";
+import { addDays, eachDay, formatUkDate, formatUkDateLong, formatUkDayMonth } from "@/lib/dates";
+import { periodContaining, periodLabel } from "@/lib/finance/periods";
 import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
 import { FIGURE_STATUS } from "@/lib/labels";
 import { remainingSetupSteps } from "@/lib/onboarding/steps";
@@ -21,8 +22,8 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const ctx = await getContext();
   const { supabase, accountId, franchiseId, today } = ctx;
-  const month = monthOf(today);
-  const { start: monthStart } = monthRange(month);
+  const period = periodContaining(today);
+  const monthStart = period.start;
   const trendStart = addDays(today, -13);
   const loadFrom = trendStart < monthStart ? trendStart : monthStart;
 
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
   const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => (routeIncome ? f.incomeFromDpd : f.driverCosts)));
   const rankedDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings));
   const topDrivers = rankedDrivers.slice(0, 5);
-  // Route numbers per driver this month, shown with a slash between them so they never read as one large number.
+  // Route numbers per driver this pay period, shown with a slash between them so they never read as one large number.
   const routesByDriver = new Map<string, Set<string>>();
   for (const e of data.earnings.filter((e) => e.date >= monthStart && e.route)) {
     const k = `${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`;
@@ -113,8 +114,8 @@ export default async function DashboardPage() {
         </Panel>
       </Section>
 
-      {/* This month */}
-      <Section title={formatMonth(month)} description="Month to date" actions={<LinkButton href="/reports" variant="secondary" size="sm">Generate Monthly Report</LinkButton>}>
+      {/* This pay period */}
+      <Section title={periodLabel(period)} description="Pay period to date" actions={<LinkButton href="/reports" variant="secondary" size="sm">Generate Monthly Report</LinkButton>}>
         <Panel>
           {routeIncome ? (
             <>
@@ -173,7 +174,7 @@ export default async function DashboardPage() {
 
       {/* Franchise comparison */}
       {!ctx.franchise && monthSummary.franchises.filter((f) => f.franchiseId).length > 1 ? (
-        <Section title="Franchises This Month">
+        <Section title="Franchises This Pay Period">
           <TableWrap>
             <table className="ledger">
               <thead>
@@ -224,7 +225,7 @@ export default async function DashboardPage() {
 
       {/* Driver performance */}
       {topDrivers.length > 0 ? (
-        <Section title="Drivers This Month" actions={<LinkButton href="/drivers" variant="quiet" size="sm">View Drivers</LinkButton>}>
+        <Section title="Drivers This Pay Period" actions={<LinkButton href="/drivers" variant="quiet" size="sm">View Drivers</LinkButton>}>
           <TableWrap>
             <table className="ledger">
               <thead>

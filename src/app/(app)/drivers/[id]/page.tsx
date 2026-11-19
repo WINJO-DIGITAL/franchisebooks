@@ -8,7 +8,8 @@ import { LinkButton } from "@/components/ui/button";
 import { baselineOf, classifyStops, resolveAnomalyConfig, STOP_CONSISTENCY_LABEL, type StopConsistency } from "@/lib/anomalies/detect";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadAdjustments, loadCosts, loadEarnings } from "@/lib/data/period";
-import { addDays, addMonths, formatMonth, formatUkDate, formatUkDateLong, monthOf, monthRange } from "@/lib/dates";
+import { addDays, formatUkDate, formatUkDateLong } from "@/lib/dates";
+import { DPD_PERIOD_DAYS, periodContaining, periodLabel } from "@/lib/finance/periods";
 import { buildDriverDays, totalAdjustments } from "@/lib/finance/calc";
 import { wageForDriver, type DayRate } from "@/lib/finance/wages";
 import { adjustmentLabel } from "@/lib/labels";
@@ -27,9 +28,9 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const { data: driver } = await ctx.supabase.from("drivers").select("id, display_name, dpd_driver_ref, phone, email, start_date, leaving_date, is_active, notes").eq("id", id).maybeSingle();
   if (!driver) notFound();
 
-  const month = monthOf(ctx.today);
-  const { start: monthStart } = monthRange(month);
-  const historyFrom = monthRange(addMonths(month, -3)).start;
+  const period = periodContaining(ctx.today);
+  const monthStart = period.start;
+  const historyFrom = addDays(period.start, -3 * DPD_PERIOD_DAYS);
   const filter = { accountId: ctx.accountId, from: historyFrom, to: ctx.today, driverId: id };
 
   const [assignmentsResult, earnings, adjustments, costs, settings, conflicts, rateResult] = await Promise.all([
@@ -99,12 +100,12 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         ) : null}
       />
 
-      <Section title={formatMonth(month)} description="Month to date">
+      <Section title={periodLabel(period)} description="Pay period to date">
         <Panel>
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
             <Stat size="lg" label="Pay after adjustments" value={formatGBP(monthOriginal + monthAdjust.net)} sub={`${formatGBP(monthOriginal)} DPD earnings`} />
             <Stat label="Adjustments" value={monthAdjust.net === 0 ? "None" : formatGBP(monthAdjust.net, { signed: true })} sub={monthAdjust.net === 0 ? undefined : `+${formatGBP(monthAdjust.additionalPayments)} / −${formatGBP(monthAdjust.deductions)}`} />
-            <Stat label="Average per working day" value={formatGBP(avgDay)} sub={change == null ? "No earlier history to compare" : `${change > 0 ? "+" : ""}${change}% vs their previous 3 months`} />
+            <Stat label="Average per working day" value={formatGBP(avgDay)} sub={change == null ? "No earlier history to compare" : `${change > 0 ? "+" : ""}${change}% vs their previous 3 pay periods`} />
             <Stat label="Fuel & expenses" value={formatGBP(sumPence(monthCosts.map((c) => c.amount)))} sub="Attributed to this driver" />
           </div>
           <p className="mt-4 border-t border-line pt-3 text-sm text-muted">
@@ -121,9 +122,9 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       >
         <dl className="grid gap-4 sm:grid-cols-3">
           <Stat label="Current rate" value={currentRate ? `${formatGBP(currentRate.dayRate)} ${currentRate.basis === "stop" ? "per stop" : "per day"}` : "Not set"} />
-          <Stat label="Days worked this month" value={String(monthWage.daysWorked)} />
+          <Stat label="Days worked this pay period" value={String(monthWage.daysWorked)} />
           <Stat
-            label="Wage this month"
+            label="Wage this pay period"
             value={monthWage.complete ? formatGBP(monthWage.wage) : `${formatGBP(monthWage.wage)} (incomplete)`}
             sub={monthWage.complete ? undefined : `${monthWage.missingDates.length} worked day(s) have no pay rate in force, or no stop count for a per-stop rate.`}
           />
@@ -215,7 +216,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         )}
       </Section>
 
-      <Section title="Pay Adjustments" description="Last 3 months" actions={<LinkButton href="/adjustments" variant="quiet" size="sm">All Adjustments</LinkButton>}>
+      <Section title="Pay Adjustments" description="Last 3 pay periods" actions={<LinkButton href="/adjustments" variant="quiet" size="sm">All Adjustments</LinkButton>}>
         {adjustments.length === 0 ? <EmptyState title="No Adjustments" /> : (
           <TableWrap>
             <table className="ledger">
@@ -235,7 +236,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         )}
       </Section>
 
-      <Section title="Fuel and Expenses Attributed to This Driver" description="Last 3 months">
+      <Section title="Fuel and Expenses Attributed to This Driver" description="Last 3 pay periods">
         {myCosts.length === 0 ? <EmptyState title="Nothing Attributed">Costs appear here when they are matched to this driver&rsquo;s vehicle, or when you assign them.</EmptyState> : (
           <TableWrap>
             <table className="ledger">

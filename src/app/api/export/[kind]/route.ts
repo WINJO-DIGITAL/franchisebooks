@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getContext } from "@/lib/context";
 import { loadAdjustments, loadCosts, loadDriverNames, loadPeriodData } from "@/lib/data/period";
-import { isYearMonth, monthRange, monthOf } from "@/lib/dates";
+import { periodFromParam } from "@/lib/finance/periods";
 import { summarisePeriod } from "@/lib/finance/calc";
 import { adjustmentLabel, SOURCE_LABEL } from "@/lib/labels";
 import { csvMoney, toCsv } from "@/lib/reports/csv";
@@ -12,9 +12,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest, { params }: { params: Promise<{ kind: string }> }) {
   const { kind } = await params;
   const ctx = await getContext();
-  const monthParam = request.nextUrl.searchParams.get("month");
-  const month = isYearMonth(monthParam) ? monthParam : monthOf(ctx.today);
-  const { start, end } = monthRange(month);
+  const period = periodFromParam(request.nextUrl.searchParams.get("period") ?? undefined, ctx.today);
+  const { start, end } = period;
   const filter = { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId };
   const franchises = new Map(ctx.franchises.map((f) => [f.id, f.fdNumber]));
   let header: string[];
@@ -42,6 +41,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   return new NextResponse("﻿" + toCsv(header, rows), {
-    headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="${kind}-${month}.csv"`, "cache-control": "private, no-store" },
+    headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="${kind}-${start}-to-${end}.csv"`, "cache-control": "private, no-store" },
   });
 }
