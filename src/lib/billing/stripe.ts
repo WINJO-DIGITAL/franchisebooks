@@ -1,6 +1,7 @@
 import "server-only";
 import Stripe from "stripe";
 import { env } from "@/lib/env";
+import { logger } from "@/lib/logger";
 import type { AdminClient } from "@/lib/supabase/admin";
 import { billingRowFromSubscription, type Plan, type SubscriptionLike } from "./status";
 
@@ -24,18 +25,21 @@ export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): 
     userId = data?.user_id ?? null;
   }
   if (!userId) throw new Error(`Subscription ${row.stripeSubscriptionId} does not say which user it belongs to.`);
-  const { error } = await db.from("user_billing").upsert(
-    {
-      user_id: userId,
-      stripe_customer_id: row.stripeCustomerId,
-      stripe_subscription_id: row.stripeSubscriptionId,
-      status: row.status,
-      current_period_end: row.currentPeriodEnd,
-      cancel_at_period_end: row.cancelAtPeriodEnd,
-      plan: row.plan,
-    },
-    { onConflict: "user_id" },
-  );
+  const base = {
+    user_id: userId,
+    stripe_customer_id: row.stripeCustomerId,
+    stripe_subscription_id: row.stripeSubscriptionId,
+    status: row.status,
+    current_period_end: row.currentPeriodEnd,
+    cancel_at_period_end: row.cancelAtPeriodEnd,
+  };
+  let { error } = await db.from("user_billing").upsert({ ...base, plan: row.plan }, { onConflict: "user_id" });
+  if (error && isMissingPlanColumn(error.message)) {
+    // The plans migration has not been applied yet: still record the subscription, so paying customers get in. Max is only
+    // offered once STRIPE_MAX_PRICE_ID is set, which comes after the migration (docs/BILLING.md).
+    if (row.plan === "max") logger.error({ subscription: row.stripeSubscriptionId }, "a Max subscription was recorded without its plan: apply the plans migration");
+    ({ error } = await db.from("user_billing").upsert(base, { onConflict: "user_id" }));
+  }
   if (error) throw new Error(`Could not record the subscription: ${error.message}`);
   return userId;
 }
@@ -68,4 +72,9 @@ export async function createPortalUrl(customerId: string, returnUrl: string): Pr
   if (!stripe) throw new BillingNotConfigured();
   const session = await stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
   return session.url;
+}
+
+/** PostgREST's message when a column the code writes is not in the database yet. */
+export function isMissingPlanColumn(message: string): boolean {
+  return /\bplan\b/i.test(message) && /(column|schema cache)/i.test(message);
 }

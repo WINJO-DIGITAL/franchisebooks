@@ -30,3 +30,13 @@ describe("billing plans", () => {
     expect(billingRowFromSubscription(sub("price_std")).plan).toBe("standard");
   });
 });
+
+describe("recording a subscription before the plans migration", () => {
+  it("recognises the database saying the plan column is missing", async () => {
+    const { isMissingPlanColumn } = await import("@/lib/billing/stripe");
+    expect(isMissingPlanColumn("Could not find the 'plan' column of 'user_billing' in the schema cache")).toBe(true);
+    expect(isMissingPlanColumn('column "plan" of relation "user_billing" does not exist')).toBe(true);
+    expect(isMissingPlanColumn("duplicate key value violates unique constraint")).toBe(false);
+    expect(isMissingPlanColumn('column "status" does not exist')).toBe(false);
+  });
+});

@@ -113,9 +113,9 @@ export default function TermsPage() {
       <p>You must not attempt to interfere with, compromise or gain unauthorised access to the platform.</p>
       <h2>10. Subscription Fees and Payments</h2>
       <p>Franchise Books operates on a monthly subscription basis.</p>
-      <p>The current subscription price is £49 per month unless otherwise stated at the point of purchase.</p>
+      <p>There are two plans, each priced per account however many franchises it holds: Standard at £49 per month, and Max at £99 per month, which adds DPD figures over the current and previous tax year with trends, driver performance and rate checks. The price stated at the point of purchase applies.</p>
       <p>Subscription payments are processed through our designated payment provider.</p>
-      <p>Payments are processed by Stripe. No VAT is charged because the business is not VAT registered, so the subscription is £49 a month per account.</p>
+      <p>Payments are processed by Stripe. No VAT is charged because the business is not VAT registered, so the price of each plan is the full amount you pay.</p>
       <p>By subscribing, you authorise recurring monthly payments using your selected payment method.</p>
       <p>We reserve the right to change subscription pricing by providing reasonable advance notice.</p>
       <p>Any price changes will apply to future billing periods and will not retrospectively affect payments already made.</p>
