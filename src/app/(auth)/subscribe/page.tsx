@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AutoRefresh, SubscribeForm } from "@/components/billing/forms";
 import { Notice } from "@/components/ui/bits";
+import { subscribeAudience } from "@/lib/billing/audience";
 import { PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,18 @@ export default async function SubscribePage({ searchParams }: { searchParams: Pr
   if (allowed) {
     const { data: profile } = await supabase.from("user_profiles").select("id").eq("id", data.user.id).maybeSingle();
     redirect(profile ? "/" : "/onboarding");
+  }
+
+  // Drivers never pay, and managers or viewers are covered by their business owner's subscription.
+  const audience = await subscribeAudience(supabase, data.user.id);
+  if (audience === "driver") redirect("/my");
+  if (audience === "member") {
+    return (
+      <>
+        <h1 className="text-2xl font-semibold tracking-tight">Your Subscription Is Managed by the Owner</h1>
+        <p className="mt-2 text-sm text-muted">Your business&apos;s subscription is paid by its owner, so there is nothing for you to pay. If you cannot get in, please ask the owner to check their billing.</p>
+      </>
+    );
   }
 
   const configured = Boolean(env.stripeSecretKey() && env.stripePriceId());

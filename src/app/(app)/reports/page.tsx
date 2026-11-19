@@ -49,6 +49,7 @@ export default async function ReportsPage() {
             franchises={ctx.franchises.map((f) => ({ id: f.id, label: franchiseLabel(f) }))}
             defaultReport={defaultReport}
             defaultFranchiseId={ctx.franchiseId}
+            allowAll={ctx.allFranchises}
           />
           <p className="mt-3 text-sm text-muted">Reports use the figures held at the moment you press the button. Generating again later creates a new copy; earlier copies are kept.</p>
         </Panel>

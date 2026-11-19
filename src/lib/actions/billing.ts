@@ -2,11 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { BillingNotConfigured, createCheckoutUrl, createPortalUrl } from "@/lib/billing/stripe";
+import { subscribeAudience } from "@/lib/billing/audience";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { fail, type ActionState } from "./helpers";
 
+const MEMBER_MESSAGE = "Your business's subscription is paid by its owner, so there is nothing for you to pay. Please ask the owner to check their billing.";
 const NOT_CONFIGURED = "Payments are not switched on yet. Please try again shortly.";
 
 /** Sends the signed-in person to Stripe to pay for the monthly plan. */
@@ -14,6 +16,9 @@ export async function startCheckout(_prev: ActionState, _formData: FormData): Pr
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) redirect("/login");
+  const audience = await subscribeAudience(supabase, data.user.id);
+  if (audience === "driver") redirect("/my");
+  if (audience === "member") return fail(MEMBER_MESSAGE);
   let url: string;
   try {
     url = await createCheckoutUrl(createAdminClient(), { id: data.user.id, email: data.user.email ?? "" });

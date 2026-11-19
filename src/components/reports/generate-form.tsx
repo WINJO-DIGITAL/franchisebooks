@@ -11,8 +11,8 @@ interface Option {
 }
 
 export function GenerateReportForm({
-  periods, months, franchises, defaultReport, defaultFranchiseId,
-}: { periods: Option[]; months: Option[]; franchises: Option[]; defaultReport: string; defaultFranchiseId: string | null }) {
+  periods, months, franchises, defaultReport, defaultFranchiseId, allowAll,
+}: { periods: Option[]; months: Option[]; franchises: Option[]; defaultReport: string; defaultFranchiseId: string | null; allowAll: boolean }) {
   const router = useRouter();
   return (
     <ActionForm action={generateReport} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSuccess={() => router.refresh()}>
@@ -29,8 +29,8 @@ export function GenerateReportForm({
             </Select>
           </Field>
           <Field label="Which franchise?">
-            <Select name="franchiseId" defaultValue={defaultFranchiseId ?? ""}>
-              <option value="">All franchises (consolidated)</option>
+            <Select name="franchiseId" defaultValue={defaultFranchiseId ?? (allowAll ? "" : franchises[0]?.id ?? "")}>
+              {allowAll ? <option value="">All franchises (consolidated)</option> : null}
               {franchises.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
             </Select>
           </Field>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { reportScopeProblem } from "@/lib/access";
 import { getContext } from "@/lib/context";
 import { formatMonth, isYearMonth, monthOf } from "@/lib/dates";
 import { periodContaining, periodLabel } from "@/lib/finance/periods";
@@ -180,8 +181,10 @@ export async function generateReport(_prev: ActionState, formData: FormData): Pr
   if (kind === "month" && !isYearMonth(value)) return fail("Choose a month.");
   if (period && period.start !== value) return fail("Choose a period from the list.");
   const month = period ? monthOf(period.start) : value;
-  if (parsed.data.franchiseId && !ctx.franchises.some((f) => f.id === parsed.data.franchiseId)) return fail("Choose one of your franchises.");
-  if (!parsed.data.franchiseId && ctx.role !== "owner" && ctx.franchises.length === 0) return fail("There is nothing to report on yet.");
+  const scopeProblem = reportScopeProblem({
+    role: ctx.role, allFranchises: ctx.allFranchises, visibleFranchiseIds: ctx.franchises.map((f) => f.id), franchiseId: parsed.data.franchiseId ?? null,
+  });
+  if (scopeProblem) return fail(scopeProblem);
   try {
     const report = await generateMonthlyReport(createAdminClient(), {
       accountId: ctx.accountId, month, period, franchiseId: parsed.data.franchiseId, trigger: "manual", userId: ctx.userId,

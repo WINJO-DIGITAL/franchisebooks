@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { seesAllFranchises, type Role } from "@/lib/access";
 import { londonToday } from "@/lib/dates";
 import { requireBillingAccess } from "@/lib/billing/gate";
 import { isDriverLogin } from "@/lib/driver/context";
@@ -60,6 +61,8 @@ export const getContext = cache(async () => {
     role: profile.role as "owner" | "manager" | "viewer",
     canWrite: profile.role === "owner" || profile.role === "manager",
     isOwner: profile.role === "owner",
+    /** True when this login can see every franchise in the business (owners always can). */
+    allFranchises: seesAllFranchises({ role: profile.role as Role, allFranchises: profile.all_franchises === true }),
     accountId: profile.account_id,
     accountName: account?.name ?? "",
     franchises,

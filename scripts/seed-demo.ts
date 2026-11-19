@@ -43,7 +43,8 @@ async function main() {
   const user = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false } });
   const login = await user.auth.signInWithPassword({ email: EMAIL, password: PASSWORD });
   if (login.error) throw new Error(login.error.message);
-  const { data: profile } = await user.from("user_profiles").select("account_id").maybeSingle();
+  // Filter to the demo owner: once the business has other members, the owner can read their profiles too.
+  const { data: profile } = await user.from("user_profiles").select("account_id").eq("id", login.data.user.id).maybeSingle();
   if (profile) {
     console.log("Demo data already exists. To start again run: npm run db:reset");
     return;
