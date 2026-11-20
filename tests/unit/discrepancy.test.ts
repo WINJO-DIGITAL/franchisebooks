@@ -81,3 +81,24 @@ describe("adding up a day across drivers", () => {
     expect(day).toEqual({ date: "2026-11-03", stops: 80, miles: null, stopPayPence: null });
   });
 });
+
+import { type ScaleGrid } from "@/lib/finance/scale-grid";
+
+describe("the printed grid in the report", () => {
+  const grid: ScaleGrid = { name: "Micro", stopRows: [60, 100, 200], mileCols: [10, 90, 160], values: [[1.5, 1.52, 1.55], [1.4, 1.41, 1.44], [1.3, 1.31, 1.33]] };
+
+  it("checks each day against the grid, rounding stops and miles down", () => {
+    // 104 stops, 91 miles: 100 row, 90 column = 1.41; 104 × 1.41 = £146.64 paid exactly → agrees.
+    const report = buildDiscrepancyReport([{ date: "2026-11-11", stops: 104, miles: 91, stopPayPence: 14664 }], [], vehicle, grid);
+    expect(report.totals.agreedDays).toBe(1);
+  });
+
+  it("keeps days above the printed scale out of the totals, with the guide rate shown", () => {
+    const report = buildDiscrepancyReport([{ date: "2026-11-12", stops: 230, miles: 20, stopPayPence: 30000 }], [], vehicle, grid);
+    expect(report.totals).toMatchObject({ comparedDays: 0, notComparedDays: 1, underpaidPence: 0, overpaidPence: 0 });
+    const day = report.days[0]!;
+    expect(day).toMatchObject({ kind: "not_compared", reason: "beyond_scale", guideRate: 1.3 });
+    expect(NOT_COMPARED_TEXT.beyond_scale).toMatch(/guide only/);
+  });
+});
+

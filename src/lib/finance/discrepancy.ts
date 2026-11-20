@@ -6,6 +6,7 @@
  */
 
 import { expectedStopRate, type ScaleBand, type VehicleSpec } from "./sliding-scale";
+import { gridRate, type ScaleGrid } from "./scale-grid";
 
 /** Pounds per stop either side of the scale that is treated as agreeing (the same tolerance as Rate Checks). */
 export const TOLERANCE_PER_STOP = 0.02;
@@ -29,14 +30,15 @@ export type DayOutcome =
       /** Pence difference for the day: stop pay as paid minus what the scale gives for the same stops. Negative when underpaid. */
       differencePence: number;
     }
-  | { kind: "not_compared"; date: string; reason: NotComparedReason };
+  | { kind: "not_compared"; date: string; reason: NotComparedReason; stops?: number; paidPerStop?: number; guideRate?: number };
 
-export type NotComparedReason = "no_stops" | "no_stop_pay" | "no_single_band";
+export type NotComparedReason = "no_stops" | "no_stop_pay" | "no_single_band" | "beyond_scale";
 
 export const NOT_COMPARED_TEXT: Record<NotComparedReason, string> = {
   no_stops: "No stops were stated for the day.",
   no_stop_pay: "No stop pay was stated for the day.",
   no_single_band: "No single band of the scale matches the day's stops and miles (a band may be missing, or more than one may match).",
+  beyond_scale: "Above the printed scale. The top rate is shown as a guide only, because DPD's rule for this is not printed, and the day is not included in the totals.",
 };
 
 /** A compared day that differs from the scale (either direction). */
@@ -61,11 +63,15 @@ export interface DiscrepancyReport {
   };
 }
 
-export function buildDiscrepancyReport(days: ReportDay[], bands: ScaleBand[], vehicle: VehicleSpec): DiscrepancyReport {
+/**
+ * Compares each day with the scale. Uses the printed grid when one is given (the rate is found by rounding stops and miles
+ * down), otherwise the band table.
+ */
+export function buildDiscrepancyReport(days: ReportDay[], bands: ScaleBand[], vehicle: VehicleSpec, grid?: ScaleGrid): DiscrepancyReport {
   const outcomes: DayOutcome[] = days
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-    .map((d) => compareDay(d, bands, vehicle));
+    .map((d) => compareDay(d, bands, vehicle, grid));
 
   const underpaid = outcomes.filter((o): o is DiffDay => o.kind === "underpaid");
   const overpaid = outcomes.filter((o): o is DiffDay => o.kind === "overpaid");
@@ -98,10 +104,20 @@ export function buildDiscrepancyReport(days: ReportDay[], bands: ScaleBand[], ve
   };
 }
 
-function compareDay(d: ReportDay, bands: ScaleBand[], vehicle: VehicleSpec): DayOutcome {
+function compareDay(d: ReportDay, bands: ScaleBand[], vehicle: VehicleSpec, grid?: ScaleGrid): DayOutcome {
   if (d.stops == null || d.stops <= 0) return { kind: "not_compared", date: d.date, reason: "no_stops" };
   if (d.stopPayPence == null) return { kind: "not_compared", date: d.date, reason: "no_stop_pay" };
-  const expected = expectedStopRate(bands, vehicle, d.stops, d.miles);
+
+  let expected: number | null;
+  if (grid) {
+    const found = gridRate(grid, d.stops, d.miles);
+    if (found?.beyondScale) {
+      return { kind: "not_compared", date: d.date, reason: "beyond_scale", stops: d.stops, paidPerStop: d.stopPayPence / 100 / d.stops, guideRate: found.rate };
+    }
+    expected = found?.rate ?? null;
+  } else {
+    expected = expectedStopRate(bands, vehicle, d.stops, d.miles);
+  }
   if (expected == null) return { kind: "not_compared", date: d.date, reason: "no_single_band" };
 
   const paid = d.stopPayPence / 100 / d.stops;
