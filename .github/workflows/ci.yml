@@ -68,6 +68,8 @@ jobs:
             echo "ENCRYPTION_KEY=$CI_ENCRYPTION_KEY"
             echo "CRON_SECRET=ci-cron-secret-not-a-real-secret"
           } > .env.local
+      - name: Install OCR dependencies (invoice PDF tests use tesseract + poppler)
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr poppler-utils
       - name: Install the browser (the DPD portal tests drive a headless Chromium)
         run: npx playwright install --with-deps chromium
       - name: Database tests
