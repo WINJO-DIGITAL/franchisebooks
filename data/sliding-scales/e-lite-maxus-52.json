@@ -1,11 +1,12 @@
 {
-  "name": "e-Lite Maxus 52 Sliding Scale",
+  "name": "ODF e-Lite - Maxus 52.5kwh",
+  "printed_title": "e-Lite Maxus 52 Sliding Scale",
   "vehicle": {
     "type": "e-Lite Maxus 52",
     "fuel": "not printed on the sheet"
   },
   "source": "DPD sliding scale PDF supplied by the owner (e-Lite Maxus 52 Sliding Scale)",
-  "units": "pounds per stop (1.41 is \u00a31.41)",
+  "units": "pounds per stop (1.41 is £1.41)",
   "rule": "Round stops and miles down to the nearest printed row and column",
   "stopRows": [
     5,
@@ -2024,5 +2025,6 @@
     ]
   ],
   "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed.",
-  "scheme": "not stated in the title"
+  "scheme": "ODF",
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
 }
