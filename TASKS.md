@@ -14,16 +14,14 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
 - [ ] Ask an accountant to confirm the Max plan (records and reports only) stays outside regulated accountancy services, and how credit notes should be treated (you).
 - [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
-- [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
+- [ ] Add in-app Max upsells where a feature is locked, with its benefits (assistant).
+- [ ] Audit the two DPD logins flagged as failed (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`): the owner reports both sign in on the portal (assistant checks the sync log; owner confirms).
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
-- [ ] Decide whether the LSC scale (every cell £0.01) stays in the dropdown (you).
-- [ ] Say whether the homepage should mention the Max plan (you).
-- [ ] Give the assistant an email address to send a test driver invitation to (you).
+- [x] Say whether the homepage should mention the Max plan (done: no; Max is offered in the app where a feature is locked, see the upsell task).
 
 ### Assistant to do
 - [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
 - [ ] Once the Supabase connector points at the live project: test an Essential to Max change in the billing portal, and check the first history reads in the sync log (assistant).
-- [ ] Test a driver invitation and login end to end once there is a test address (assistant).
 
 ## Current implementation (summary)
 - Next.js app with Supabase (Postgres, RLS) and a background worker that reads DPD with headless Chromium.
