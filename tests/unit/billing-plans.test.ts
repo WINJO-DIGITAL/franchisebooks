@@ -61,3 +61,11 @@ describe("one subscription per person", () => {
     for (const s of ["canceled", "incomplete_expired", "paused"]) expect(hasLiveStatus(s), s).toBe(false);
   });
 });
+
+describe("a subscription whose login was deleted", () => {
+  it("is recognised, so the webhook acknowledges it instead of failing for days", async () => {
+    const { isMissingUser } = await import("@/lib/billing/stripe");
+    expect(isMissingUser('insert or update on table "user_billing" violates foreign key constraint "user_billing_user_id_fkey"')).toBe(true);
+    expect(isMissingUser("duplicate key value violates unique constraint")).toBe(false);
+  });
+});

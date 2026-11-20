@@ -9,20 +9,18 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ## Outstanding
 
 ### You (owner) to do
-- [ ] Remove the saved `api.stripe.com` credential from the assistant's environment settings, because it is a live key (you).
-- [ ] Review the new plan wording in the Terms page, section 10 (you).
-- [ ] Ask an accountant to confirm the Max plan (records and reports only) stays outside regulated accountancy services (you).
-- [ ] Say "go live" so the assistant sets up live Stripe prices, webhook and portal, then put the live keys on Vercel (you).
-- [ ] Decide whether CI should run only for `main` and pull requests, to save GitHub Actions minutes (you).
+- [ ] Say "merge" to take the latest working-branch changes live (you).
+- [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
+- [ ] Review the plan wording in the Terms page, section 10 (you).
+- [ ] Ask an accountant to confirm the Max plan (records and reports only) stays outside regulated accountancy services, and how credit notes should be treated (you).
+- [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
 - [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
 - [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise) (you).
-- [ ] Confirm with your accountant how credit notes should be treated (currently: money in, labelled) (you).
 - [ ] Give the assistant an email address to send a test driver invitation to (you).
 
 ### Assistant to do
-- [ ] Check the Start Reading DPD button and the set-up checklist on a fresh test signup (assistant).
-- [ ] Test a Standard to Max change in the billing portal, and the first history reads on a Max test account (assistant).
-- [ ] Run the database, integration and end-to-end tests against a local Supabase stack for the Max changes (assistant).
+- [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
+- [ ] After the merge: test a Standard to Max change in the billing portal, and check the first history reads in the sync log (assistant).
 - [ ] Test a driver invitation and login end to end once there is a test address (assistant).
 
 ## Current implementation (summary)
@@ -37,8 +35,9 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - The DPD read depends on DPD's current page layout; a layout change stops reads until the portal map is updated.
 
 ## Test results (latest run on this branch)
-- Unit tests: all passing (see the latest commit). Typecheck, lint and production build clean.
-- Database, integration and end-to-end tests: not run for the Max changes yet (they need a local Supabase stack).
+- Unit tests: 517 passing. Typecheck, lint and production build clean.
+- Database tests: 59 passing. Integration tests: 85 passing (against a local Supabase stack).
+- End-to-end tests: see the latest commit message (run against the local stack and a production build).
 
 ## Log of finished work (not a checklist)
 - Fuel importer fix, pay per day or per stop, period reports on Mondays, shared DPD setup, encrypted logins (merged to main).
@@ -66,3 +65,6 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - Set-up checklist: the first read counts as done after a successful DPD read, even when the franchise has no payments.
 - Max plan (£99): plan recorded from the Stripe price, history reads over two tax years, Insights pages, plan changes in the billing portal. Live in test mode; merged to `main`.
 - Dashboard: Start Reading DPD button on the first set-up step, so the first read starts without going to Settings.
+- Live Stripe prepared but not switched on: live Max price, live webhook (disabled), Franchise Books portal, and `STRIPE_MODE` to switch between test and live.
+- Checkout refuses to start a second subscription; the webhook ignores other WINJO Digital products in the same Stripe account.
+- CI runs on `main`, pull requests and by hand only, and skips documentation-only changes.

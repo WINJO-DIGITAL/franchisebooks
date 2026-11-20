@@ -29,7 +29,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await expect(page.getByRole("heading", { name: "Which day?" })).toBeVisible();
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "What kind, and how much?" })).toBeVisible();
-    await page.getByRole("radio", { name: /Additional payment/ }).check();
+    await page.getByRole("radio", { name: /Additional Payment/ }).check();
     await page.getByLabel("How much?").fill("37.50");
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "Why?" })).toBeVisible();
@@ -50,7 +50,7 @@ test.describe("owner journeys (synthetic demo data)", () => {
     await row.getByRole("button", { name: "Reverse" }).click();
     await page.getByLabel("Why is it being reversed?").fill("E2E clean-up");
     await page.getByRole("button", { name: "Reverse adjustment" }).click();
-    await expect(page.getByRole("row", { name: /E2E clean-up/ }).filter({ hasText: "Additional payment" }).first()).toContainText("−£37.50");
+    await expect(page.getByRole("row", { name: /E2E clean-up/ }).filter({ hasText: "Additional Payment" }).first()).toContainText("−£37.50");
     await expect(page.getByRole("row", { name: /E2E: covered an extra route/ }).first()).toContainText("Reversed");
   });
 

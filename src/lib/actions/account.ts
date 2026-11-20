@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getContext } from "@/lib/context";
+import { cancelAtPeriodEnd } from "@/lib/billing/stripe";
 import { listDpdLogins, removeDpdLogin } from "@/lib/dpd/logins";
 import { sendEmail, ownerEmail } from "@/lib/notify/email";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -41,12 +42,22 @@ export async function requestAccountClosure(_prev: ActionState, formData: FormDa
     return fail("We could not close the account. Nothing more has been removed; please try again.", error instanceof Error ? error.message : null);
   }
 
+  // 4. Stop the monthly payment: the subscription runs to the end of the period already paid for, then ends.
+  const { data: billing } = await admin.from("user_billing").select("stripe_subscription_id, status").eq("user_id", ctx.userId).maybeSingle();
+  const paying = Boolean(billing?.stripe_subscription_id && billing.status !== "canceled" && billing.status !== "comped");
+  const cancelled = paying ? await cancelAtPeriodEnd(billing!.stripe_subscription_id!) : false;
+
   const to = await ownerEmail(admin, ctx.accountId).catch(() => null);
   if (to) {
+    const payment = !paying
+      ? ""
+      : cancelled
+        ? " Your subscription has been cancelled: it will not renew, and you will not be charged again."
+        : " To stop your monthly payment, cancel under Settings, then Manage billing.";
     await sendEmail({
       to,
       subject: "Your Franchise Books closure request",
-      text: "We have removed your DPD logins and their stored passwords, so the app can no longer read DPD for your account. Your financial records are kept for the period our terms set out. We will finish closing the account within 30 days. To stop your monthly payment, cancel under Settings, then Manage billing.",
+      text: `We have removed your DPD logins and their stored passwords, so the app can no longer read DPD for your account. Your financial records are kept for the period our terms set out. We will finish closing the account within 30 days.${payment}`,
     });
   }
   revalidatePath("/settings");

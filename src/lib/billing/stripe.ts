@@ -23,15 +23,22 @@ export function getStripe(): Stripe | null {
   return key ? new Stripe(key) : null;
 }
 
-/** Records a Stripe subscription against the user who pays. Safe to repeat: the same subscription gives the same row. */
-export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): Promise<string> {
+/**
+ * Records a Stripe subscription against the user who pays. Safe to repeat: the same subscription gives the same row.
+ * Returns null when there is nobody to record it against (the login was deleted): retrying would never succeed, so the
+ * caller acknowledges it instead of making Stripe retry for days.
+ */
+export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): Promise<string | null> {
   const row = billingRowFromSubscription(sub, env.stripeMaxPriceId());
   let userId = row.userId;
   if (!userId) {
     const { data } = await db.from("user_billing").select("user_id").eq("stripe_customer_id", row.stripeCustomerId).maybeSingle();
     userId = data?.user_id ?? null;
   }
-  if (!userId) throw new Error(`Subscription ${row.stripeSubscriptionId} does not say which user it belongs to.`);
+  if (!userId) {
+    logger.warn({ subscription: row.stripeSubscriptionId }, "subscription does not say which user it belongs to; not recorded");
+    return null;
+  }
   const base = {
     user_id: userId,
     stripe_customer_id: row.stripeCustomerId,
@@ -46,6 +53,10 @@ export async function saveSubscription(db: AdminClient, sub: SubscriptionLike): 
     // offered once STRIPE_MAX_PRICE_ID is set, which comes after the migration (docs/BILLING.md).
     if (row.plan === "max") logger.error({ subscription: row.stripeSubscriptionId }, "a Max subscription was recorded without its plan: apply the plans migration");
     ({ error } = await db.from("user_billing").upsert(base, { onConflict: "user_id" }));
+  }
+  if (error && isMissingUser(error.message)) {
+    logger.warn({ subscription: row.stripeSubscriptionId, userId }, "subscription belongs to a login that no longer exists; not recorded (cancel it in Stripe)");
+    return null;
   }
   if (error) throw new Error(`Could not record the subscription: ${error.message}`);
   return userId;
@@ -108,4 +119,25 @@ export function isOurSubscription(sub: SubscriptionLike, ourPriceIds: (string | 
 /** A subscription in one of these states is still being paid for (or about to be), so another must not be started. */
 export function hasLiveStatus(status: string): boolean {
   return ["active", "trialing", "past_due", "incomplete", "unpaid"].includes(status);
+}
+
+/** The database's answer when the paying user's login has been deleted. */
+export function isMissingUser(message: string): boolean {
+  return /user_billing_user_id_fkey|violates foreign key constraint/i.test(message);
+}
+
+/**
+ * Stops a subscription renewing: it runs to the end of the period already paid for, then ends. Returns false when it could
+ * not be done (billing not set up, or Stripe refused), so the caller can tell the person how to cancel it themselves.
+ */
+export async function cancelAtPeriodEnd(subscriptionId: string): Promise<boolean> {
+  const stripe = getStripe();
+  if (!stripe) return false;
+  try {
+    await stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    return true;
+  } catch (error) {
+    logger.warn({ subscriptionId, error: error instanceof Error ? error.message : String(error) }, "could not cancel the subscription at period end");
+    return false;
+  }
 }

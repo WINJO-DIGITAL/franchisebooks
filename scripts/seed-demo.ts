@@ -99,13 +99,17 @@ async function main() {
     imported++;
   }
   // Fuel and a couple of expenses.
-  const fuel = ["Date,Time,Card,Registration,Site,Product,Litres,PPL,Total,Reference"];
+  // The file states its own Net and VAT, like a fuel card statement: a total with no VAT stated is held for a person to check.
+  const fuel = ["Date,Time,Card,Registration,Site,Product,Litres,PPL,Net,VAT,Total,Reference"];
   for (let w = 5; w >= 0; w--) {
     for (const [i, reg] of ["AB12 CDE", "XY21 ZZZ", "LM70 QRS"].entries()) {
       const date = addDays(today, -(w * 7 + 2 + i));
       const [y, m, d] = date.split("-");
       const litres = 48 + Math.round(rnd() * 12);
-      fuel.push(`${d}/${m}/${y},07:${10 + i}0,****${1000 + i},${reg},Synthetic Services,Diesel,${litres}.00,1.459,${(litres * 1.459).toFixed(2)},DEMO-F-${w}-${i}`);
+      const totalPence = Math.round(litres * 145.9);
+      const vatPence = Math.round(totalPence / 6);
+      const money = (pence: number) => (pence / 100).toFixed(2);
+      fuel.push(`${d}/${m}/${y},07:${10 + i}0,****${1000 + i},${reg},Synthetic Services,Diesel,${litres}.00,1.459,${money(totalPence - vatPence)},${money(vatPence)},${money(totalPence)},DEMO-F-${w}-${i}`);
     }
   }
   await importDocument(admin, { accountId: account, source: "manual_upload", filename: "demo-fuel.csv", bytes: new Uint8Array(Buffer.from(fuel.join("\n"))), franchiseHintId: franchiseId });

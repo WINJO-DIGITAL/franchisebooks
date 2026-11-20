@@ -37,6 +37,9 @@ Max is records and reports only. It never produces ledgers, reconciliations, acc
 | `STRIPE_PRICE_ID` | The Standard plan's recurring £49 monthly price (`price_...`) |
 | `STRIPE_MAX_PRICE_ID` | The Max plan's recurring £99 monthly price. Leave unset until the plans migration is applied: Max is offered only once it is set |
 | `STRIPE_WEBHOOK_SECRET` | Signing secret of the webhook endpoint (`whsec_...`) |
+| `STRIPE_PORTAL_CONFIGURATION_ID` | The customer portal set up for Franchise Books (`bpc_...`). The Stripe account is shared with other WINJO Digital products, so its default portal is not ours |
+| `STRIPE_MODE` | `live` to use the live settings below; anything else (or unset) uses the test ones |
+| `STRIPE_SECRET_KEY_LIVE`, `STRIPE_PRICE_ID_LIVE`, `STRIPE_MAX_PRICE_ID_LIVE`, `STRIPE_WEBHOOK_SECRET_LIVE`, `STRIPE_PORTAL_CONFIGURATION_ID_LIVE` | The live versions. In live mode only these are read, never the test ones, so the two can never be mixed |
 | `APP_URL` | The public address of the app, for Stripe's return links |
 | `BILLING_ENFORCED` | `true` to require a paid subscription. Leave unset until everything below is done |
 
@@ -61,6 +64,27 @@ Set these on the web app (Vercel). The background worker does not need them.
 
 Test mode is already set up: Standard `price_1UdcyRLEEs7hsljuoxp2M8m8`, Max `price_1Ude0fLEEs7hsljuOkJEGuQb`, webhook endpoint
 `we_1UddIlLEEs7hsljurkjjuGy7`, and portal `bpc_1UddOULEEs7hsljunmvUshmE` with plan switching on. Live mode needs the same four.
+
+## Going live
+
+Everything except the secret key is already in place on Vercel and in Stripe's live mode:
+
+| Live setting | Value |
+| --- | --- |
+| Standard price | `price_1UdKwgLEEs7hsljutoMiqcgM` (£49 a month) |
+| Max price | `price_1UdiOgLEEs7hslju2TlK2IKE` (£99 a month) |
+| Webhook endpoint | `we_1UdiPuLEEs7hsljuekFwuBLe`, **disabled until go-live**, its secret saved as `STRIPE_WEBHOOK_SECRET_LIVE` |
+| Customer portal | `bpc_1UdiQOLEEs7hsljuIpbZ8YsV` (Franchise Books only, plan changes on) |
+
+To go live:
+
+1. In Stripe (live mode), Developers → API keys: create a restricted or secret key, and add it on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production).
+2. Switch the live webhook endpoint `we_1UdiPuLEEs7hsljuekFwuBLe` on (Stripe, Developers → Webhooks), or ask the assistant to.
+3. Set `STRIPE_MODE` to `live` on Vercel and redeploy.
+4. Subscribe once with a real card, check Settings shows the plan, then refund and cancel it in Stripe.
+
+To go back to test mode, remove `STRIPE_MODE` and redeploy. Test subscriptions do not carry over to live mode: anyone who
+subscribed in test mode subscribes again (comped accounts are not affected).
 
 ## Emails
 

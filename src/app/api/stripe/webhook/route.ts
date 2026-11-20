@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       }
       const admin = createAdminClient();
       const userId = await saveSubscription(admin, subscription);
+      if (!userId) return NextResponse.json({ received: true, ignored: true });
       await startHistoryOnUpgrade(admin, userId);
       if (subscription.status === "past_due") {
         // Stripe is retrying the card. Tell the paying customer now, so the retry can be fixed in time.
