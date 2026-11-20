@@ -24,6 +24,14 @@ function optional(name: string): string | null {
   return value ? value : null;
 }
 
+/**
+ * Stripe settings follow STRIPE_MODE. With "live" they come only from the *_LIVE variables (STRIPE_SECRET_KEY_LIVE and so on),
+ * never falling back to the test ones, so test and live values cannot be mixed. Anything else uses the test variables.
+ */
+function stripeSetting(name: string): string | null {
+  return optional(optional("STRIPE_MODE") === "live" ? `${name}_LIVE` : name);
+}
+
 export const env = {
   supabaseUrl: () => required("NEXT_PUBLIC_SUPABASE_URL", "The database connection has not been configured."),
   supabaseAnonKey: () => required("NEXT_PUBLIC_SUPABASE_ANON_KEY", "The database connection has not been configured."),
@@ -72,11 +80,14 @@ export const env = {
   resendApiKey: () => optional("RESEND_API_KEY"),
   emailFrom: () => optional("EMAIL_FROM"),
   /** Stripe billing. Without these the subscribe page says billing is not set up, and nothing is enforced. */
-  stripeSecretKey: () => optional("STRIPE_SECRET_KEY"),
-  stripeWebhookSecret: () => optional("STRIPE_WEBHOOK_SECRET"),
-  stripePriceId: () => optional("STRIPE_PRICE_ID"),
+  stripeLive: () => optional("STRIPE_MODE") === "live",
+  stripeSecretKey: () => stripeSetting("STRIPE_SECRET_KEY"),
+  stripeWebhookSecret: () => stripeSetting("STRIPE_WEBHOOK_SECRET"),
+  stripePriceId: () => stripeSetting("STRIPE_PRICE_ID"),
+  /** The customer portal set up for this app (plan changes, card, invoices, cancel). Optional: without it Stripe's default is used. */
+  stripePortalConfigurationId: () => stripeSetting("STRIPE_PORTAL_CONFIGURATION_ID"),
   /** The Max plan (£99 a month). Optional: without it only the Standard plan is offered. */
-  stripeMaxPriceId: () => optional("STRIPE_MAX_PRICE_ID"),
+  stripeMaxPriceId: () => stripeSetting("STRIPE_MAX_PRICE_ID"),
   /** When true, the app asks for a paid subscription. Off by default so turning billing on is a deliberate step. */
   billingEnforced: () => optional("BILLING_ENFORCED") === "true",
   logLevel: () => optional("LOG_LEVEL") ?? "info",

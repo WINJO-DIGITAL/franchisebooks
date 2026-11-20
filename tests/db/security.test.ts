@@ -220,3 +220,39 @@ describe("driver logins", () => {
     expect(theirs).toEqual([]);
   });
 });
+
+describe("billing plans", () => {
+  const setBilling = (userId: string, status: string, plan: string) =>
+    sql(
+      `insert into public.user_billing (user_id, status, plan) values ($1, $2, $3)
+       on conflict (user_id) do update set status = excluded.status, plan = excluded.plan`,
+      [userId, status, plan],
+    );
+  const planOf = async (userId: string) => (await asUser(userId, (run) => run("select public.billing_plan() as plan")))[0]?.plan ?? null;
+
+  it("gives the owner their own plan, and a manager the owner's plan", async () => {
+    await setBilling(a.ownerId, "active", "max");
+    const manager = await addMember(a.accountId, "manager", "all");
+    expect(await planOf(a.ownerId)).toBe("max");
+    expect(await planOf(manager)).toBe("max");
+    await setBilling(a.ownerId, "past_due", "standard");
+    expect(await planOf(manager)).toBe("standard");
+  });
+
+  it("gives no plan without access: a cancelled subscription, or none at all", async () => {
+    await setBilling(b.ownerId, "canceled", "max");
+    expect(await planOf(b.ownerId)).toBeNull();
+    expect(await planOf(await createAuthUser("no-billing"))).toBeNull();
+  });
+
+  it("only accepts the two plans, and is not callable by anonymous visitors", async () => {
+    await expect(setBilling(a.ownerId, "active", "gold")).rejects.toThrow(/check/);
+    await expect(asAnon((run) => run("select public.billing_plan()"))).rejects.toThrow(/permission denied/);
+  });
+
+  it("does not let a signed-in user change their own plan", async () => {
+    await setBilling(a.ownerId, "active", "standard");
+    await expect(asUser(a.ownerId, (run) => run("update public.user_billing set plan = 'max' where user_id = $1", [a.ownerId]))).rejects.toThrow(/permission denied/);
+    expect(await planOf(a.ownerId)).toBe("standard");
+  });
+});

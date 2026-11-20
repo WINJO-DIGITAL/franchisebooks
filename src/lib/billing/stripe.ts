@@ -70,11 +70,22 @@ export async function createCheckoutUrl(db: AdminClient, user: { id: string; ema
 export async function createPortalUrl(customerId: string, returnUrl: string): Promise<string> {
   const stripe = getStripe();
   if (!stripe) throw new BillingNotConfigured();
-  const session = await stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+  const configuration = env.stripePortalConfigurationId();
+  const session = await stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl, ...(configuration ? { configuration } : {}) });
   return session.url;
 }
 
 /** PostgREST's message when a column the code writes is not in the database yet. */
 export function isMissingPlanColumn(message: string): boolean {
   return /\bplan\b/i.test(message) && /(column|schema cache)/i.test(message);
+}
+
+/**
+ * True when a subscription is for Franchise Books: one of its items is on one of our prices, or it carries the user id our
+ * checkout puts on it. Other products in the same Stripe account are not ours to record.
+ */
+export function isOurSubscription(sub: SubscriptionLike, ourPriceIds: (string | null)[]): boolean {
+  const prices = new Set(ourPriceIds.filter((p): p is string => Boolean(p)));
+  if (sub.items?.data.some((item) => item.price?.id && prices.has(item.price.id))) return true;
+  return Boolean(sub.metadata?.user_id);
 }

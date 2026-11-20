@@ -40,3 +40,16 @@ describe("recording a subscription before the plans migration", () => {
     expect(isMissingPlanColumn('column "status" does not exist')).toBe(false);
   });
 });
+
+describe("subscriptions from other products in the same Stripe account", () => {
+  it("records only Franchise Books subscriptions", async () => {
+    const { isOurSubscription } = await import("@/lib/billing/stripe");
+    const ours = ["price_std", "price_max"];
+    expect(isOurSubscription(sub("price_max"), ours)).toBe(true);
+    expect(isOurSubscription({ ...sub("price_other"), metadata: {} }, ours)).toBe(false);
+    expect(isOurSubscription({ ...sub("price_other"), metadata: { website_subscription_id: "x" } }, ours)).toBe(false);
+    // Our checkout always sets the user id, so a subscription on an older price of ours is still recorded.
+    expect(isOurSubscription(sub("price_old"), ours)).toBe(true);
+    expect(isOurSubscription({ ...sub("price_std"), metadata: {} }, [null, null])).toBe(false);
+  });
+});

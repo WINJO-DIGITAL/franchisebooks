@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { getStripe, saveSubscription } from "@/lib/billing/stripe";
+import { getStripe, isOurSubscription, saveSubscription } from "@/lib/billing/stripe";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/notify/email";
 import { describeError, logger, reportError } from "@/lib/logger";
@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
     }
     if (subscriptionId) {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      // The Stripe account is shared with other WINJO Digital products, and every webhook endpoint hears about all of their
+      // subscriptions. Anything not on a Franchise Books price is acknowledged and left alone, so Stripe does not keep retrying it.
+      if (!isOurSubscription(subscription, [env.stripePriceId(), env.stripeMaxPriceId()])) {
+        logger.info({ type: event.type, subscription: subscriptionId }, "stripe webhook: not a Franchise Books subscription, ignored");
+        return NextResponse.json({ received: true, ignored: true });
+      }
       const admin = createAdminClient();
       const userId = await saveSubscription(admin, subscription);
       await startHistoryOnUpgrade(admin, userId);
