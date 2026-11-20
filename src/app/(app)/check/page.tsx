@@ -10,7 +10,8 @@ import { loadCosts, loadEarnings, hiddenFranchiseFilter } from "@/lib/data/perio
 import { formatUkDate, isISODate } from "@/lib/dates";
 import { checkPeriod, type CheckInvoice, type IncomeStatus } from "@/lib/finance/period-check";
 import { checkStopRates, normaliseFuel, type ScaleBand } from "@/lib/finance/sliding-scale";
-import { lastCompletedPeriod, periodContaining, periodLabel, recentPeriods } from "@/lib/finance/periods";
+import { lastCompletedPeriod, periodContaining, periodLabel, previousPeriod, recentPeriods } from "@/lib/finance/periods";
+import { VAT_CHANGE_TEXT, VAT_STATUS_TEXT, vatStatusByPeriod, type VatPeriodResult } from "@/lib/finance/vat-status";
 import { formatGBP, fromDb } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Period Check" };
@@ -22,6 +23,16 @@ const STATUS: Record<IncomeStatus, { label: string; tone: Tone }> = {
   unreadable: { label: "Invoice Could Not Be Read", tone: "warn" },
   unread: { label: "Days Not Read Yet", tone: "warn" },
 };
+
+function VatLine({ result }: { result: VatPeriodResult | undefined }) {
+  if (!result) return null;
+  return (
+    <p className="mb-3 text-sm text-ink-soft">
+      <span className="font-medium text-ink">{VAT_STATUS_TEXT[result.status]}</span>
+      {result.change ? <span className="ml-2 text-warn">{VAT_CHANGE_TEXT[result.change]}</span> : null}
+    </p>
+  );
+}
 
 export default async function PeriodCheckPage({ searchParams }: { searchParams: Promise<{ period?: string }> }) {
   const params = await searchParams;
@@ -51,6 +62,30 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
     fetchAll(() => ctx.supabase.from("franchises").select("id, vehicle_type, vehicle_size, vehicle_fuel").eq("account_id", ctx.accountId).order("id")),
     fetchAll(() => ctx.supabase.from("sliding_scale_rates").select("vehicle_type, vehicle_size, fuel_type, stops_from, stops_to, miles_from, miles_to, rate").eq("account_id", ctx.accountId).order("id")),
   ]);
+  // VAT as each period's invoice states it, for the last six periods, so a change in VAT status can be read.
+  const vatPeriods = [period];
+  while (vatPeriods.length < 6) vatPeriods.push(previousPeriod(vatPeriods[vatPeriods.length - 1]!));
+  const vatRows = await fetchAll(() => {
+    let q = ctx.supabase
+      .from("dpd_invoices")
+      .select("franchise_id, period_start, vat_total")
+      .eq("account_id", ctx.accountId)
+      .eq("kind", "period")
+      .in("period_start", vatPeriods.map((v) => v.start))
+      .order("id");
+    if (ctx.franchiseId) q = q.eq("franchise_id", ctx.franchiseId);
+    const hiddenFilter = hiddenFranchiseFilter(ctx);
+    if (hiddenFilter) q = q.or(hiddenFilter);
+    return q;
+  });
+  const vatByFranchise = new Map<string, VatPeriodResult | undefined>();
+  for (const f of franchises) {
+    const statuses = vatStatusByPeriod(vatPeriods.map((v) => {
+      const row = vatRows.find((r) => r.franchise_id === f.id && r.period_start === v.start);
+      return { periodStart: v.start, vatTotal: row ? fromDb(row.vat_total) : null };
+    }));
+    vatByFranchise.set(f.id, statuses.find((x) => x.periodStart === period.start));
+  }
   // The first and last day of daily payments held for each franchise: an invoice is only compared with days the app has read.
   const coverage = new Map<string, { first: string | null; last: string | null }>();
   await Promise.all(franchises.map(async (f) => {
@@ -120,6 +155,7 @@ export default async function PeriodCheckPage({ searchParams }: { searchParams: 
       ) : (
         results.map(({ franchise, invoice, check, chargeItems, rateCheck, hasVehicle, firstDay }) => (
           <Section key={franchise.id} title={franchiseLabel(franchise)}>
+            <VatLine result={vatByFranchise.get(franchise.id)} />
             <Panel>
               <div className="grid gap-6 sm:grid-cols-3">
                 <Stat
