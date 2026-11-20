@@ -93,3 +93,20 @@ describe("rates and basis", () => {
     expect(lookBackDays([oakley])).toBe(0);
   });
 });
+
+describe("Kieran Robinson, as the owner revised it", () => {
+  // £120 base, £1 a stop over 105, £125 from the sixth day in a row onward, back to £120 after a day off.
+  const kieran: DayRate = { driverId: "kieran", dayRate: 12000, effectiveFrom: "2026-01-01", bonusAfterStops: 105, bonusPerStop: 100, streakAfterDays: 5, streakDayRate: 12500 };
+
+  it("pays £120 for days 1 to 5, £125 from day 6, and keeps £125 through a run longer than seven days", () => {
+    const dates = ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09"];
+    const pays = dates.map((d) => priceDay(d, kieran, 100, dayInARowByDate(dates).get(d)!)!.base);
+    expect(pays).toEqual([12000, 12000, 12000, 12000, 12000, 12500, 12500, 12500]);
+  });
+
+  it("drops back to £120 after a day off, and the count starts again", () => {
+    const dates = ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-09", "2026-11-10"];
+    const pays = dates.map((d) => priceDay(d, kieran, 100, dayInARowByDate(dates).get(d)!)!.base);
+    expect(pays).toEqual([12000, 12000, 12000, 12000, 12000, 12500, 12000, 12000]);
+  });
+});
