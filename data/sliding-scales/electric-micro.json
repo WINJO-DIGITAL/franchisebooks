@@ -1,5 +1,5 @@
 {
-  "name": "Electric Vehicle Sliding Scale - Micro",
+  "name": "ODF e-Micro",
   "vehicle": {
     "type": "Micro",
     "fuel": "electric"
@@ -581,5 +581,7 @@
     ]
   ],
   "verified": "Read from the PDF text; 464 cells checked; rows and columns evenly stepped; more stops never raises the rate and more miles never lowers it",
-  "scheme": "not stated in the title"
+  "scheme": "ODF",
+  "printed_title": "Electric Vehicle Sliding Scale - Micro",
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
 }
