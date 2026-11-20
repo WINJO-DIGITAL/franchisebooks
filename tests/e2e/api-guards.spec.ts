@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 // Signed-out callers. These run in the "signed-out" project (no stored session).
@@ -55,5 +56,52 @@ test.describe("public terms page", () => {
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       await expect(page.getByText(/solicitor|^Draft\b/i)).toHaveCount(0);
     }
+  });
+});
+
+test.describe("sales page", () => {
+  test("explains the product, labels every illustration as example data, and quotes the price", async ({ page }) => {
+    await page.goto("/welcome");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/what each driver is owed/i);
+    for (const id of ["problem", "how", "inside", "trust", "pricing", "questions"]) {
+      await expect(page.locator(`#${id}`)).toBeAttached();
+      await expect(page.locator(`#${id}-title`)).toBeVisible(); // each part of the page has its own heading
+    }
+    // Every screen drawn on the page is an illustration, and says so.
+    const frames = page.locator("main figure");
+    expect(await frames.count()).toBeGreaterThanOrEqual(5);
+    for (const frame of await frames.all()) await expect(frame.getByText(/Example Data|Not customer data/).first()).toBeVisible();
+    await expect(page.locator("#pricing").getByText("£49").first()).toBeVisible();
+    await expect(page.getByText("not affiliated with or endorsed by DPD").first()).toBeVisible();
+  });
+
+  test("works on a phone: nothing runs off the side, and the menu opens and closes", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/welcome");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    const menu = page.locator("button[aria-controls]");
+    await expect(menu).toHaveAttribute("aria-expanded", "false");
+    await menu.click();
+    await expect(menu).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator('nav[aria-label="Sections"]:visible').getByRole("link")).toHaveCount(5);
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("has no accessibility violations on a desktop or a phone", async ({ page }) => {
+    for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(size);
+      await page.goto("/welcome");
+      const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+      expect(results.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+    }
+  });
+
+  test("questions open one at a time", async ({ page }) => {
+    await page.goto("/welcome");
+    const items = page.locator('details[name="faq"]');
+    await items.nth(0).locator("summary").click();
+    await items.nth(1).locator("summary").click();
+    await expect(page.locator('details[name="faq"][open]')).toHaveCount(1);
   });
 });

@@ -17,6 +17,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
 - [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise) (you).
 - [ ] Give the assistant an email address to send a test driver invitation to (you).
+- [ ] Read the new homepage wording and example figures, and say whether it should mention the Max plan (you).
 
 ### Assistant to do
 - [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
@@ -35,7 +36,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - The DPD read depends on DPD's current page layout; a layout change stops reads until the portal map is updated.
 
 ## Test results (latest run on this branch)
-- Unit tests: 517 passing. Typecheck, lint and production build clean.
+- Unit tests: 541 passing. Typecheck, lint and production build clean.
 - Database tests: 59 passing. Integration tests: 85 passing (against a local Supabase stack).
 - End-to-end tests: see the latest commit message (run against the local stack and a production build).
 

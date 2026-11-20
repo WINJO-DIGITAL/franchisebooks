@@ -6,7 +6,7 @@ type Variant = "primary" | "secondary" | "quiet" | "danger";
 type Size = "md" | "sm" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap select-none";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap select-none active:translate-y-px";
 const variants: Record<Variant, string> = {
   primary: "bg-accent text-white hover:bg-accent-strong",
   secondary: "bg-surface text-ink border border-line-strong hover:bg-sunken",

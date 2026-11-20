@@ -96,6 +96,11 @@ dialog::backdrop {
   border-bottom: 0;
   font-weight: 600;
 }
+.ledger.tight th,
+.ledger.tight td {
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
 .ledger tbody tr:hover td {
   background: rgb(239 237 231 / 0.45);
 }
@@ -108,6 +113,28 @@ input:-webkit-autofill:focus {
   box-shadow: 0 0 0 1000px var(--color-surface) inset;
   -webkit-text-fill-color: var(--color-ink);
   caret-color: var(--color-ink);
+}
+
+/* The sales page: smooth in-page links, ruled "ledger paper" behind the hero, and a calm FAQ opening. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+    interpolate-size: allow-keywords;
+  }
+  details[name="faq"]::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size 0.22s ease, content-visibility 0.22s allow-discrete;
+  }
+  details[name="faq"][open]::details-content {
+    block-size: auto;
+  }
+}
+
+.mk-ruled {
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgb(214 197 169 / 0.34) 31px, rgb(214 197 169 / 0.34) 32px);
+  mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 100%);
 }
 
 @keyframes shimmer {
