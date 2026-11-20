@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { ManageBillingForm } from "@/components/billing/forms";
 import { CloseAccountForm } from "@/components/settings/close-account";
 import { AddDpdLoginForm, RefreshDpdLoginButton, RemoveDpdLoginButton } from "@/components/settings/forms";
+import { ManageBillingForm, UpgradeToMaxButton } from "@/components/billing/forms";
+import { env } from "@/lib/env";
 import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm, BusinessNameForm, CategoryToggle, EditFranchiseButton, ScheduleForm, VoidRevenueButton } from "@/components/settings/forms";
 import { Badge, DefinitionList, Notice, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { DEFAULT_ANOMALY_CONFIG, resolveAnomalyConfig } from "@/lib/anomalies/detect";
@@ -40,6 +41,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const listedLogins = ctx.isOwner ? await listDpdLogins(createAdminClient(), accountId) : [];
   const { data: billing } = ctx.isOwner ? await supabase.from("user_billing").select("status, current_period_end, cancel_at_period_end, stripe_customer_id").eq("user_id", ctx.userId).maybeSingle() : { data: null };
   const plan = ctx.isOwner ? await currentPlan(supabase) : null;
+  const maxOffered = Boolean(env.stripeSecretKey() && env.stripeMaxPriceId());
   const config = resolveAnomalyConfig(s?.anomaly_config);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const optionFranchises = franchises.filter((f) => f.is_active).map((f) => ({ id: f.id, label: f.name ? `${f.fd_number} · ${f.name}` : f.fd_number }));
@@ -130,7 +132,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       ) : null}
 
       {ctx.isOwner && billing ? (
-        <Section id="plan" title="Subscription" description={`Your plan is ${PLAN_NAME[plan ?? "standard"]}: £${PLAN_PRICE_GBP[plan ?? "standard"]} a month for your account, however many franchises you add.${plan === "max" ? "" : ` Max (£${PLAN_PRICE_GBP.max} a month) adds your DPD history over the current and previous tax year, with trends, driver performance and rate checks. Change plan under Manage Billing.`}`}>
+        <Section id="plan" title="Subscription" description={`Your plan is ${PLAN_NAME[plan ?? "standard"]}: £${PLAN_PRICE_GBP[plan ?? "standard"]} a month for your account, however many franchises you add.${plan === "max" ? "" : ` Max (£${PLAN_PRICE_GBP.max} a month) adds your DPD history over the current and previous tax year, with trends, driver performance and rate checks. Upgrade with the button below.`}`}>
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1 text-sm">
@@ -145,7 +147,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 ) : null}
                 {billing.status === "past_due" ? <p className="text-warn">The last payment did not go through. Update your card to keep access.</p> : null}
               </div>
-              {billing.stripe_customer_id ? <ManageBillingForm /> : null}
+              <div className="flex flex-col items-stretch gap-2 sm:items-end">
+                {plan !== "max" && maxOffered ? <UpgradeToMaxButton hasSubscription={Boolean(billing.stripe_customer_id)} price={PLAN_PRICE_GBP.max} /> : null}
+                {billing.stripe_customer_id ? <ManageBillingForm /> : null}
+              </div>
             </div>
           </Panel>
         </Section>
