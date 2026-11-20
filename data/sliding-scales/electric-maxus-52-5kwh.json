@@ -1,11 +1,12 @@
 {
-  "name": "Electric Vehicle Sliding Scale - Maxus 52.5kWh",
+  "name": "ODF e-3.5 Tonne - Maxus 52.5kwh",
+  "printed_title": "Electric Vehicle Sliding Scale - Maxus 52.5kWh",
   "vehicle": {
     "type": "Maxus 52.5kWh",
     "fuel": "electric"
   },
   "source": "DPD sliding scale PDF supplied by the owner (Electric Vehicle Sliding Scale - Maxus 52.5kWh)",
-  "units": "pounds per stop (1.22 is \u00a31.22)",
+  "units": "pounds per stop (1.22 is £1.22)",
   "rule": "Round stops and miles down to the nearest printed row and column",
   "stopRows": [
     30,
@@ -1075,5 +1076,6 @@
     ]
   ],
   "verified": "Read from the PDF text; 880 cells (55 rows x 16 columns, 30 to 300 stops, 10 to 160 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed.",
-  "scheme": "not stated in the title"
+  "scheme": "ODF",
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
 }
