@@ -1,11 +1,12 @@
 {
-  "name": "2026 MB Sprinters Vehicle Rate Card",
+  "name": "ODF 3.5 Tonne - MB Sprinter 315 26",
+  "printed_title": "2026 MB Sprinters Vehicle Rate Card",
   "vehicle": {
     "type": "MB Sprinter 2026",
     "fuel": "not printed on the sheet"
   },
   "source": "DPD sheet supplied by the owner, titled '2026 MB Sprinters Vehicle Rate Card'. Its title says Rate Card, not Sliding Scale: the owner should confirm it is the sliding scale for this van.",
-  "units": "pounds per stop (1.58 is \u00a31.58)",
+  "units": "pounds per stop (1.58 is £1.58)",
   "rule": "Round stops and miles down to the nearest printed row and column",
   "stopRows": [
     5,
@@ -2024,5 +2025,6 @@
     ]
   ],
   "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed.",
-  "scheme": "not stated in the title"
+  "scheme": "ODF",
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
 }
