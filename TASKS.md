@@ -15,7 +15,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Ask an accountant to confirm the Max plan (records and reports only) stays outside regulated accountancy services, and how credit notes should be treated (you).
 - [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
 - [x] Add in-app Max upsells where a feature is locked, with its benefits (assistant, done: the four locked pages name the feature and what Max adds).
-- [ ] Audit the two DPD logins flagged as failed (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`): the owner reports both sign in on the portal (assistant checks the sync log; owner confirms).
+- [x] DPD logins: nothing to flag. One franchisee's login with 7 FD numbers had 2 FDs not loading; reconnecting and the fixes made all 7 load. Owner confirmed.
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
 - [x] Say whether the homepage should mention the Max plan (done: no; Max is offered in the app where a feature is locked, see the upsell task).
 
