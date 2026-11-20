@@ -1,11 +1,12 @@
 {
-  "name": "e-3.5tn 88kwh ODW sliding scale",
+  "name": "ODW e-3.5 Tonne - Maxus 88.5",
+  "printed_title": "e-3.5tn 88kwh ODW sliding scale",
   "vehicle": {
     "type": "e 3.5 tonne 88kWh ODW",
     "fuel": "electric (e-prefix, 88kWh)"
   },
   "source": "DPD sliding scale PDF supplied by the owner (e-3.5tn 88kwh ODW sliding scale)",
-  "units": "pounds per stop (1.3 is \u00a31.30)",
+  "units": "pounds per stop (1.3 is £1.30)",
   "rule": "Round stops and miles down to the nearest printed row and column",
   "stopRows": [
     5,
@@ -1414,5 +1415,6 @@
     ]
   ],
   "verified": "Read from the PDF text; 1,200 cells (60 rows x 20 columns, 5 to 300 stops, 10 to 200 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed.",
-  "scheme": "ODW"
+  "scheme": "ODW",
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
 }
