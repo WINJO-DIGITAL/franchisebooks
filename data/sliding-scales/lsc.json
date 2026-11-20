@@ -2023,5 +2023,6 @@
       0.01
     ]
   ],
-  "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles). Every cell prints 0.01, used exactly as printed. Not like the other scales: confirm what this sheet is before any report uses it."
+  "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles). Every cell prints 0.01, used exactly as printed. Not like the other scales: confirm what this sheet is before any report uses it.",
+  "scheme": "not stated in the title"
 }

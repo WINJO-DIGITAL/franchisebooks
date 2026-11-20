@@ -1413,5 +1413,6 @@
       1.48
     ]
   ],
-  "verified": "Read from the PDF text; 1200 cells (60 rows x 20 columns); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed."
+  "verified": "Read from the PDF text; 1200 cells (60 rows x 20 columns); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed.",
+  "scheme": "ODW"
 }

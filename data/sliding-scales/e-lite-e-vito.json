@@ -2023,5 +2023,6 @@
       1.82
     ]
   ],
-  "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles). Rates are used exactly as printed. Printed fact to be aware of: at 30 stops and 170 miles or more, the rate is higher than at 25 stops, then falls again at 35 stops."
+  "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles). Rates are used exactly as printed. Printed fact to be aware of: at 30 stops and 170 miles or more, the rate is higher than at 25 stops, then falls again at 35 stops.",
+  "scheme": "not stated in the title"
 }

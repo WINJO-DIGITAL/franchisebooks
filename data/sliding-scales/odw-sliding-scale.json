@@ -1,7 +1,7 @@
 {
   "name": "ODW sliding scale",
   "vehicle": {
-    "type": "ODW",
+    "type": "As printed: ODW sliding scale",
     "fuel": "not printed on the sheet"
   },
   "source": "DPD sheet supplied by the owner (ODW sliding scale). The title does not state the vehicle size or fuel: the owner should confirm which van it is.",
@@ -2023,5 +2023,6 @@
       1.68
     ]
   ],
-  "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed."
+  "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed.",
+  "scheme": "ODW"
 }

@@ -580,5 +580,6 @@
       1.28
     ]
   ],
-  "verified": "Read from the PDF text; 464 cells checked; rows and columns evenly stepped; more stops never raises the rate and more miles never lowers it"
+  "verified": "Read from the PDF text; 464 cells checked; rows and columns evenly stepped; more stops never raises the rate and more miles never lowers it",
+  "scheme": "not stated in the title"
 }

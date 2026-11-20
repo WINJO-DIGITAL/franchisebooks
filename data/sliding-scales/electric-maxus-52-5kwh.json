@@ -1074,5 +1074,6 @@
       1.25
     ]
   ],
-  "verified": "Read from the PDF text; 880 cells (55 rows x 16 columns, 30 to 300 stops, 10 to 160 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed."
+  "verified": "Read from the PDF text; 880 cells (55 rows x 16 columns, 30 to 300 stops, 10 to 160 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed.",
+  "scheme": "not stated in the title"
 }
