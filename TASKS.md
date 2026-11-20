@@ -9,21 +9,19 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ## Outstanding
 
 ### You (owner) to do
-- [ ] Apply the database migration `20261119000500_billing_plans.sql` (`npx supabase db push`), before anything else for Max (you).
-- [ ] Then set `STRIPE_MAX_PRICE_ID` on Vercel to `price_1Ude0fLEEs7hsljuOkJEGuQb` (test mode) so Max is offered, or ask the assistant to (you).
 - [ ] Remove the saved `api.stripe.com` credential from the assistant's environment settings, because it is a live key (you).
 - [ ] Review the new plan wording in the Terms page, section 10 (you).
 - [ ] Ask an accountant to confirm the Max plan (records and reports only) stays outside regulated accountancy services (you).
-- [ ] Before launch, say "go live" so the assistant sets up live Stripe prices, webhook and portal, then put the live keys on Vercel (you).
+- [ ] Say "go live" so the assistant sets up live Stripe prices, webhook and portal, then put the live keys on Vercel (you).
 - [ ] Decide whether CI should run only for `main` and pull requests, to save GitHub Actions minutes (you).
 - [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
 - [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise) (you).
 - [ ] Confirm with your accountant how credit notes should be treated (currently: money in, labelled) (you).
 - [ ] Give the assistant an email address to send a test driver invitation to (you).
-- [ ] Say "merge" when the working branch has new changes to take live (you).
 
 ### Assistant to do
-- [ ] Test a Max checkout, a Standard to Max change in the billing portal, and the first history reads, once the migration and price are in (assistant).
+- [ ] Check the Start Reading DPD button and the set-up checklist on a fresh test signup (assistant).
+- [ ] Test a Standard to Max change in the billing portal, and the first history reads on a Max test account (assistant).
 - [ ] Run the database, integration and end-to-end tests against a local Supabase stack for the Max changes (assistant).
 - [ ] Test a driver invitation and login end to end once there is a test address (assistant).
 
@@ -66,4 +64,5 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - Local database, integration and browser tests run and brought up to date.
 - Payment confirmation: a loading screen while Stripe's payment is recorded, then a Payment Confirmed screen before set-up.
 - Set-up checklist: the first read counts as done after a successful DPD read, even when the franchise has no payments.
-- Max plan (£99): plan recorded from the Stripe price, history reads over two tax years, Insights pages, plan changes in the billing portal.
+- Max plan (£99): plan recorded from the Stripe price, history reads over two tax years, Insights pages, plan changes in the billing portal. Live in test mode; merged to `main`.
+- Dashboard: Start Reading DPD button on the first set-up step, so the first read starts without going to Settings.
