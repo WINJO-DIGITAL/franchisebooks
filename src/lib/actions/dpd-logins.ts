@@ -105,3 +105,26 @@ export async function refreshDpdLoginAction(_prev: ActionState, formData: FormDa
   revalidatePath("/settings");
   return ok("Checking this login now. The result appears in the list in a minute or two: either its franchises and figures are updated, or the reason it could not sign in is shown.");
 }
+
+/**
+ * "Start my first read" on the dashboard: the same check and refresh as Settings, for every saved login, so nobody has to
+ * find the Settings page. Owner only.
+ */
+export async function startFirstReadAction(_prev: ActionState, _formData: FormData): Promise<ActionState> {
+  const ctx = await getContext();
+  if (!ctx.isOwner) return fail("Only the owner can start the first read.");
+  const admin = createAdminClient();
+  const { data: logins } = await admin.from("dpd_logins").select("id").eq("account_id", ctx.accountId);
+  if (!logins?.length) return fail("Add a DPD login first, then the first read can start.");
+  try {
+    for (const login of logins) {
+      await enqueueJob(admin, { accountId: ctx.accountId, type: "dpd_discovery", reportDate: londonToday(), trigger: "manual", requestedBy: ctx.userId, payload: { discoverFranchises: true, refreshLoginId: login.id } });
+    }
+    const started = await startWorkerRun();
+    if (!started.started) return fail("The first read is queued, but GitHub did not start it. It will run in tonight's sync.", started.message);
+  } catch (error) {
+    return fail("The first read could not be started. Please try again.", error instanceof Error ? error.message : null);
+  }
+  revalidatePath("/");
+  return ok("Reading your DPD account now. Your figures appear here in a few minutes.");
+}

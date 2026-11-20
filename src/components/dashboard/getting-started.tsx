@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
+import { startFirstReadAction } from "@/lib/actions/dpd-logins";
+import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Panel } from "@/components/ui/bits";
 import { buttonClass } from "@/components/ui/button";
 import type { ChecklistItem } from "@/lib/onboarding/steps";
@@ -32,7 +34,13 @@ export function GettingStarted({ items, driversNeedingRate = [] }: { items: Chec
                     <p className="text-sm text-ink-soft">{s.detail}</p>
                   </div>
                 </div>
-                {s.done ? null : (
+                {s.done ? null : s.key === "first-read" ? (
+                  <ActionForm action={startFirstReadAction} className="shrink-0">
+                    <SubmitButton variant={s.key === next ? "primary" : "secondary"} size="sm" pendingLabel="Starting…">
+                      Start Reading DPD <ArrowRight className="size-4" aria-hidden />
+                    </SubmitButton>
+                  </ActionForm>
+                ) : (
                   <Link href={s.href} className={`${buttonClass(s.key === next ? "primary" : "secondary", "sm")} shrink-0`}>
                     {s.cta} <ArrowRight className="size-4" aria-hidden />
                   </Link>
