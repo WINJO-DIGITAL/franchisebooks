@@ -5,7 +5,7 @@ import { PaymentConfirmed } from "@/components/billing/payment-confirmed";
 import { SubscribeForm } from "@/components/billing/forms";
 import { Notice } from "@/components/ui/bits";
 import { subscribeAudience } from "@/lib/billing/audience";
-import { PLAN_PRICE_GBP } from "@/lib/billing/status";
+import { PLAN_NAME, PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { env } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -52,7 +52,7 @@ export default async function SubscribePage({ searchParams }: { searchParams: Pr
       {params.checkout === "cancelled" ? <div className="mt-4"><Notice tone="warn" title="Payment Was Not Completed" detail="No charge was made. You can try again whenever you are ready." /></div> : null}
 
       <section className="mt-6 rounded-xl border border-line p-4">
-        <p className="text-sm font-semibold text-ink">Standard</p>
+        <p className="text-sm font-semibold text-ink">{PLAN_NAME.standard}</p>
         <p className="mt-2 text-2xl font-semibold tracking-tight">£{PLAN_PRICE_GBP.standard}<span className="text-base font-normal text-muted"> a month</span></p>
         <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
           <li>Syncs with the DPD portal every night</li>
@@ -67,7 +67,7 @@ export default async function SubscribePage({ searchParams }: { searchParams: Pr
           <p className="text-sm font-semibold text-ink">Max</p>
           <p className="mt-2 text-2xl font-semibold tracking-tight">£{PLAN_PRICE_GBP.max}<span className="text-base font-normal text-muted"> a month</span></p>
           <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
-            <li>Everything in Standard</li>
+            <li>Everything in {PLAN_NAME.standard}</li>
             <li>Your DPD figures back over the current and previous tax year</li>
             <li>Long-run trends, driver performance and rate checks</li>
           </ul>

@@ -3,7 +3,7 @@
 Working branch: `claude/awesome-goodall-4t6d6r`. `main` is deployed to production; merges to `main` need the owner's go-ahead.
 
 ## Objective
-A paid subscription (Standard £49, Max £99 a month per account) that reads each franchise's DPD figures every night and gives owners
+A paid subscription (Essential £49, Max £99 a month per account) that reads each franchise's DPD figures every night and gives owners
 income, expenses, driver pay and a report for each four-week period, with self-service sign-up and onboarding.
 
 ## Outstanding
@@ -20,13 +20,13 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 
 ### Assistant to do
 - [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
-- [ ] After the merge: test a Standard to Max change in the billing portal, and check the first history reads in the sync log (assistant).
+- [ ] After the merge: test an Essential to Max change in the billing portal, and check the first history reads in the sync log (assistant).
 - [ ] Test a driver invitation and login end to end once there is a test address (assistant).
 
 ## Current implementation (summary)
 - Next.js app with Supabase (Postgres, RLS) and a background worker that reads DPD with headless Chromium.
 - Per-account DPD logins (several allowed), encrypted with AES-256-GCM; shared portal map for every account.
-- Stripe Checkout subscription with two plans (Standard, Max), webhook, access gate (`BILLING_ENFORCED`), customer portal with plan changes.
+- Stripe Checkout subscription with two plans (Essential, Max), webhook, access gate (`BILLING_ENFORCED`), customer portal with plan changes.
 - Max plan: history reads over the current and previous tax year (a few periods a night), and Insights pages (trends, driver performance, rate checks).
 - Owner pages: dashboard, drivers, income, expenses, adjustments, reports, period check, sliding scale, insights (Max), data, settings.
 

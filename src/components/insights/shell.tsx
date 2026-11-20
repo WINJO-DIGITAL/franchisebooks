@@ -32,7 +32,7 @@ export function InsightsTabs({ active }: { active: (typeof TABS)[number]["href"]
   );
 }
 
-/** Shown in place of an Insights page to accounts on the Standard plan. */
+/** Shown in place of an Insights page to accounts on the Essential plan. */
 export function UpgradeToMax({ isOwner }: { isOwner: boolean }) {
   return (
     <Panel className="py-8 text-center">

@@ -86,7 +86,7 @@ export const env = {
   stripePriceId: () => stripeSetting("STRIPE_PRICE_ID"),
   /** The customer portal set up for this app (plan changes, card, invoices, cancel). Optional: without it Stripe's default is used. */
   stripePortalConfigurationId: () => stripeSetting("STRIPE_PORTAL_CONFIGURATION_ID"),
-  /** The Max plan (£99 a month). Optional: without it only the Standard plan is offered. */
+  /** The Max plan (£99 a month). Optional: without it only the Essential plan is offered. */
   stripeMaxPriceId: () => stripeSetting("STRIPE_MAX_PRICE_ID"),
   /** When true, the app asks for a paid subscription. Off by default so turning billing on is a deliberate step. */
   billingEnforced: () => optional("BILLING_ENFORCED") === "true",

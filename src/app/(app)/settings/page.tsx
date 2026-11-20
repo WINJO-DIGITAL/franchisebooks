@@ -6,7 +6,7 @@ import { AddCategoryForm, AddFranchiseForm, AddRevenueButton, AlertSettingsForm,
 import { Badge, DefinitionList, Notice, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { DEFAULT_ANOMALY_CONFIG, resolveAnomalyConfig } from "@/lib/anomalies/detect";
 import { currentPlan } from "@/lib/billing/plan";
-import { PLAN_PRICE_GBP } from "@/lib/billing/status";
+import { PLAN_NAME, PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { listDpdLogins } from "@/lib/dpd/logins";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
@@ -124,7 +124,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       ) : null}
 
       {ctx.isOwner && billing ? (
-        <Section title="Subscription" description={`Your plan is ${plan === "max" ? "Max" : "Standard"}: £${PLAN_PRICE_GBP[plan ?? "standard"]} a month for your account, however many franchises you add.${plan === "max" ? "" : ` Max (£${PLAN_PRICE_GBP.max} a month) adds your DPD history over the current and previous tax year, with trends, driver performance and rate checks. Change plan under Manage Billing.`}`}>
+        <Section title="Subscription" description={`Your plan is ${PLAN_NAME[plan ?? "standard"]}: £${PLAN_PRICE_GBP[plan ?? "standard"]} a month for your account, however many franchises you add.${plan === "max" ? "" : ` Max (£${PLAN_PRICE_GBP.max} a month) adds your DPD history over the current and previous tax year, with trends, driver performance and rate checks. Change plan under Manage Billing.`}`}>
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1 text-sm">

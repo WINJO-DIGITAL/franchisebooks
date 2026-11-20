@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { billingRowFromSubscription, planFromPriceId, PLAN_PRICE_GBP } from "@/lib/billing/status";
+import { billingRowFromSubscription, planFromPriceId, PLAN_NAME, PLAN_PRICE_GBP } from "@/lib/billing/status";
 
 const sub = (priceId: string) => ({
   id: "sub_1",
@@ -14,12 +14,16 @@ describe("billing plans", () => {
     expect(PLAN_PRICE_GBP).toEqual({ standard: 49, max: 99 });
   });
 
+  it("shows the stored plan 'standard' as Essential", () => {
+    expect(PLAN_NAME).toEqual({ standard: "Essential", max: "Max" });
+  });
+
   it("reads the Max plan from the Max price only", () => {
     expect(planFromPriceId("price_max", "price_max")).toBe("max");
     expect(planFromPriceId("price_std", "price_max")).toBe("standard");
   });
 
-  it("falls back to Standard when no Max price is configured", () => {
+  it("falls back to Essential when no Max price is configured", () => {
     expect(planFromPriceId("price_max", null)).toBe("standard");
     expect(planFromPriceId(undefined, "price_max")).toBe("standard");
   });

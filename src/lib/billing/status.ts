@@ -4,9 +4,15 @@
 
 export type BillingStatus = "incomplete" | "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "paused" | "comped";
 
-/** The plans. The amount charged is the Stripe price set in STRIPE_PRICE_ID (Standard) or STRIPE_MAX_PRICE_ID (Max). */
+/**
+ * The plans. The amount charged is the Stripe price set in STRIPE_PRICE_ID (Essential) or STRIPE_MAX_PRICE_ID (Max).
+ * The stored value for Essential stays "standard" (it is in the database); only the name people see is Essential.
+ */
 export const PLANS = ["standard", "max"] as const;
 export type Plan = (typeof PLANS)[number];
+
+/** The name each plan is shown under. */
+export const PLAN_NAME: Record<Plan, string> = { standard: "Essential", max: "Max" };
 
 /** Prices shown to people, for display only. */
 export const PLAN_PRICE_GBP: Record<Plan, number> = { standard: 49, max: 99 };
