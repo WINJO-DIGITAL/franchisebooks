@@ -1,11 +1,12 @@
 {
-  "name": "e-Lite e-Vito Sliding Scale",
+  "name": "ODF e-Lite - EVito 23",
+  "printed_title": "e-Lite e-Vito Sliding Scale",
   "vehicle": {
     "type": "e-Lite e-Vito",
     "fuel": "not printed on the sheet"
   },
   "source": "DPD sliding scale PDF supplied by the owner (e-Lite e-Vito Sliding Scale)",
-  "units": "pounds per stop (2.96 is \u00a32.96)",
+  "units": "pounds per stop (2.96 is £2.96)",
   "rule": "Round stops and miles down to the nearest printed row and column",
   "stopRows": [
     5,
@@ -2024,5 +2025,6 @@
     ]
   ],
   "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles). Rates are used exactly as printed. Printed fact to be aware of: at 30 stops and 170 miles or more, the rate is higher than at 25 stops, then falls again at 35 stops.",
-  "scheme": "not stated in the title"
+  "scheme": "ODF",
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
 }
