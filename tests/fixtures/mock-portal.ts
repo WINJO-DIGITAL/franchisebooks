@@ -18,6 +18,11 @@ export interface MockPortalOptions {
   corruptPdf?: boolean;
   /** Dates for which no report exists. */
   missingDates?: string[];
+  /**
+   * Show a Payments page with Year and Period drop-downs, like DPD's, listing these period texts
+   * (for example "9th November 2026 - 6th December 2026"). Its Year drop-down lists these years.
+   */
+  periods?: { years: string[]; options: string[] };
 }
 
 export interface MockPortal {
@@ -77,6 +82,7 @@ export async function startMockPortal(options: MockPortalOptions): Promise<MockP
     if (url.pathname === `/franchise/${options.fdNumber}`) {
       return html(200, page("Franchise", `<nav><a href="/logout">Log out</a></nav><h1>Franchise ${options.fdNumber}</h1>
         <a href="/franchise/${options.fdNumber}/earnings">Daily earnings</a> <a href="/franchise/${options.fdNumber}/earnings">Delete statement</a>
+        ${options.periods ? `<a href="/franchise/${options.fdNumber}/payments">Payments</a>` : ""}
         <form method="post" action="/approve"><button type="submit">Approve</button></form>`));
     }
     if (url.pathname === `/franchise/${options.fdNumber}/earnings`) {
@@ -84,6 +90,13 @@ export async function startMockPortal(options: MockPortalOptions): Promise<MockP
       const hasReport = !(options.missingDates ?? []).includes(date);
       return html(200, page("Earnings", `<nav><a href="/logout">Log out</a></nav><h1>Daily earnings ${options.fdNumber}</h1><p>Date: ${date}</p>
         ${hasReport ? `<a href="/download/${date}.pdf">${options.downloadLabel ?? "Download PDF"}</a>` : "<p>No report for this date.</p>"}`));
+    }
+    if (options.periods && url.pathname === `/franchise/${options.fdNumber}/payments`) {
+      const opts = (list: string[]) => list.map((o) => `<option>${o}</option>`).join("");
+      return html(200, page("Payments", `<nav><a href="/logout">Log out</a></nav><h1>Payments ${options.fdNumber}</h1>
+        <label for="y">Year</label><select id="y">${opts(options.periods.years)}</select>
+        <label for="pp">Period</label><select id="pp">${opts(options.periods.options)}</select>
+        <table><tr><th>Date</th><th>Driver</th><th>Total</th></tr></table>`));
     }
     if (url.pathname.startsWith("/download/")) {
       const date = url.pathname.slice("/download/".length, -4);

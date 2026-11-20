@@ -1,9 +1,14 @@
 name: CI
 
+# Runs when main changes and on pull requests, not on every push to a working branch, to keep within the free
+# GitHub Actions minutes. Documentation-only changes are skipped. Run it by hand from the Actions tab when needed.
 on:
   push:
-    branches: [main, ops-qa, "claude/**"]
+    branches: [main]
+    paths-ignore: ["**/*.md", "docs/**"]
   pull_request:
+    paths-ignore: ["**/*.md", "docs/**"]
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}

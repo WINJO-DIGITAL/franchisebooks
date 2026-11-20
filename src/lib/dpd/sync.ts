@@ -29,6 +29,8 @@ import { ownerEmail } from "@/lib/notify/email";
 import { listDpdLogins, loadAllDpdLogins, loadDpdLoginById, recordLoginOutcome } from "./logins";
 import { ownPortalMap } from "./readiness";
 import { SHARED_PORTAL_MAP } from "./shared-map";
+import { accountPlan } from "@/lib/billing/plan";
+import { queueHistoryReads } from "@/lib/history/backfill";
 
 /** Keeps one signed-in session open across consecutive jobs so several franchises need only one sign-in. */
 export class PortalSessionPool {
@@ -313,6 +315,11 @@ async function runLoginFranchiseDiscovery(db: AdminClient, job: Job): Promise<Jo
   }
   for (const franchiseId of readIds) {
     await enqueueJob(db, { accountId: job.account_id, type: "dpd_sync", franchiseId, reportDate: londonToday(), trigger: "manual", requestedBy: job.requested_by ?? undefined });
+  }
+  // Max plan: franchises found here start their history straight away (queued after the reads above, so those run first),
+  // rather than waiting for the evening schedule.
+  if (newFranchiseIds.length > 0 && (await accountPlan(db, job.account_id)) === "max") {
+    await queueHistoryReads(db, job.account_id);
   }
   if (succeeded === 0 && firstError) throw firstError;
   const parts = [`${newFranchiseIds.length} new franchise${newFranchiseIds.length === 1 ? "" : "s"} found`];

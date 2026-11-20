@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { BillingNotConfigured, createCheckoutUrl, createPortalUrl } from "@/lib/billing/stripe";
+import { AlreadySubscribed, BillingNotConfigured, createCheckoutUrl, createPortalUrl } from "@/lib/billing/stripe";
 import { subscribeAudience } from "@/lib/billing/audience";
 import type { Plan } from "@/lib/billing/status";
 import { env } from "@/lib/env";
@@ -26,6 +26,7 @@ export async function startCheckout(_prev: ActionState, formData: FormData): Pro
     url = await createCheckoutUrl(createAdminClient(), { id: data.user.id, email: data.user.email ?? "" }, plan);
   } catch (error) {
     if (error instanceof BillingNotConfigured) return fail(NOT_CONFIGURED);
+    if (error instanceof AlreadySubscribed) redirect("/subscribe?checkout=done");
     return fail("We could not open the payment page. Please try again.", error instanceof Error ? error.message : null);
   }
   redirect(url);

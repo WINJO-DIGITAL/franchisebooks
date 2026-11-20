@@ -53,3 +53,11 @@ describe("subscriptions from other products in the same Stripe account", () => {
     expect(isOurSubscription({ ...sub("price_std"), metadata: {} }, [null, null])).toBe(false);
   });
 });
+
+describe("one subscription per person", () => {
+  it("treats any subscription still being paid for as live, so checkout does not start a second", async () => {
+    const { hasLiveStatus } = await import("@/lib/billing/stripe");
+    for (const s of ["active", "trialing", "past_due", "incomplete", "unpaid"]) expect(hasLiveStatus(s), s).toBe(true);
+    for (const s of ["canceled", "incomplete_expired", "paused"]) expect(hasLiveStatus(s), s).toBe(false);
+  });
+});

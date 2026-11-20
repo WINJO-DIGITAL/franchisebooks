@@ -11,6 +11,13 @@ export class BillingNotConfigured extends Error {
   }
 }
 
+/** The person already has a Franchise Books subscription, so a new checkout would charge them twice. */
+export class AlreadySubscribed extends Error {
+  constructor() {
+    super("There is already a subscription on this login.");
+  }
+}
+
 export function getStripe(): Stripe | null {
   const key = env.stripeSecretKey();
   return key ? new Stripe(key) : null;
@@ -50,6 +57,14 @@ export async function createCheckoutUrl(db: AdminClient, user: { id: string; ema
   const price = plan === "max" ? env.stripeMaxPriceId() : env.stripePriceId();
   if (!stripe || !price) throw new BillingNotConfigured();
   const { data: existing } = await db.from("user_billing").select("stripe_customer_id").eq("user_id", user.id).maybeSingle();
+  // Never a second subscription: if the webhook is slow and the person tries again, or comes back later, they are already paying.
+  // Our checkout puts the user's id on every subscription, so Stripe is asked directly rather than waiting for the webhook.
+  const ours = [env.stripePriceId(), env.stripeMaxPriceId()];
+  const found = await stripe.subscriptions.search({ query: `metadata['user_id']:'${user.id}'`, limit: 10 });
+  const fromCustomer = existing?.stripe_customer_id
+    ? (await stripe.subscriptions.list({ customer: existing.stripe_customer_id, status: "all", limit: 10 })).data
+    : [];
+  if ([...found.data, ...fromCustomer].some((s) => hasLiveStatus(s.status) && isOurSubscription(s, ours))) throw new AlreadySubscribed();
   const base = env.appUrl();
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -88,4 +103,9 @@ export function isOurSubscription(sub: SubscriptionLike, ourPriceIds: (string | 
   const prices = new Set(ourPriceIds.filter((p): p is string => Boolean(p)));
   if (sub.items?.data.some((item) => item.price?.id && prices.has(item.price.id))) return true;
   return Boolean(sub.metadata?.user_id);
+}
+
+/** A subscription in one of these states is still being paid for (or about to be), so another must not be started. */
+export function hasLiveStatus(status: string): boolean {
+  return ["active", "trialing", "past_due", "incomplete", "unpaid"].includes(status);
 }

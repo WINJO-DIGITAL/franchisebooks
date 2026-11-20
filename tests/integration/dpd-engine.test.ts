@@ -193,3 +193,57 @@ describe("DPD portal automation (against a synthetic mock portal)", () => {
     expect(await sql("select id from public.daily_earnings where account_id = $1 and report_date = '2026-11-20'", [t.accountId])).toEqual([]);
   }, 90_000);
 });
+
+describe("Max plan history reads (period drop-down)", () => {
+  const PERIOD_MAP = (): PortalMap => portalMapSchema.parse({
+    version: 1,
+    delayMs: 250,
+    franchise: { mode: "url", template: "/franchise/{fd}" },
+    reports: [{
+      id: "payments", label: "Payments", kind: "earnings",
+      navigate: [{ action: "click", target: { role: "link", name: "Payments" } }],
+      date: { mode: "period_select" },
+      collect: { mode: "table" },
+    }],
+  });
+
+  async function setupPeriods() {
+    portal = await startMockPortal({ fdNumber: t.fdNumber, periods: { years: ["2026", "2020"], options: ["9th November 2026 - 6th December 2026"] } });
+    process.env.DPD_PORTAL_URL = portal.url + "/login";
+    await sql(
+      `insert into public.integration_connections (account_id, provider, status, config) values ($1, 'dpd', 'connected', $2::jsonb)
+       on conflict (account_id, provider) do update set config = excluded.config`, [t.accountId, JSON.stringify({ portalMap: PERIOD_MAP() })],
+    );
+    await saveDpdLogin(db, t.accountId, null, { username: "test.user", password: "correct-horse" });
+  }
+
+  async function runPeriodSync(date: string, payload: Record<string, unknown>) {
+    const { job } = await enqueueJob(db, { accountId: t.accountId, type: "dpd_sync", franchiseId: t.franchiseId, reportDate: date, trigger: "schedule", payload });
+    await sql("update public.import_jobs set status = 'running', attempts = 1, locked_at = now() where id = $1", [job.id]);
+    const { data } = await db.from("import_jobs").select("*").eq("id", job.id).single();
+    const sessions = new PortalSessionPool();
+    try {
+      await runJob(db, data!, { portalPool: sessions });
+    } finally {
+      await sessions.release();
+    }
+    const [after] = await sql<{ status: string; result: Record<string, unknown> | null }>("select status, result from public.import_jobs where id = $1", [job.id]);
+    return after!;
+  }
+
+  it("records a period DPD does not list as not listed, finished and not retried", async () => {
+    await setupPeriods();
+    const after = await runPeriodSync("2020-01-06", { history: true });
+    expect(after.status).toBe("succeeded");
+    expect(after.result).toMatchObject({ periodListed: false, history: true });
+    expect(portal!.writeHits()).toBe(0);
+  }, 180_000);
+
+  it("still treats a missing period as a problem on a normal read", async () => {
+    await setupPeriods();
+    const after = await runPeriodSync("2020-02-03", {});
+    expect(after.status).not.toBe("succeeded");
+    expect(after.result?.periodListed).toBeUndefined();
+  }, 180_000);
+});
+

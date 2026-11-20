@@ -11,6 +11,7 @@ export const NAV_ROUTES = [
   { href: "/adjustments", label: "Adjustments" },
   { href: "/reports", label: "Reports" },
   { href: "/check", label: "Period Check" },
+  { href: "/insights", label: "Insights" },
   { href: "/sliding-scale", label: "Sliding Scale" },
   { href: "/data", label: "Data & Integrations" },
   { href: "/settings", label: "Settings" },
@@ -20,6 +21,8 @@ export const NAV_ROUTES = [
 export const EXTRA_ROUTES = [
   { href: "/menu", label: "More" },
   { href: "/alerts", label: "Alerts" },
+  { href: "/insights/drivers", label: "Driver Performance" },
+  { href: "/insights/rates", label: "Rate Checks" },
 ] as const;
 
 export const AUTH_DIR = "tests/e2e/.auth";
