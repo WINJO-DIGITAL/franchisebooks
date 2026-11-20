@@ -12,6 +12,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Reconnect the Supabase connector to the Franchise Books project (it now shows other projects), so the assistant can read the live sync log and history reads (you).
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
 - [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
+- [ ] Run the pay rules SQL in the Supabase SQL Editor (`supabase/migrations/20261120000200_driver_pay_rules.sql`), then enter each driver's day rate with its extras under Drivers, Set Pay Rate (you).
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
 
 ### Assistant to do
