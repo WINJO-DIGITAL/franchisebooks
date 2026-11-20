@@ -1,11 +1,12 @@
 {
-  "name": "LSC",
+  "name": "ODW 3.5 Tonne - LSC",
+  "printed_title": "LSC",
   "vehicle": {
     "type": "LSC (not stated)",
     "fuel": "not printed on the sheet"
   },
   "source": "DPD sheet supplied by the owner, titled 'LSC'. Every cell prints 0.01. The owner should confirm what LSC is and whether it is a sliding-scale rate or a separate supplement.",
-  "units": "pounds per stop (0.01 is \u00a30.01)",
+  "units": "pounds per stop (0.01 is £0.01)",
   "rule": "Round stops and miles down to the nearest printed row and column",
   "stopRows": [
     5,
@@ -2024,5 +2025,6 @@
     ]
   ],
   "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles). Every cell prints 0.01, used exactly as printed. Not like the other scales: confirm what this sheet is before any report uses it.",
-  "scheme": "not stated in the title"
+  "scheme": "ODW",
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
 }
