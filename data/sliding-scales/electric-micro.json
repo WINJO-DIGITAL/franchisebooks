@@ -5,7 +5,7 @@
     "fuel": "electric"
   },
   "source": "DPD sliding scale PDF supplied by the owner (Electric Vehicle Sliding Scale - Micro)",
-  "units": "pounds per stop (1.69 is \u00a31.69)",
+  "units": "pounds per stop (1.69 is £1.69)",
   "rule": "Round stops and miles down to the nearest printed row and column",
   "stopRows": [
     60,
@@ -583,5 +583,6 @@
   "verified": "Read from the PDF text; 464 cells checked; rows and columns evenly stepped; more stops never raises the rate and more miles never lowers it",
   "scheme": "ODF",
   "printed_title": "Electric Vehicle Sliding Scale - Micro",
-  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW.",
+  "effective_date": "1970-01-01"
 }

@@ -2026,5 +2026,6 @@
   ],
   "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles); evenly stepped; more miles never lowers the rate. Rates are used exactly as printed. Printed fact to be aware of: in 16 places, a higher stop count has a higher rate than the row above it (for example 85 stops at 10 miles is 1.31 and 90 stops is 1.32).",
   "scheme": "ODF",
-  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW.",
+  "effective_date": "2026-01-05"
 }
