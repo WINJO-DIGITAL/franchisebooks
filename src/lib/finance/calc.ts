@@ -136,6 +136,8 @@ export interface PeriodInput {
   earningsMeaning?: EarningsMeaning;
   /** Day rates, used to work out wages when earningsMeaning is "route_income". */
   dayRates?: DayRate[];
+  /** The days each driver worked just before the period, so a run of days in a row can carry into it (only read when a rate needs it). */
+  workedBefore?: Map<string, ISODate[]>;
   /** Extra DPD payments from invoices; counted as income in "route_income" mode only. */
   otherPayments?: OtherPaymentRow[];
 }
@@ -499,7 +501,7 @@ function summariseFranchise(
       if (days === 0) {
         wage = adj.net;
       } else if (acc.driverId && input.dayRates) {
-        const w = wageForDriver(acc.driverId, [...acc.dates], input.dayRates, acc.stopsByDate);
+        const w = wageForDriver(acc.driverId, [...acc.dates], input.dayRates, acc.stopsByDate, input.workedBefore?.get(acc.driverId) ?? []);
         wage = w.wage + adj.net;
         wageComplete = w.complete;
       } else {

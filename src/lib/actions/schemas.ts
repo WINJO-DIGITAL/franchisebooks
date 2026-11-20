@@ -31,3 +31,34 @@ export const registration = z
   .optional()
   .transform((v) => (v ? v.toUpperCase().replace(/[^A-Z0-9]/g, "") : null))
   .transform((v) => (v === "" ? null : v));
+
+/** An optional money amount typed by the owner. Empty means "not set" (null); otherwise pence. */
+export const optionalMoneyAmount = z
+  .string()
+  .optional()
+  .transform((value, ctx) => {
+    const text = (value ?? "").trim();
+    if (text === "") return null;
+    const pence = parseMoney(text);
+    if (pence == null || pence < 0) {
+      ctx.addIssue({ code: "custom", message: "Enter an amount in pounds and pence, for example 1 or 1.50." });
+      return z.NEVER;
+    }
+    return pence;
+  });
+
+/** An optional whole number between `min` and `max`. Empty means "not set" (null). */
+export const optionalWholeNumber = (min: number, max: number) =>
+  z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      const text = (value ?? "").trim();
+      if (text === "") return null;
+      const n = Number(text);
+      if (!Number.isInteger(n) || n < min || n > max) {
+        ctx.addIssue({ code: "custom", message: `Enter a whole number from ${min} to ${max}.` });
+        return z.NEVER;
+      }
+      return n;
+    });

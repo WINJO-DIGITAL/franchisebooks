@@ -80,13 +80,20 @@ export async function renderDriverStatementPdf(s: StatementContent): Promise<Buf
   };
   row(cols.map((c) => c.title), { bold: true, band: true, color: MUTED });
   for (const r of s.rows) {
-    const rate = r.rate.basis === "stop" ? `${money(r.rate.amount)} a stop` : `${money(r.rate.amount)} a day`;
+    const star = r.rate.runRate ? "*" : "";
+    const rate = r.rate.basis === "stop" ? `${money(r.rate.amount)} a stop` : r.rate.extra > 0 ? `${money(r.rate.amount)}${star} + ${money(r.rate.extra)}` : `${money(r.rate.amount)}${star} a day`;
     row([formatUkDate(r.date), r.route ?? "-", count(r.stops), count(r.parcels), rate, money(r.pay)]);
   }
   if (s.rows.length === 0) row(["No days worked", "", "", "", "", ""], { color: MUTED });
   doc.moveTo(MARGIN, y).lineTo(MARGIN + CONTENT, y).lineWidth(0.5).strokeColor(LINE).stroke();
   y += 3;
   row([`${s.rows.length} day${s.rows.length === 1 ? "" : "s"}`, "", count(s.rows.reduce((a, r) => a + (r.stops ?? 0), 0)), count(s.rows.reduce((a, r) => a + (r.parcels ?? 0), 0)), "Pay for days", money(s.dayPay)], { bold: true });
+
+  for (const note of s.notes) {
+    y += 2;
+    doc.font("Helvetica").fontSize(size - 0.5).fillColor(MUTED).text(note, MARGIN + 3, y, { width: CONTENT - 6, lineBreak: false, ellipsis: true });
+    y += rowH - 2;
+  }
 
   // ── Adjustments and cover ──
   y += 8;

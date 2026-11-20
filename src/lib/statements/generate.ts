@@ -1,8 +1,9 @@
 import "server-only";
 import { londonToday } from "@/lib/dates";
-import { loadAdjustments, loadEarnings } from "@/lib/data/period";
+import { dayRateFromRow, readDayRateRows } from "@/lib/data/day-rates";
+import { loadAdjustments, loadEarnings, loadWorkedBefore } from "@/lib/data/period";
 import { periodLabel, type DpdPeriod } from "@/lib/finance/periods";
-import type { DayRate } from "@/lib/finance/wages";
+import { lookBackDays } from "@/lib/finance/wages";
 import { fromDb, toDb } from "@/lib/money";
 import type { AdminClient } from "@/lib/supabase/admin";
 import type { JsonObject } from "@/lib/supabase/json";
@@ -38,11 +39,13 @@ export async function planDriverStatements(db: AdminClient, input: { accountId: 
   if (franchise.error) throw new Error(`Could not read the franchise: ${franchise.error.message}`);
   const driverIds = [...new Set([...earnings.map((e) => e.driverId), ...adjustments.map((a) => a.driverId)].filter((id): id is string => !!id))];
   if (driverIds.length === 0) return [];
-  const [{ data: drivers }, { data: rates }] = await Promise.all([
+  const [{ data: drivers }, rateRows] = await Promise.all([
     db.from("drivers").select("id, display_name, vat_number, self_billing_agreement, statement_no").eq("account_id", input.accountId).in("id", driverIds),
-    db.from("driver_day_rates").select("driver_id, day_rate, effective_from, pay_basis").eq("account_id", input.accountId).in("driver_id", driverIds),
+    readDayRateRows((columns) => db.from("driver_day_rates").select(columns).eq("account_id", input.accountId).in("driver_id", driverIds)),
   ]);
-  const dayRates: DayRate[] = (rates ?? []).map((r) => ({ driverId: r.driver_id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from, basis: r.pay_basis === "stop" ? "stop" : "day" }));
+  const dayRates = rateRows.map((r) => dayRateFromRow(r));
+  // A run of days in a row can begin in the last period, so read the days just before this one when a rate needs it.
+  const workedBefore = await loadWorkedBefore(db, { accountId: input.accountId, from: input.period.start, days: lookBackDays(dayRates), driverIds });
   const issuedOn = londonToday();
   return (drivers ?? [])
     .sort((a, b) => a.display_name.localeCompare(b.display_name, "en-GB"))
@@ -60,6 +63,7 @@ export async function planDriverStatements(db: AdminClient, input: { accountId: 
           earnings: earnings.filter((e) => e.driverId === d.id),
           adjustments: adjustments.filter((a) => a.driverId === d.id),
           dayRates,
+          workedBefore: workedBefore.get(d.id) ?? [],
           issuedOn,
         }),
       };

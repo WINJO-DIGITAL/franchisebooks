@@ -52,7 +52,13 @@ The business is VAT registered, so every figure in the app is **net of VAT**: VA
 * **Wage** for a period = the sum, over each day the driver worked, of the day rate in force on that day. A day worked on several routes counts once.
 * A worked day with **no rate in force** is never counted as zero. The wage is shown as *incomplete* and the missing dates are listed.
 * The wage is a driver cost. It is separate from franchise revenue, which is entered on its own.
-* Code: `src/lib/finance/wages.ts` (tested in `tests/unit/wages.test.ts`), table `driver_day_rates`.
+* **Pay rules (optional, per driver, set by the owner).** A day rate can carry two extras, entered in Set Pay Rate:
+  * **Extra pay per stop:** each stop over a number of stops in a day pays an extra amount. A £120 day with £1 for each stop over 110 pays £130 for 120 stops. The stops are the day's stops summed across the driver's routes.
+  * **Days in a row:** after a number of days in a row, the day pays a different rate. £120 a day with £125 from the sixth day in a row pays £120 for days 1 to 5 and £125 for day 6 and every day after that in the run, with the extra for stops on top. A day with no work in between starts the count again. The count looks back across the period boundary, so a run that began in the last period carries on.
+  * The days-in-a-row rate is used as entered, even if it is lower than the day rate.
+  * A day that needs a stop count (extra pay per stop) and has none is **not priced**: the wage is incomplete and the date is listed, as for a missing rate. A per-stop rate has no extras.
+  * Statements show each day's working (the day rate used, a star for a days-in-a-row day, and the extra) and a note saying what the extras are.
+* Code: `src/lib/finance/wages.ts` (`priceDay`, `dayInARowByDate`; tested in `tests/unit/wages.test.ts` and `tests/unit/pay-rules.test.ts`), shared reader `src/lib/data/day-rates.ts`, table `driver_day_rates` (migration `20261120000200_driver_pay_rules.sql`; the app reads without the new columns until the migration is applied).
 
 ## Revenue
 

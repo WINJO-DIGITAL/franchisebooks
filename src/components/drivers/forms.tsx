@@ -219,6 +219,7 @@ export function LinkDriverForm({ franchiseId, driverKey, sourceName, drivers }: 
 
 export function SetDayRateForm({ driverId, today }: { driverId: string; today: string }) {
   const [open, setOpen] = useState(false);
+  const [basis, setBasis] = useState<"day" | "stop">("day");
   return (
     <>
       <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Set Pay Rate</Button>
@@ -228,14 +229,42 @@ export function SetDayRateForm({ driverId, today }: { driverId: string; today: s
             <>
               <input type="hidden" name="driverId" value={driverId} />
               <Field label="Paid by" hint="Per day pays once for each day worked. Per stop pays for every stop on that day.">
-                <Select name="payBasis" defaultValue="day">
+                <Select name="payBasis" value={basis} onChange={(e) => setBasis(e.target.value === "stop" ? "stop" : "day")}>
                   <option value="day">Per day worked</option>
                   <option value="stop">Per stop</option>
                 </Select>
               </Field>
-              <Field label="Amount (£)" hint="A day rate such as 160, or a stop rate such as 0.85." error={state.fieldErrors?.dayRate}>
+              <Field label="Amount (£)" hint={basis === "day" ? "The day rate, such as 120." : "The rate for each stop, such as 0.85."} error={state.fieldErrors?.dayRate}>
                 <Input name="dayRate" inputMode="decimal" required />
               </Field>
+              {basis === "day" ? (
+                <>
+                  <fieldset className="rounded-lg border border-line p-3">
+                    <legend className="px-1 text-sm font-medium">Extra Pay per Stop (Optional)</legend>
+                    <p className="mb-3 text-xs text-muted">For a £120 day with £1 for each stop over 110, enter 110 and 1.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="After this many stops" error={state.fieldErrors?.bonusAfterStops}>
+                        <Input name="bonusAfterStops" inputMode="numeric" placeholder="110" />
+                      </Field>
+                      <Field label="Extra per stop (£)" error={state.fieldErrors?.bonusPerStop}>
+                        <Input name="bonusPerStop" inputMode="decimal" placeholder="1" />
+                      </Field>
+                    </div>
+                  </fieldset>
+                  <fieldset className="rounded-lg border border-line p-3">
+                    <legend className="px-1 text-sm font-medium">Days in a Row (Optional)</legend>
+                    <p className="mb-3 text-xs text-muted">For £125 from the sixth day in a row, enter 5 and 125. Days with no work in between start the count again.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="After this many days" error={state.fieldErrors?.streakAfterDays}>
+                        <Input name="streakAfterDays" inputMode="numeric" placeholder="5" />
+                      </Field>
+                      <Field label="Day rate then (£)" error={state.fieldErrors?.streakDayRate}>
+                        <Input name="streakDayRate" inputMode="decimal" placeholder="125" />
+                      </Field>
+                    </div>
+                  </fieldset>
+                </>
+              ) : null}
               <Field label="Applies from" hint="Days worked on or after this date use this rate." error={state.fieldErrors?.effectiveFrom}>
                 <Input name="effectiveFrom" type="date" defaultValue={today} max={today} required />
               </Field>

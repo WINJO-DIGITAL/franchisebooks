@@ -6,11 +6,12 @@
 
 import { isBusinessCostCategory } from "@/lib/finance/cost-summary";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { ISODate } from "@/lib/dates";
+import { addDays, type ISODate } from "@/lib/dates";
+import { dayRateFromRow, readDayRateRows } from "./day-rates";
 import type {
   AdjustmentRow, AdjustmentType, CostAllocation, CostRow, CoverRow, EarningRow, EarningsMeaning, OtherPaymentRow, PeriodInput, RevenueAllocationBasis, RevenueRow,
 } from "@/lib/finance/calc";
-import type { DayRate } from "@/lib/finance/wages";
+import { lookBackDays, type DayRate } from "@/lib/finance/wages";
 import { DAILY_PAYMENT_LINE } from "@/lib/ingest/invoice";
 import { fromDb, fromDbNullable, type Pence } from "@/lib/money";
 import type { Database } from "@/lib/supabase/database.types";
@@ -341,8 +342,41 @@ export async function loadEarningsMeaning(db: Db, accountId: string): Promise<Ea
 
 /** Every day rate the account has set, newest last. Wages pick the rate in force on each day worked. */
 export async function loadDayRates(db: Db, accountId: string): Promise<DayRate[]> {
-  const rows = await fetchAll(() => db.from("driver_day_rates").select("driver_id, day_rate, effective_from, pay_basis").eq("account_id", accountId).order("effective_from").order("id"));
-  return rows.map((r) => ({ driverId: r.driver_id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from, basis: r.pay_basis === "stop" ? "stop" : "day" }));
+  const rows = await readDayRateRows((columns) => db.from("driver_day_rates").select(columns).eq("account_id", accountId).order("effective_from").order("id"));
+  return rows.map((r) => dayRateFromRow(r));
+}
+
+/**
+ * The days each driver worked in the days just before `from`, so a run of days in a row can carry into the period. It is read only
+ * when a rate has a days-in-a-row rule: `days` is zero otherwise, and nothing is read.
+ */
+export async function loadWorkedBefore(
+  db: Db,
+  filter: { accountId: string; from: ISODate; days: number; driverIds?: string[] },
+): Promise<Map<string, ISODate[]>> {
+  const out = new Map<string, ISODate[]>();
+  if (filter.days <= 0 || (filter.driverIds && filter.driverIds.length === 0)) return out;
+  const rows = await fetchAll(() => {
+    let q = db
+      .from("daily_earnings")
+      .select("driver_id, report_date")
+      .eq("account_id", filter.accountId)
+      .eq("is_current", true)
+      .gte("report_date", addDays(filter.from, -filter.days))
+      .lt("report_date", filter.from)
+      .not("driver_id", "is", null)
+      .order("report_date")
+      .order("id");
+    if (filter.driverIds) q = q.in("driver_id", filter.driverIds);
+    return q;
+  });
+  for (const r of rows) {
+    if (!r.driver_id) continue;
+    const list = out.get(r.driver_id) ?? [];
+    list.push(r.report_date);
+    out.set(r.driver_id, list);
+  }
+  return out;
 }
 
 export interface OtherPaymentDetail extends OtherPaymentRow {
@@ -447,5 +481,6 @@ export async function loadPeriodData(db: Db, filter: PeriodFilter): Promise<Peri
     loadDayRates(db, filter.accountId),
     loadOtherPayments(db, filter),
   ]);
-  return { from: filter.from, to: filter.to, earnings, adjustments, costs, covers, revenue, driverNames, revenueAllocationBasis: basis, earningsMeaning, dayRates, otherPayments };
+  const workedBefore = await loadWorkedBefore(db, { accountId: filter.accountId, from: filter.from, days: lookBackDays(dayRates) });
+  return { from: filter.from, to: filter.to, earnings, adjustments, costs, covers, revenue, driverNames, revenueAllocationBasis: basis, earningsMeaning, dayRates, workedBefore, otherPayments };
 }

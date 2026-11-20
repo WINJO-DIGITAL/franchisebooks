@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getContext } from "@/lib/context";
 import { normaliseName } from "@/lib/ingest/match";
 import { dbFailure, fail, ok, parseForm, type ActionState } from "./helpers";
-import { moneyAmount, isoDate, optionalIsoDate, optionalText, optionalUuid, registration, uuid } from "./schemas";
+import { moneyAmount, isoDate, optionalIsoDate, optionalMoneyAmount, optionalText, optionalUuid, optionalWholeNumber, registration, uuid } from "./schemas";
 import { toDb } from "@/lib/money";
 
 const driverFields = {
@@ -194,6 +194,11 @@ const dayRateSchema = z.object({
   dayRate: moneyAmount,
   effectiveFrom: isoDate,
   note: optionalText(500),
+  // Optional extras for a day rate: extra pay per stop over a number of stops, and a different day rate after some days in a row.
+  bonusAfterStops: optionalWholeNumber(0, 1000),
+  bonusPerStop: optionalMoneyAmount,
+  streakAfterDays: optionalWholeNumber(1, 30),
+  streakDayRate: optionalMoneyAmount,
 });
 
 export async function setDayRate(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -204,6 +209,22 @@ export async function setDayRate(_prev: ActionState, formData: FormData): Promis
   const d = parsed.data;
   if (d.effectiveFrom > ctx.today) return fail("A pay rate cannot start in the future.", null, { effectiveFrom: "Choose today or an earlier date." });
 
+  // Each extra needs both of its numbers, and only a day rate can have them.
+  const extraPair = (d.bonusAfterStops == null) === (d.bonusPerStop == null);
+  const streakPair = (d.streakAfterDays == null) === (d.streakDayRate == null);
+  if (!extraPair) return fail("Enter both numbers for the extra pay per stop, or leave both empty.", null, d.bonusAfterStops == null ? { bonusAfterStops: "Enter the number of stops." } : { bonusPerStop: "Enter the extra amount per stop." });
+  if (!streakPair) return fail("Enter both numbers for the days-in-a-row rate, or leave both empty.", null, d.streakAfterDays == null ? { streakAfterDays: "Enter the number of days." } : { streakDayRate: "Enter the day rate." });
+  const hasExtras = d.bonusAfterStops != null || d.streakAfterDays != null;
+  if (hasExtras && d.payBasis !== "day") return fail("Extra pay and days-in-a-row rates only apply to a day rate. Choose Per day worked, or remove them.");
+
+  const rules = hasExtras
+    ? {
+        bonus_after_stops: d.bonusAfterStops,
+        bonus_per_stop: d.bonusPerStop == null ? null : Number(toDb(d.bonusPerStop)),
+        streak_after_days: d.streakAfterDays,
+        streak_day_rate: d.streakDayRate == null ? null : Number(toDb(d.streakDayRate)),
+      }
+    : {};
   const { error } = await ctx.supabase.from("driver_day_rates").insert({
     account_id: ctx.accountId,
     driver_id: d.driverId,
@@ -212,7 +233,11 @@ export async function setDayRate(_prev: ActionState, formData: FormData): Promis
     effective_from: d.effectiveFrom,
     note: d.note,
     created_by: ctx.userId,
+    ...rules,
   });
+  if (error && hasExtras && /bonus_after_stops|bonus_per_stop|streak_after_days|streak_day_rate/.test(error.message)) {
+    return fail("The database needs its update for pay rules before extra pay can be saved. A plain rate still saves.", error.message);
+  }
   if (error) {
     return error.code === "23505"
       ? fail("A pay rate already starts on that date. Choose a different date.", error.message, { effectiveFrom: "A rate already starts on this date." })

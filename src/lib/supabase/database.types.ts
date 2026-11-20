@@ -305,14 +305,14 @@ isOneToOne: false
                   ]
                 },"driver_day_rates": {
                   Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"day_rate": number,"pay_basis": string,"driver_id": string,"effective_from": string,"id": string,"note": string | null
+                    "account_id": string,"created_at": string,"created_by": string | null,"day_rate": number,"pay_basis": string,"driver_id": string,"effective_from": string,"id": string,"note": string | null,"bonus_after_stops": number | null,"bonus_per_stop": number | null,"streak_after_days": number | null,"streak_day_rate": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"day_rate": number,"pay_basis"?: string,"driver_id": string,"effective_from": string,"id"?: string,"note"?: string | null
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"day_rate": number,"pay_basis"?: string,"driver_id": string,"effective_from": string,"id"?: string,"note"?: string | null,"bonus_after_stops"?: number | null,"bonus_per_stop"?: number | null,"streak_after_days"?: number | null,"streak_day_rate"?: number | null
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"day_rate"?: number,"pay_basis"?: string,"driver_id"?: string,"effective_from"?: string,"id"?: string,"note"?: string | null
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"day_rate"?: number,"pay_basis"?: string,"driver_id"?: string,"effective_from"?: string,"id"?: string,"note"?: string | null,"bonus_after_stops"?: number | null,"bonus_per_stop"?: number | null,"streak_after_days"?: number | null,"streak_day_rate"?: number | null
                   }
                   Relationships: [
                     {

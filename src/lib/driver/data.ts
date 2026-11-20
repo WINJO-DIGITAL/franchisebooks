@@ -1,9 +1,10 @@
 import "server-only";
-import { loadAdjustments, loadEarnings } from "@/lib/data/period";
+import { dayRateFromRow, readDayRateRows } from "@/lib/data/day-rates";
+import { loadAdjustments, loadEarnings, loadWorkedBefore } from "@/lib/data/period";
 import { fromDb } from "@/lib/money";
 import type { DpdPeriod } from "@/lib/finance/periods";
 import { buildDriverStatement, type DriverStatement } from "@/lib/finance/driver-view";
-import type { DayRate } from "@/lib/finance/wages";
+import { lookBackDays } from "@/lib/finance/wages";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DriverContext } from "./context";
 
@@ -35,14 +36,16 @@ export async function loadDriverPage(ctx: DriverContext, period: DpdPeriod): Pro
     loadEarnings(db, filter),
     loadAdjustments(db, filter),
     db.from("drivers").select("display_name").eq("id", ctx.driverId).eq("account_id", ctx.accountId).maybeSingle(),
-    db.from("driver_day_rates").select("day_rate, effective_from, pay_basis").eq("account_id", ctx.accountId).eq("driver_id", ctx.driverId).order("effective_from"),
+    readDayRateRows((columns) => db.from("driver_day_rates").select(columns).eq("account_id", ctx.accountId).eq("driver_id", ctx.driverId).order("effective_from")),
     db.from("driver_statements").select("id, statement_no, title, period_start, period_end, totals").eq("account_id", ctx.accountId).eq("driver_id", ctx.driverId)
       .order("period_start", { ascending: false }).order("statement_no").limit(26),
   ]);
-  const dayRates: DayRate[] = (rateRows.data ?? []).map((r) => ({ driverId: ctx.driverId, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from, basis: r.pay_basis === "stop" ? "stop" : "day" }));
+  const dayRates = rateRows.map((r) => dayRateFromRow(r, ctx.driverId));
+  // A run of days in a row can begin before this period.
+  const workedBefore = (await loadWorkedBefore(db, { accountId: ctx.accountId, from: period.start, days: lookBackDays(dayRates), driverIds: [ctx.driverId] })).get(ctx.driverId) ?? [];
   return {
     name: driver.data?.display_name ?? "",
-    statement: buildDriverStatement({ driverId: ctx.driverId, earnings, adjustments, dayRates }),
+    statement: buildDriverStatement({ driverId: ctx.driverId, earnings, adjustments, dayRates, workedBefore }),
     files: (files.data ?? []).map((f) => {
       const payable = (f.totals as { totalPayable?: number } | null)?.totalPayable;
       return { id: f.id, number: f.statement_no, title: f.title, periodStart: f.period_start, periodEnd: f.period_end, totalPayable: payable == null ? null : fromDb(payable) };

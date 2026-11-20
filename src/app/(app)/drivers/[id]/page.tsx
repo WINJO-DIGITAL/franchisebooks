@@ -11,7 +11,8 @@ import { loadAdjustments, loadCosts, loadEarnings } from "@/lib/data/period";
 import { addDays, formatUkDate, formatUkDateLong } from "@/lib/dates";
 import { DPD_PERIOD_DAYS, periodContaining, periodLabel } from "@/lib/finance/periods";
 import { buildDriverDays, totalAdjustments } from "@/lib/finance/calc";
-import { wageForDriver, type DayRate } from "@/lib/finance/wages";
+import { dayRateFromRow, readDayRateRows } from "@/lib/data/day-rates";
+import { wageForDriver } from "@/lib/finance/wages";
 import { adjustmentLabel } from "@/lib/labels";
 import { formatGBP, fromDb, percentChange, perUnit, sumPence } from "@/lib/money";
 import type { Tone } from "@/components/ui/bits";
@@ -40,10 +41,10 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
     loadCosts(ctx.supabase, { accountId: ctx.accountId, from: historyFrom, to: ctx.today }),
     ctx.supabase.from("app_settings").select("anomaly_config").eq("account_id", ctx.accountId).maybeSingle(),
     ctx.supabase.from("review_items").select("payload").eq("kind", "source_conflict").eq("status", "open"),
-    ctx.supabase.from("driver_day_rates").select("id, day_rate, effective_from, note, pay_basis").eq("driver_id", id).order("effective_from", { ascending: false }),
+    readDayRateRows((columns) => ctx.supabase.from("driver_day_rates").select(columns).eq("driver_id", id).order("effective_from", { ascending: false }), "id, note"),
   ]);
-  const rateRows = rateResult.data ?? [];
-  const dayRates: DayRate[] = rateRows.map((r) => ({ driverId: id, dayRate: fromDb(r.day_rate), effectiveFrom: r.effective_from, basis: r.pay_basis === "stop" ? "stop" : "day" }));
+  const rateRows = rateResult;
+  const dayRates = rateRows.map((r) => dayRateFromRow(r, id));
   const assignments = assignmentsResult.data ?? [];
   const { data: driverLink } = ctx.isOwner ? await ctx.supabase.from("driver_accounts").select("email").eq("driver_id", id).maybeSingle() : { data: null };
   const config = resolveAnomalyConfig(settings.data?.anomaly_config);
@@ -63,7 +64,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const parcels = worked.reduce((n, d) => n + (d.parcels ?? 0), 0);
   const myCosts = costs.filter((c) => c.allocation.scope === "driver" && c.allocation.driverId === id);
   const monthCosts = myCosts.filter((c) => c.date >= monthStart);
-  const monthWage = wageForDriver(id, worked.map((d) => d.date), dayRates, new Map(worked.map((d) => [d.date, d.stops ?? null])));
+  const monthWage = wageForDriver(id, worked.map((d) => d.date), dayRates, new Map(worked.map((d) => [d.date, d.stops ?? null])), priorDays.map((d) => d.date));
   const currentRate = dayRates.find((r) => r.effectiveFrom <= ctx.today) ?? null;
 
   // Stop consistency: each day against the driver's own previous working days.
@@ -132,11 +133,18 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         {rateRows.length > 0 ? (
           <TableWrap>
             <table className="ledger">
-              <thead><tr><th>From</th><th>Paid</th><th className="r">Rate</th><th>Note</th></tr></thead>
+              <thead><tr><th>From</th><th>Paid</th><th className="r">Rate</th><th>Extras</th><th>Note</th></tr></thead>
               <tbody>
-                {rateRows.map((r) => (
-                  <tr key={r.id}><td>{formatUkDate(r.effective_from)}</td><td>{r.pay_basis === "stop" ? "Per stop" : "Per day"}</td><td className="r num">{formatGBP(fromDb(r.day_rate))}</td><td>{r.note ?? ""}</td></tr>
-                ))}
+                {rateRows.map((r) => {
+                  const rate = dayRateFromRow(r, id);
+                  const extras = [
+                    rate.bonusAfterStops != null && rate.bonusPerStop != null ? `${formatGBP(rate.bonusPerStop)} a stop over ${rate.bonusAfterStops}` : null,
+                    rate.streakAfterDays != null && rate.streakDayRate != null ? `${formatGBP(rate.streakDayRate)} a day after ${rate.streakAfterDays} days in a row` : null,
+                  ].filter(Boolean).join("; ");
+                  return (
+                    <tr key={String(r.id)}><td>{formatUkDate(r.effective_from)}</td><td>{r.pay_basis === "stop" ? "Per stop" : "Per day"}</td><td className="r num">{formatGBP(rate.dayRate)}</td><td className="text-sm text-ink-soft">{extras || "—"}</td><td>{typeof r.note === "string" ? r.note : ""}</td></tr>
+                  );
+                })}
               </tbody>
             </table>
           </TableWrap>
