@@ -169,7 +169,8 @@ export function checkStopRates(days: RateCheckDay[], bands: ScaleBand[], vehicle
     const expected = expectedStopRate(bands, vehicle, d.stops, d.miles);
     if (expected == null) { out.notChecked += 1; continue; }
     const actual = d.stopPayPence / 100 / d.stops;
-    if (Math.abs(actual - expected) > tolerance) out.differs.push({ date: d.date, stops: d.stops, expected, actual });
+    // A tiny allowance for floating-point maths, so a difference of exactly the tolerance counts as agreeing.
+    if (Math.abs(actual - expected) > tolerance + 1e-9) out.differs.push({ date: d.date, stops: d.stops, expected, actual });
     else out.agreed += 1;
   }
   return out;

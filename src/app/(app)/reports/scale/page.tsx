@@ -7,7 +7,7 @@ import { currentPlan } from "@/lib/billing/plan";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
 import { formatUkDate, isISODate } from "@/lib/dates";
-import { buildDiscrepancyReport, dailyFromRows, NOT_COMPARED_TEXT, TOLERANCE_PER_STOP, type DayOutcome } from "@/lib/finance/discrepancy";
+import { buildDiscrepancyReport, NOT_COMPARED_TEXT, routeRows, TOLERANCE_PER_STOP, type DayOutcome } from "@/lib/finance/discrepancy";
 import { periodContaining, lastCompletedPeriod, periodLabel, recentPeriods } from "@/lib/finance/periods";
 import { normaliseFuel, type ScaleBand } from "@/lib/finance/sliding-scale";
 import { loadEarnings } from "@/lib/data/period";
@@ -36,7 +36,7 @@ export default async function ScaleReportPage({ searchParams }: { searchParams: 
   const params = await searchParams;
   const ctx = await getContext();
   const plan = await currentPlan(ctx.supabase);
-  const header = <PageHeader title="Sliding Scale Report" description="Each day's stop pay checked against the sliding scale you have entered, in both directions." />;
+  const header = <PageHeader title="Sliding Scale Report" description="Each route's stop pay for the day checked against the sliding scale you have entered, in both directions." />;
 
   if (plan !== "max") {
     return (<>{header}<UpgradeToMax isOwner={ctx.isOwner} /></>);
@@ -55,7 +55,8 @@ export default async function ScaleReportPage({ searchParams }: { searchParams: 
     vehicleType: r.vehicle_type, vehicleSize: r.vehicle_size, fuelType: normaliseFuel(r.fuel_type), stopsFrom: r.stops_from, stopsTo: r.stops_to,
     milesFrom: r.miles_from, milesTo: r.miles_to, rate: Number(r.rate),
   }));
-  const daily = dailyFromRows(earnings.map((e) => ({ franchiseId: e.franchiseId, date: e.date, stops: e.stops, mileage: e.mileage ?? null, stopPayPence: e.stopPay ?? null })));
+  // One check per route: each DPD payment row on its own stops and miles, never added together.
+  const daily = routeRows(earnings.map((e) => ({ franchiseId: e.franchiseId, date: e.date, driverName: e.sourceDriverName || null, route: e.route, stops: e.stops, mileage: e.mileage ?? null, stopPayPence: e.stopPay ?? null })));
 
   const sections = franchises.map((f) => {
     const vehicle = vehicleRows.find((v) => v.id === f.id);
@@ -99,9 +100,9 @@ export default async function ScaleReportPage({ searchParams }: { searchParams: 
             description={`Compared against the scale entered. A day counts as agreeing when the rate paid is within ${Math.round(TOLERANCE_PER_STOP * 100)}p a stop of the scale.`}>
             <Panel>
               <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-                <Stat label="Days Underpaid" value={String(t.underpaidDays)} sub={t.underpaidDays ? formatGBP(t.underpaidPence) : undefined} tone={t.underpaidDays ? "bad" : undefined} />
-                <Stat label="Days Overpaid" value={String(t.overpaidDays)} sub={t.overpaidDays ? formatGBP(t.overpaidPence) : undefined} />
-                <Stat label="Days Agreeing" value={String(t.agreedDays)} />
+                <Stat label="Routes Underpaid" value={String(t.underpaidDays)} sub={t.underpaidDays ? formatGBP(t.underpaidPence) : undefined} tone={t.underpaidDays ? "bad" : undefined} />
+                <Stat label="Routes Overpaid" value={String(t.overpaidDays)} sub={t.overpaidDays ? formatGBP(t.overpaidPence) : undefined} />
+                <Stat label="Routes Agreeing" value={String(t.agreedDays)} />
                 <Stat label="Not Compared" value={String(t.notComparedDays)} sub="Missing stops, stop pay, or no single band" />
               </div>
             </Panel>
@@ -112,14 +113,15 @@ export default async function ScaleReportPage({ searchParams }: { searchParams: 
                 <TableWrap>
                   <table className="ledger">
                     <thead>
-                      <tr><th>Date</th><th>Result</th><th className="r">Stops</th><th className="r">Paid per Stop</th><th className="r">Scale per Stop</th><th className="r">Difference</th><th className="hidden md:table-cell">Note</th></tr>
+                      <tr><th>Date</th><th className="hidden sm:table-cell">Driver and Route</th><th>Result</th><th className="r">Stops</th><th className="r">Paid per Stop</th><th className="r">Scale per Stop</th><th className="r">Difference</th><th className="hidden md:table-cell">Note</th></tr>
                     </thead>
                     <tbody>
                       {s.report.ordered.map((o) => {
                         const row = outcomeRow(o);
                         return (
-                          <tr key={`${o.date}-${o.kind}`}>
+                          <tr key={`${o.date}-${o.label ?? ""}-${o.kind}`}>
                             <td className="num whitespace-nowrap">{formatUkDate(o.date)}</td>
+                            <td className="hidden sm:table-cell">{o.label ?? "—"}</td>
                             <td><Badge tone={row.tone}>{row.label}</Badge></td>
                             <td className="r num">{o.kind === "not_compared" ? "—" : o.stops}</td>
                             <td className="r num">{row.paid}</td>

@@ -13,13 +13,25 @@ Branch: `claude/awesome-goodall-4t6d6r`. Do not merge to `main` without the owne
 - `src/app/(app)/reports/scale/page.tsx`: the Max-only report page. It still uses the band table, so it does not yet show grids.
 - Tests: `tests/unit/scale-grid.test.ts`, `tests/unit/discrepancy.test.ts`.
 
+## Verified (against the printed Micro PDF)
+
+- The PDF's text reads cleanly: 29 rows (60 to 200 stops, steps of 5) × 16 columns (10 to 160 miles, steps of 10), every cell
+  filled. More stops never raise the rate and more miles never lower it, so no cell was misread.
+- `gridRate` returns the printed value for all 464 cells, and every in-between day rounds down to the right cell.
+- Paying exactly stops × the printed rate agrees for all 464 cells; paying 1p a stop short is caught for all 464.
+- Two bugs found and fixed: the report used to add all drivers on a franchise-day together before looking up the rate (two
+  correctly paid drivers showed as £24 overpaid), and it allowed 2p a stop either way, which hid a route paid from the wrong row
+  or column (neighbouring printed rates are often 1p apart). It now checks each payment row (route) on its own, to the penny.
+- Not yet verified: a real DPD payment report against its scale for the same period. Do that before any customer sees a figure.
+
 ## Decided rules (from the owner)
 
 1. A scale is a printed grid: stop counts down the side (rows), miles across the top (columns), pounds per stop in the cells.
    Example file: "Electric Vehicle Sliding Scale - Micro", rows 60 to 200 in steps of 5, columns 10 to 160 in steps of 10.
 2. Units: a printed 1.69 is £1.69 per stop. Store the value exactly as printed. Do not round.
 3. Lookup: round DOWN to the nearest row and column. 104 stops uses the 100 row; 91 miles uses the 90 column.
-4. Pay for the day = the stop count actually done × the rate found. Pay is to the penny; no rounding of the rate.
+4. Pay for the route = the stop count actually done × the rate found. Pay is to the penny; no rounding of the rate.
+   Checked per route (each DPD payment row), never per franchise-day, and with no tolerance against the printed grid.
 5. Above the top row or column (over 200 stops or over 160 miles): use the top point as a guide only, label it as such, keep
    it out of the totals. Do not treat it as a stated fact.
 6. Both directions in the report: underpayments first, then overpayments, then agreeing days, then not-compared days.

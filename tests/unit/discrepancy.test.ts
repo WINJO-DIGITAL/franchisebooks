@@ -28,7 +28,7 @@ describe("sliding-scale discrepancy report", () => {
     expect(report.totals.comparedDays).toBe(0);
     const reasons = report.days.filter((d) => d.kind === "not_compared").map((d) => (d.kind === "not_compared" ? d.reason : ""));
     expect(reasons).toEqual(["no_stops", "no_stop_pay", "no_single_band"]);
-    expect(NOT_COMPARED_TEXT.no_single_band).toMatch(/No single band/);
+    expect(NOT_COMPARED_TEXT.no_single_band).toMatch(/no rate for these stops and miles/);
   });
 
   it("needs miles where the scale has mileage limits, and does not guess without them", () => {
@@ -60,25 +60,20 @@ describe("sliding-scale discrepancy report", () => {
   });
 });
 
-import { dailyFromRows } from "@/lib/finance/discrepancy";
+import { routeRows } from "@/lib/finance/discrepancy";
 
-describe("adding up a day across drivers", () => {
-  it("adds stops, miles and stop pay for each franchise and day", () => {
-    const days = dailyFromRows([
-      { franchiseId: "f1", date: "2026-11-02", stops: 40, mileage: 30, stopPayPence: 4000 },
-      { franchiseId: "f1", date: "2026-11-02", stops: 40, mileage: 25, stopPayPence: 4000 },
-      { franchiseId: "f2", date: "2026-11-02", stops: 10, mileage: null, stopPayPence: 1000 },
+describe("one check per route, never added together", () => {
+  it("keeps each payment row as its own route, labelled with the driver and route", () => {
+    const rows = routeRows([
+      { franchiseId: "f1", date: "2026-11-02", driverName: "Alex Example", route: "564", stops: 100, mileage: 50, stopPayPence: 13900 },
+      { franchiseId: "f1", date: "2026-11-02", driverName: "Blake Sample", route: "565", stops: 100, mileage: 50, stopPayPence: 13900 },
+      { franchiseId: "f2", date: "2026-11-02", driverName: null, route: null, stops: 10, mileage: null, stopPayPence: 1000 },
     ]);
-    expect(days.get("f1")).toEqual([{ date: "2026-11-02", stops: 80, miles: 55, stopPayPence: 8000 }]);
-    expect(days.get("f2")).toEqual([{ date: "2026-11-02", stops: 10, miles: null, stopPayPence: 1000 }]);
-  });
-
-  it("leaves a total blank when any driver's row does not state it", () => {
-    const [day] = dailyFromRows([
-      { franchiseId: "f1", date: "2026-11-03", stops: 40, mileage: null, stopPayPence: 4000 },
-      { franchiseId: "f1", date: "2026-11-03", stops: 40, mileage: 20, stopPayPence: null },
-    ]).get("f1")!;
-    expect(day).toEqual({ date: "2026-11-03", stops: 80, miles: null, stopPayPence: null });
+    expect(rows.get("f1")).toEqual([
+      { date: "2026-11-02", label: "Alex Example · Route 564", stops: 100, miles: 50, stopPayPence: 13900 },
+      { date: "2026-11-02", label: "Blake Sample · Route 565", stops: 100, miles: 50, stopPayPence: 13900 },
+    ]);
+    expect(rows.get("f2")).toEqual([{ date: "2026-11-02", stops: 10, miles: null, stopPayPence: 1000 }]);
   });
 });
 
@@ -99,6 +94,43 @@ describe("the printed grid in the report", () => {
     const day = report.days[0]!;
     expect(day).toMatchObject({ kind: "not_compared", reason: "beyond_scale", guideRate: 1.3 });
     expect(NOT_COMPARED_TEXT.beyond_scale).toMatch(/guide only/);
+  });
+});
+
+describe("checks found when verifying against the printed Micro scale", () => {
+  // Rows 95, 100, 200 and columns 50, 80, 90, 100, 160 of the printed scale.
+  const micro: ScaleGrid = {
+    name: "Electric Vehicle Sliding Scale - Micro",
+    stopRows: [95, 100, 200],
+    mileCols: [50, 80, 90, 100, 160],
+    values: [[1.41, 1.42, 1.43, 1.43, 1.46], [1.39, 1.4, 1.41, 1.41, 1.44], [1.26, 1.27, 1.27, 1.27, 1.28]],
+  };
+
+  it("does not flag two drivers who were each paid correctly on the same day", () => {
+    const rows = routeRows([
+      { franchiseId: "f", date: "2026-11-03", driverName: "A", route: "1", stops: 100, mileage: 50, stopPayPence: 13900 },
+      { franchiseId: "f", date: "2026-11-03", driverName: "B", route: "2", stops: 100, mileage: 50, stopPayPence: 13900 },
+    ]).get("f")!;
+    const report = buildDiscrepancyReport(rows, [], vehicle, micro);
+    expect(report.totals).toMatchObject({ agreedDays: 2, underpaidDays: 0, overpaidDays: 0, netPence: 0 });
+  });
+
+  it("catches a route paid 1p a stop short (the wrong column), which a 2p tolerance would hide", () => {
+    // 104 stops, 91 miles: the 100 row and 90 column = £1.41. Paid at the 80 column instead: £1.40, 1p a stop short.
+    const report = buildDiscrepancyReport([{ date: "2026-11-04", stops: 104, miles: 91, stopPayPence: 140 * 104 }], [], vehicle, micro);
+    expect(report.days[0]).toMatchObject({ kind: "underpaid", differencePence: -104 });
+  });
+
+  it("agrees only when the pay is exactly stops × the printed rate", () => {
+    const exact = buildDiscrepancyReport([{ date: "2026-11-05", stops: 104, miles: 91, stopPayPence: 14664 }], [], vehicle, micro);
+    expect(exact.days[0]!.kind).toBe("agrees");
+    const onePennyOver = buildDiscrepancyReport([{ date: "2026-11-05", stops: 104, miles: 91, stopPayPence: 14665 }], [], vehicle, micro);
+    expect(onePennyOver.days[0]).toMatchObject({ kind: "overpaid", differencePence: 1 });
+  });
+
+  it("does not compare a route with no miles stated against a scale that needs them", () => {
+    const report = buildDiscrepancyReport([{ date: "2026-11-06", stops: 104, miles: null, stopPayPence: 14664 }], [], vehicle, micro);
+    expect(report.days[0]).toMatchObject({ kind: "not_compared", reason: "no_single_band" });
   });
 });
 
