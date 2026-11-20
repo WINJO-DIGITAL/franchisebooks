@@ -9,19 +9,20 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ## Outstanding
 
 ### You (owner) to do
-- [ ] Say "merge" to take the latest working-branch changes live (you).
+- [ ] Run `npx supabase db push` on the live database to add the sliding scale choice (migration `20261120000100`); until then the dropdown stays hidden (you).
+- [ ] Reconnect the Supabase connector to the Franchise Books project (it now shows other projects), so the assistant can read the live sync log and history reads (you).
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
-- [ ] Review the plan wording in the Terms page, section 10 (you).
 - [ ] Ask an accountant to confirm the Max plan (records and reports only) stays outside regulated accountancy services, and how credit notes should be treated (you).
 - [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
 - [ ] Try the two DPD logins that did not sign in (`mattjacksonlite@gmail.com`, `sarahsarahalmond@aol.co.uk`) on the DPD portal, then fix them in Settings (you).
-- [ ] Enter the sliding scale rates from the DPD portal, and set each franchise's vehicle (Settings, Edit franchise) (you).
+- [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
+- [ ] Decide whether the LSC scale (every cell £0.01) stays in the dropdown (you).
+- [ ] Say whether the homepage should mention the Max plan (you).
 - [ ] Give the assistant an email address to send a test driver invitation to (you).
-- [ ] Read the new homepage wording and example figures, and say whether it should mention the Max plan (you).
 
 ### Assistant to do
 - [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
-- [ ] After the merge: test an Essential to Max change in the billing portal, and check the first history reads in the sync log (assistant).
+- [ ] Once the Supabase connector points at the live project: test an Essential to Max change in the billing portal, and check the first history reads in the sync log (assistant).
 - [ ] Test a driver invitation and login end to end once there is a test address (assistant).
 
 ## Current implementation (summary)
@@ -36,9 +37,9 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - The DPD read depends on DPD's current page layout; a layout change stops reads until the portal map is updated.
 
 ## Test results (latest run on this branch)
-- Unit tests: 541 passing. Typecheck, lint and production build clean.
+- Unit tests: 552 passing. Typecheck, lint and production build clean.
 - Database tests: 59 passing. Integration tests: 85 passing (against a local Supabase stack).
-- End-to-end tests: see the latest commit message (run against the local stack and a production build).
+- End-to-end tests: 195 passing, 62 skipped by design (phone-only and desktop-only tests), against the local stack and a production build.
 
 ## Log of finished work (not a checklist)
 - Fuel importer fix, pay per day or per stop, period reports on Mondays, shared DPD setup, encrypted logins (merged to main).
