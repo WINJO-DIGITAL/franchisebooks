@@ -10,6 +10,8 @@ import { PLAN_NAME, PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { listDpdLogins } from "@/lib/dpd/logins";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
+import { formatPortalDate } from "@/lib/finance/scale-grid";
+import { listScales } from "@/lib/finance/scale-library";
 import { loadRevenue } from "@/lib/data/period";
 import { addMonths, formatMonth, formatUkDate, monthOf, monthRange } from "@/lib/dates";
 import { FIGURE_STATUS } from "@/lib/labels";
@@ -31,6 +33,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     ctx.canWrite ? supabase.from("audit_logs").select("id, action, entity_table, created_at, after").order("id", { ascending: false }).limit(8) : Promise.resolve({ data: [] }),
   ]);
   const s = settings.data;
+  // Which sliding scale each franchise uses. Read on its own so Settings still loads before the database has the column.
+  const scaleRows = await supabase.from("franchises").select("id, sliding_scale_key").eq("account_id", accountId);
+  const chosenScale = scaleRows.error ? null : new Map((scaleRows.data ?? []).map((r) => [r.id, r.sliding_scale_key]));
+  const scaleOptions = chosenScale ? (await listScales()).map((sc) => ({ key: sc.key, name: sc.name, effective: formatPortalDate(sc.effectiveDate) })) : null;
   const listedLogins = ctx.isOwner ? await listDpdLogins(createAdminClient(), accountId) : [];
   const { data: billing } = ctx.isOwner ? await supabase.from("user_billing").select("status, current_period_end, cancel_at_period_end, stripe_customer_id").eq("user_id", ctx.userId).maybeSingle() : { data: null };
   const plan = ctx.isOwner ? await currentPlan(supabase) : null;
@@ -56,7 +62,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <tr key={f.id}>
                   <td className="num font-medium">{f.fd_number}</td><td>{f.name || "—"}</td><td>{f.depot ?? "—"}</td>
                   <td><Badge tone={f.is_active ? "good" : "neutral"}>{f.is_active ? "Active" : "Inactive"}</Badge></td>
-                  <td className="r">{ctx.isOwner ? <EditFranchiseButton franchise={{ id: f.id, fdNumber: f.fd_number, name: f.name, depot: f.depot, isActive: f.is_active, vehicleType: f.vehicle_type, vehicleSize: f.vehicle_size, vehicleFuel: f.vehicle_fuel }} /> : null}</td>
+                  <td className="r">{ctx.isOwner ? <EditFranchiseButton franchise={{ id: f.id, fdNumber: f.fd_number, name: f.name, depot: f.depot, isActive: f.is_active, vehicleType: f.vehicle_type, vehicleSize: f.vehicle_size, vehicleFuel: f.vehicle_fuel, slidingScaleKey: chosenScale?.get(f.id) ?? null }} scales={scaleOptions} /> : null}</td>
                 </tr>
               ))}
             </tbody>

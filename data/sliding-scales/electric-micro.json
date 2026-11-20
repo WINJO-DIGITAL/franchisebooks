@@ -584,5 +584,6 @@
   "scheme": "ODF",
   "printed_title": "Electric Vehicle Sliding Scale - Micro",
   "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW.",
-  "effective_date": "1970-01-01"
+  "effective_date": "1970-01-01",
+  "display_order": 1
 }

@@ -8,6 +8,7 @@ import { isYearMonth, monthRange, parseTimeToMinutes } from "@/lib/dates";
 import { formatGBP, toDb } from "@/lib/money";
 import { revenueDescription } from "@/lib/finance/credit-notes";
 import { dbFailure, fail, ok, parseForm, type ActionState } from "./helpers";
+import { isScaleKey } from "@/lib/finance/scale-library";
 import { isoDate, moneyAmount, optionalText, uuid } from "./schemas";
 
 const fdNumber = z.string().min(1, "Enter the FD number.").max(40).transform((v) => v.toUpperCase());
@@ -31,8 +32,15 @@ export async function updateFranchise(_prev: ActionState, formData: FormData): P
   const parsed = parseForm(z.object({ id: uuid, fdNumber, name: optionalText(120), depot: optionalText(120), isActive: z.enum(["true", "false"]), vehicleType: optionalText(80), vehicleSize: optionalText(80), vehicleFuel: z.enum(["", "diesel", "electric", "other"]).optional() }), formData);
   if ("error" in parsed) return parsed.error;
   const d = parsed.data;
+  // The scale choice is sent only when the database has the column (the form leaves the field out otherwise).
+  let scaleKey: string | null | undefined;
+  if (formData.has("slidingScaleKey")) {
+    const raw = String(formData.get("slidingScaleKey") ?? "").trim();
+    if (raw !== "" && !(await isScaleKey(raw))) return fail("That sliding scale is not in the list.", null, { slidingScaleKey: "Choose a scale from the list." });
+    scaleKey = raw === "" ? null : raw;
+  }
   const { error, data } = await ctx.supabase
-    .from("franchises").update({ fd_number: d.fdNumber, name: d.name ?? "", depot: d.depot, is_active: d.isActive === "true", vehicle_type: d.vehicleType, vehicle_size: d.vehicleSize, vehicle_fuel: d.vehicleType ? (d.vehicleFuel || "diesel") : null }).eq("id", d.id).select("id");
+    .from("franchises").update({ fd_number: d.fdNumber, name: d.name ?? "", depot: d.depot, is_active: d.isActive === "true", vehicle_type: d.vehicleType, vehicle_size: d.vehicleSize, vehicle_fuel: d.vehicleType ? (d.vehicleFuel || "diesel") : null, ...(scaleKey !== undefined ? { sliding_scale_key: scaleKey } : {}) }).eq("id", d.id).select("id");
   if (error) return error.code === "23505" ? fail("Another franchise already has that FD number.") : dbFailure(error);
   if (!data?.length) return fail("That franchise could not be found.");
   revalidatePath("/", "layout");

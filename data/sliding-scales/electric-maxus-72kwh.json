@@ -1417,5 +1417,6 @@
   "scheme": "ODF",
   "printed_title": "Electric Vehicle Sliding Scale - Maxus 72kWh",
   "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW.",
-  "effective_date": "2021-05-31"
+  "effective_date": "2021-05-31",
+  "display_order": 2
 }

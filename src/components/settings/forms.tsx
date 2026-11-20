@@ -58,7 +58,7 @@ export function AddFranchiseForm() {
   );
 }
 
-export function EditFranchiseButton({ franchise }: { franchise: { id: string; fdNumber: string; name: string; depot: string | null; isActive: boolean; vehicleType: string | null; vehicleSize: string | null; vehicleFuel: string | null } }) {
+export function EditFranchiseButton({ franchise, scales }: { franchise: { id: string; fdNumber: string; name: string; depot: string | null; isActive: boolean; vehicleType: string | null; vehicleSize: string | null; vehicleFuel: string | null; slidingScaleKey: string | null }; scales: { key: string; name: string; effective: string }[] | null }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -75,6 +75,14 @@ export function EditFranchiseButton({ franchise }: { franchise: { id: string; fd
               <Field label="Size"><Input name="vehicleSize" defaultValue={franchise.vehicleSize ?? ""} /></Field>
               <Field label="Fuel"><Select name="vehicleFuel" defaultValue={franchise.vehicleFuel ?? "diesel"}><option value="diesel">Diesel</option><option value="electric">Electric</option><option value="other">Other</option></Select></Field>
             </div>
+            {scales ? (
+              <Field label="Sliding scale" hint="Pick the scale DPD lists for this vehicle. The date after each name is when DPD says it takes effect." error={state.fieldErrors?.slidingScaleKey}>
+                <Select name="slidingScaleKey" defaultValue={franchise.slidingScaleKey ?? ""}>
+                  <option value="">Not chosen yet</option>
+                  {scales.map((sc) => <option key={sc.key} value={sc.key}>{sc.name} · {sc.effective}</option>)}
+                </Select>
+              </Field>
+            ) : null}
             <Field label="Status"><Select name="isActive" defaultValue={String(franchise.isActive)}><option value="true">Active</option><option value="false">Inactive (no longer operating)</option></Select></Field>
             <SubmitButton>Save</SubmitButton>
           </>)}

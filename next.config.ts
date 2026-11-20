@@ -31,6 +31,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // pdfkit reads its font metric files from disk; playwright is only used by the worker.
   serverExternalPackages: ["pdfkit", "playwright", "exceljs", "pino"],
+  // The saved DPD sliding scales are read from disk by these pages, so they must travel with the deployed functions.
+  outputFileTracingIncludes: {
+    "/settings": ["./data/sliding-scales/*.json"],
+    "/reports/scale": ["./data/sliding-scales/*.json"],
+  },
   experimental: {
     serverActions: { bodySizeLimit: "25mb" },
   },

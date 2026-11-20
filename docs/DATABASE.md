@@ -9,6 +9,7 @@ PostgreSQL on Supabase. Migrations in `supabase/migrations/` (apply with `npx su
 | `…0300_security.sql` | grants, row level security policies |
 | `…0400_functions.sql` | transactional operations (adjustments, cover, imports, job queue, secrets) |
 | `…0500_storage.sql` | private storage buckets |
+| `20261120000100_franchise_sliding_scale.sql` | `franchises.sliding_scale_key`: which saved DPD sliding scale a franchise uses. The app works without it (the picker is hidden until it is applied) |
 
 ## Tables
 

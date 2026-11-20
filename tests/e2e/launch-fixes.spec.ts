@@ -17,6 +17,22 @@ test.describe("launch fixes (synthetic demo data)", () => {
     await expect(checklist.getByRole("link", { name: /Set pay rates/ })).toHaveAttribute("href", "/drivers");
   });
 
+  test("a franchise's sliding scale is chosen from the DPD list, with each scale's active date, and is remembered", async ({ page }) => {
+    await page.goto("/settings");
+    await page.getByRole("button", { name: "Edit" }).first().click();
+    const dialog = page.getByRole("dialog");
+    const select = dialog.getByLabel("Sliding scale");
+    await expect(select).toBeVisible();
+    await expect(select.locator("option")).toHaveCount(34); // "Not chosen yet" and the 33 scales
+    await expect(select.locator("option").nth(1)).toHaveText("ODF e-Micro · 01/01/1970");
+    await select.selectOption({ label: "ODF e-Lite - Maxus 72KWH · 31/05/2021" });
+    await dialog.getByRole("button", { name: "Save" }).click();
+    await expect(dialog).toBeHidden(); // saved: the form closes
+    await page.reload();
+    await page.getByRole("button", { name: "Edit" }).first().click();
+    await expect(page.getByRole("dialog").getByLabel("Sliding scale")).toHaveValue("electric-maxus-72kwh");
+  });
+
   test("driver statements: made for drivers with a pay rate, downloadable one by one and as a zip, with the reason for the rest", async ({ page }) => {
     // Give Alex a day rate (once; a later run finds it already set).
     await page.goto("/drivers");

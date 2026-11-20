@@ -53,3 +53,12 @@ export function gridRate(grid: ScaleGrid, stops: number, miles: number | null): 
   if (rate == null) return null;
   return { rate, beyondScale: beyondStops || beyondMiles, stopRow, mileCol };
 }
+
+/**
+ * A scale's effective date written the way the DPD portal shows it (DD/MM/YYYY), whatever the date is. DPD uses 01/01/1970
+ * for scales that have no start date, and the app shows that as DPD does rather than hiding it.
+ */
+export function formatPortalDate(iso: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? "");
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : "—";
+}

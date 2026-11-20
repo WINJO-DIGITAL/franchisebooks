@@ -1417,5 +1417,6 @@
   "verified": "Read from the PDF text; 1,200 cells (60 rows x 20 columns, 5 to 300 stops, 10 to 200 miles); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed.",
   "scheme": "ODW",
   "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW.",
-  "effective_date": "2021-12-13"
+  "effective_date": "2021-12-13",
+  "display_order": 23
 }

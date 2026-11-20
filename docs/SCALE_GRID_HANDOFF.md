@@ -66,3 +66,17 @@ Branch: `claude/awesome-goodall-4t6d6r`. Do not merge to `main` without the owne
 - Commands: `npx tsc --noEmit -p tsconfig.json`, `npx eslint <changed files>`, `npx vitest run tests/unit`.
 - Title Case for headings and buttons; sentence case for paragraphs (`CLAUDE.md`).
 - Pushes start CI only for `main` and pull requests; batch commits.
+
+## Built since this handoff was written
+
+- **Saved scales:** `data/sliding-scales/*.json`, 33 scales named exactly as the DPD portal lists them (ODF and ODW), each with its
+  `effective_date` as the portal shows it (01/01/1970 is DPD's own placeholder) and `display_order` (the portal's list order).
+- **Library:** `src/lib/finance/scale-library.ts` lists the scales and loads one grid. A key is accepted only if it names a saved
+  file. The files are included in the deployed functions through `outputFileTracingIncludes` in `next.config.ts`.
+- **Choosing a scale:** Settings, Edit franchise, "Sliding scale" dropdown (name, then the effective date). Stored in
+  `franchises.sliding_scale_key` (migration `20261120000100_franchise_sliding_scale.sql`). Until the migration is applied the dropdown
+  is hidden and everything else works.
+- **Report:** `/reports/scale` uses the chosen grid when there is one (round down, to the penny, above-scale routes as a guide
+  only), and the older band table otherwise. The heading names the scale and its active date.
+- Still open: a real DPD payment report checked against its scale before any customer sees a figure; confirmation that the
+  mileage on the Payments table is the measure DPD uses; the LSC grid (every cell £0.01) is kept as the owner named it.
