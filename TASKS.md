@@ -9,15 +9,11 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ## Outstanding
 
 ### You (owner) to do
-- [ ] Run `npx supabase db push` on the live database to add the sliding scale choice (migration `20261120000100`); until then the dropdown stays hidden (you).
 - [ ] Reconnect the Supabase connector to the Franchise Books project (it now shows other projects), so the assistant can read the live sync log and history reads (you).
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
 - [ ] Ask an accountant to confirm the Max plan (records and reports only) stays outside regulated accountancy services, and how credit notes should be treated (you).
 - [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
-- [x] Add in-app Max upsells where a feature is locked, with its benefits (assistant, done: the four locked pages name the feature and what Max adds).
-- [x] DPD logins: nothing to flag. One franchisee's login with 7 FD numbers had 2 FDs not loading; reconnecting and the fixes made all 7 load. Owner confirmed.
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
-- [x] Say whether the homepage should mention the Max plan (done: no; Max is offered in the app where a feature is locked, see the upsell task).
 
 ### Assistant to do
 - [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
