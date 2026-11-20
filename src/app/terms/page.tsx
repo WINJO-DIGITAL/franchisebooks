@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Terms" };
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms & Conditions" updated="19 November 2026">
+    <LegalPage title="Terms & Conditions" updated="20 November 2026">
       <p className="font-medium text-ink">Franchise Books by WINJO Digital</p>
       <h2>1. About Us</h2>
       <p>Franchise Books is a software service owned and operated by WINJO Digital (“we”, “us”, “our”).</p>
