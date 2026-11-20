@@ -11,7 +11,6 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ### You (owner) to do
 - [ ] Reconnect the Supabase connector to the Franchise Books project (it now shows other projects), so the assistant can read the live sync log and history reads (you).
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
-- [ ] Ask an accountant to confirm the Max plan (records and reports only) stays outside regulated accountancy services, and how credit notes should be treated (you).
 - [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
 
