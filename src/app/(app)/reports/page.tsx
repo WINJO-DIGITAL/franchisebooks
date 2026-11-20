@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GenerateReportForm } from "@/components/reports/generate-form";
+import { currentPlan } from "@/lib/billing/plan";
 import { EmailStatementButton, MakeStatementsForm } from "@/components/reports/statements";
 import { Badge, EmptyState, PageHeader, Panel, Section, TableWrap } from "@/components/ui/bits";
 import { buttonClass } from "@/components/ui/button";
@@ -28,6 +29,8 @@ interface Totals {
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ statements?: string }> }) {
   const ctx = await getContext();
+  // The sliding-scale report is a Max perk: its link is shown to Max accounts only.
+  const showScaleReport = (await currentPlan(ctx.supabase)) === "max";
   const params = await searchParams;
   const current = monthOf(ctx.today);
   const months = Array.from({ length: 24 }, (_, i) => addMonths(current, -i)).map((m) => ({ id: m, label: formatMonth(m) }));
@@ -50,6 +53,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader title="Reports" description={byPeriod ? "PDF reports for each DPD four-week period. One is made automatically the evening after each period closes, once the last day's figures have synced, so drivers can see what they earned. Original DPD figures and manual adjustments are always shown separately." : "Monthly PDF reports. Original DPD figures and manual adjustments are always shown separately. Reports for last month are made automatically after month end."} />
+      {showScaleReport ? (
+        <Section title="Sliding Scale Report" description="Max plan: each day's stop pay checked against the sliding scale you have entered, in both directions.">
+          <Panel>
+            <Link href="/reports/scale" className={buttonClass("secondary", "md")}>Open the Sliding Scale Report</Link>
+          </Panel>
+        </Section>
+      ) : null}
       <Section title="Generate a Report">
         <Panel>
           <GenerateReportForm
