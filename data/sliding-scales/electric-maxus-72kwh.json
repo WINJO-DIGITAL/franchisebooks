@@ -1413,8 +1413,5 @@
       1.77
     ]
   ],
-  "verified": "Read from the PDF text; 1,200 cells (60 rows x 20 columns); evenly stepped; more stops never raises the rate and more miles never lowers it. 99 cells show 4.98, which looks like a maximum rate: to be confirmed by the owner.",
-  "open": [
-    "Confirm whether 4.98 is a maximum rate for this scale"
-  ]
+  "verified": "Read from the PDF text; 1,200 cells (60 rows x 20 columns); evenly stepped; more stops never raises the rate and more miles never lowers it. Rates are used exactly as printed, including 4.98."
 }
