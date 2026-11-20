@@ -130,7 +130,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       ) : null}
 
       {ctx.isOwner && billing ? (
-        <Section title="Subscription" description={`Your plan is ${PLAN_NAME[plan ?? "standard"]}: £${PLAN_PRICE_GBP[plan ?? "standard"]} a month for your account, however many franchises you add.${plan === "max" ? "" : ` Max (£${PLAN_PRICE_GBP.max} a month) adds your DPD history over the current and previous tax year, with trends, driver performance and rate checks. Change plan under Manage Billing.`}`}>
+        <Section id="plan" title="Subscription" description={`Your plan is ${PLAN_NAME[plan ?? "standard"]}: £${PLAN_PRICE_GBP[plan ?? "standard"]} a month for your account, however many franchises you add.${plan === "max" ? "" : ` Max (£${PLAN_PRICE_GBP.max} a month) adds your DPD history over the current and previous tax year, with trends, driver performance and rate checks. Change plan under Manage Billing.`}`}>
           <Panel>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1 text-sm">

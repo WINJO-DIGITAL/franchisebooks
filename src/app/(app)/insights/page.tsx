@@ -31,7 +31,7 @@ export default async function InsightsPage() {
       <>
         <PageHeader title="Insights" description="Your DPD figures over the current and previous tax year." />
         <InsightsTabs active="/insights" />
-        <UpgradeToMax isOwner={ctx.isOwner} />
+        <UpgradeToMax isOwner={ctx.isOwner} feature="Trends" />
       </>
     );
   }

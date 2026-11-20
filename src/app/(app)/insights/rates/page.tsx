@@ -20,7 +20,7 @@ export default async function RateChecksPage() {
   const header = <PageHeader title="Insights" description={`${scope} · Each day's stop rate against the DPD sliding scale, across every period read.`} />;
 
   if (plan !== "max") {
-    return (<>{header}<InsightsTabs active="/insights/rates" /><UpgradeToMax isOwner={ctx.isOwner} /></>);
+    return (<>{header}<InsightsTabs active="/insights/rates" /><UpgradeToMax isOwner={ctx.isOwner} feature="Rate Checks" /></>);
   }
 
   const [data, vehicleRows, scaleRows] = await Promise.all([

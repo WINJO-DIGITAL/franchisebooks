@@ -24,7 +24,7 @@ export default async function DriverPerformancePage() {
   const header = <PageHeader title="Insights" description={`${scope} · How each driver's stops, parcels and pay have moved from period to period.`} />;
 
   if (plan !== "max") {
-    return (<>{header}<InsightsTabs active="/insights/drivers" /><UpgradeToMax isOwner={ctx.isOwner} /></>);
+    return (<>{header}<InsightsTabs active="/insights/drivers" /><UpgradeToMax isOwner={ctx.isOwner} feature="Driver Performance" /></>);
   }
 
   const [data, names, settings] = await Promise.all([

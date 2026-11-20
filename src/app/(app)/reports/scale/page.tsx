@@ -44,7 +44,7 @@ export default async function ScaleReportPage({ searchParams }: { searchParams: 
   const header = <PageHeader title="Sliding Scale Report" description="Each route's stop pay for the day checked against the sliding scale you have entered, in both directions." />;
 
   if (plan !== "max") {
-    return (<>{header}<UpgradeToMax isOwner={ctx.isOwner} /></>);
+    return (<>{header}<UpgradeToMax isOwner={ctx.isOwner} feature="Sliding Scale Report" /></>);
   }
 
   const period = isISODate(params.period) ? periodContaining(params.period) : lastCompletedPeriod(ctx.today);

@@ -32,18 +32,36 @@ export function InsightsTabs({ active }: { active: (typeof TABS)[number]["href"]
   );
 }
 
-/** Shown in place of an Insights page to accounts on the Essential plan. */
-export function UpgradeToMax({ isOwner }: { isOwner: boolean }) {
+/**
+ * Shown in place of a Max feature to accounts on Essential. It names the feature the person was looking at and what Max adds
+ * to it, so the upgrade is offered where it is wanted, not on every page.
+ */
+const MAX_BENEFITS = [
+  "The Sliding Scale Report: each route's pay checked against your DPD scale, to the penny, in both directions.",
+  "DPD figures for the current and previous tax year, read back from the portal.",
+  "Trends, driver performance and rate checks over time.",
+];
+
+export function UpgradeToMax({ isOwner, feature = "Insights" }: { isOwner: boolean; feature?: string }) {
   return (
-    <Panel className="py-8 text-center">
-      <p className="font-medium text-ink">Insights Are Part of Max</p>
-      <div className="mx-auto mt-2 max-w-md space-y-2 text-sm text-ink-soft">
-        <p>Max reads your DPD figures back over the current and previous tax year, and shows them as trends, driver performance and rate checks.</p>
-        <p>It is £{PLAN_PRICE_GBP.max} a month for your account, however many franchises you have.</p>
-      </div>
+    <Panel className="py-8">
+      <p className="text-xs font-semibold uppercase tracking-wider text-accent">Max Plan</p>
+      <p className="mt-2 text-xl font-semibold tracking-tight">Unlock {feature} with Max</p>
+      <p className="mt-2 max-w-xl text-[0.9375rem] leading-relaxed text-ink-soft">
+        Max is £{PLAN_PRICE_GBP.max} a month for your account, however many franchises you run. It adds:
+      </p>
+      <ul className="mt-4 max-w-xl divide-y divide-line border-y border-line text-[0.9375rem] text-ink-soft">
+        {MAX_BENEFITS.map((b) => (
+          <li key={b} className="flex gap-3 py-2.5">
+            <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-accent" />
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
       {isOwner ? (
-        <div className="mt-5 flex justify-center">
-          <Link href="/settings" className={buttonClass("primary", "md")}>Change Plan in Settings</Link>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Link href="/settings#plan" className={buttonClass("primary", "md")}>See the Max Plan</Link>
+          <span className="text-sm text-muted">Your Essential plan stays as it is until you choose.</span>
         </div>
       ) : (
         <p className="mt-4 text-sm text-muted">Ask your business owner about moving to Max.</p>
