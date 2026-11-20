@@ -1,11 +1,12 @@
 {
-  "name": "Lite Standard Sliding Scale",
+  "name": "ODF Lite",
+  "printed_title": "Lite Standard Sliding Scale",
   "vehicle": {
     "type": "Lite Standard",
     "fuel": "not printed on the sheet"
   },
   "source": "DPD sliding scale PDF supplied by the owner (Lite Standard Sliding Scale)",
-  "units": "pounds per stop (1.31 is \u00a31.31)",
+  "units": "pounds per stop (1.31 is £1.31)",
   "rule": "Round stops and miles down to the nearest printed row and column",
   "stopRows": [
     5,
@@ -2024,5 +2025,6 @@
     ]
   ],
   "verified": "Read from the PDF text; 1,800 cells (60 rows x 30 columns, 5 to 300 stops, 10 to 300 miles); evenly stepped; more miles never lowers the rate. Rates are used exactly as printed. Printed fact to be aware of: in 16 places, a higher stop count has a higher rate than the row above it (for example 85 stops at 10 miles is 1.31 and 90 stops is 1.32).",
-  "scheme": "not stated in the title"
+  "scheme": "ODF",
+  "scheme_source": "Label given by the owner. The printed title does not state ODF or ODW."
 }
