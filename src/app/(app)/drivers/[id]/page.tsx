@@ -10,8 +10,8 @@ import { currentPlan } from "@/lib/billing/plan";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadAdjustments, loadCosts, loadEarnings } from "@/lib/data/period";
 import { addDays, formatUkDate, formatUkDateLong } from "@/lib/dates";
-import { DPD_PERIOD_DAYS, periodContaining, periodLabel } from "@/lib/finance/periods";
-import { buildDriverDays, totalAdjustments } from "@/lib/finance/calc";
+import { DPD_PERIOD_DAYS, periodContaining, periodLabel, previousPeriod } from "@/lib/finance/periods";
+import { buildDriverDays, originalEarnings, totalAdjustments } from "@/lib/finance/calc";
 import { dayRateFromRow, readDayRateRows } from "@/lib/data/day-rates";
 import { dayInARowByDate, priceDay, rateOn, wageForDriver } from "@/lib/finance/wages";
 import { adjustmentLabel } from "@/lib/labels";
@@ -86,7 +86,6 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
     const baseline = baselineOf(history, config.stopsChangePct, config.minBaselineDays);
     consistency.set(day.date, { status: classifyStops(day.stops, baseline, { hasSourceConflict: conflictDates.has(day.date), minDiff: config.stopsMinDiff }), usual: baseline ? Math.round(baseline.mean) : null });
   });
-  const recent = days.filter((d) => d.date >= addDays(ctx.today, -45));
   const activeAssignment = assignments.find((a) => a.start_date <= ctx.today && (!a.end_date || a.end_date >= ctx.today));
 
   return (
@@ -193,61 +192,64 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         </Section>
       ) : null}
 
-      <Section title="Daily Payments" description="Each day as DPD shows it on the Payments page: stops, parcels, what they paid, route and mileage. Days imported before these details were read show a dash until the next sync fills them in.">
-        {earnings.length === 0 ? <EmptyState title="No Daily Payments Yet">They appear once a DPD report naming this driver has been imported.</EmptyState> : (
-          <TableWrap>
-            <table className="ledger">
-              <thead>
-                <tr><th>Date</th><th className="r">Stops</th><th className="r hidden sm:table-cell">Total Parcels</th><th className="r hidden md:table-cell">Excess Parcels</th><th className="r hidden sm:table-cell">Stop Pay</th><th className="r hidden md:table-cell">Per Stop</th><th className="r hidden md:table-cell">Parcel Pay</th><th className="r">Total</th><th className="hidden sm:table-cell">Route</th><th className="r hidden md:table-cell">Mileage</th></tr>
-              </thead>
-              <tbody>
-                {[...earnings].reverse().slice(0, 45).map((e) => (
-                  <tr key={e.id}>
-                    <td className="num whitespace-nowrap">{formatUkDateLong(e.date)}</td>
-                    <td className="r num">{e.stops ?? "—"}</td>
-                    <td className="r num hidden sm:table-cell">{e.parcels ?? "—"}</td>
-                    <td className="r num hidden md:table-cell">{e.excessParcels ?? "—"}</td>
-                    <td className="r num hidden sm:table-cell">{e.stopPay == null ? "—" : formatGBP(e.stopPay)}</td>
-                    <td className="r num hidden md:table-cell">{e.stopPay != null && e.stops ? formatGBP(Math.round(e.stopPay / e.stops)) : "—"}</td>
-                    <td className="r num hidden md:table-cell">{e.parcelPay == null ? "—" : formatGBP(e.parcelPay)}</td>
-                    <td className="r num font-medium">{formatGBP(e.gross)}</td>
-                    <td className="num hidden sm:table-cell">{e.route ?? "—"}</td>
-                    <td className="r num hidden md:table-cell">{e.mileage ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableWrap>
-        )}
-      </Section>
-
-      <Section title="Earnings History" description="Last 45 days. DPD figures are shown exactly as imported; adjustments are separate.">
-        {recent.length === 0 ? <EmptyState title="No Earnings Recorded Yet">Earnings appear here once a DPD report naming this driver has been imported.</EmptyState> : (
-          <TableWrap>
-            <table className="ledger">
-              <thead>
-                <tr><th>Date</th><th className="r">Parcels</th><th className="r">Stops</th><th>Stop Pattern</th><th className="r">DPD Earnings</th><th className="r">Adjustments</th><th className="r">Final Pay</th></tr>
-              </thead>
-              <tbody>
-                {recent.map((d) => {
-                  const c = consistency.get(d.date);
-                  return (
-                    <tr key={`${d.franchiseId}-${d.date}`}>
-                      <td className="num whitespace-nowrap">{formatUkDateLong(d.date)}</td>
-                      <td className="r num">{d.parcels ?? "—"}</td>
-                      <td className="r num">{d.stops ?? "—"}</td>
-                      <td>{d.hasReport && c ? <span className="flex items-center gap-2"><Badge tone={CONSISTENCY_TONE[c.status]}>{STOP_CONSISTENCY_LABEL[c.status]}</Badge>{c.usual != null && c.status === "unusual" ? <span className="text-xs text-muted">usually about {c.usual}</span> : null}</span> : <span className="text-muted">No DPD report</span>}</td>
-                      <td className="r num">{d.hasReport ? formatGBP(d.originalEarnings) : "—"}</td>
-                      <td className="r num">{d.adjustmentsNet === 0 && d.adjustmentCount === 0 ? "—" : formatGBP(d.adjustmentsNet, { signed: true })}</td>
-                      <td className="r num font-medium">{formatGBP(d.finalEarnings)}</td>
+      {[{ label: "Current Pay Period", p: period }, { label: "Previous Pay Period", p: previousPeriod(period) }].map(({ label, p }) => {
+        const inPeriod = (date: string) => date >= p.start && date <= p.end;
+        const periodRows = [...earnings].filter((e) => inPeriod(e.date)).sort((x, y) => y.date.localeCompare(x.date));
+        const dayFor = new Map(days.map((d) => [`${d.franchiseId}|${d.date}`, d]));
+        const periodTotal = sumPence(days.filter((d) => inPeriod(d.date) && d.hasReport).map((d) => d.finalEarnings));
+        return (
+          <Section key={p.start} title={`${label}: ${periodLabel(p)}`} description={`Each day in this pay period, as DPD shows it, with any adjustments and the final pay. Final pay for the period: ${formatGBP(periodTotal)}.`}>
+            {periodRows.length === 0 ? <EmptyState title="No Days in This Pay Period">Days appear here once a DPD report naming this driver has been imported for the period.</EmptyState> : (
+              <TableWrap>
+                <table className="ledger">
+                  <thead>
+                    <tr>
+                      <th>Date</th><th className="r">Stops</th><th className="r hidden sm:table-cell">Parcels</th><th className="r hidden md:table-cell">Excess Parcels</th>
+                      <th className="r hidden md:table-cell">Stop Pay</th><th className="r hidden md:table-cell">Parcel Pay</th><th>Stop Pattern</th>
+                      <th className="r">DPD Earnings</th><th className="r hidden sm:table-cell">Adjustments</th><th className="r">Final Pay</th>
+                      <th className="hidden sm:table-cell">Route</th><th className="r hidden md:table-cell">Mileage</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </TableWrap>
-        )}
-      </Section>
+                  </thead>
+                  <tbody>
+                    {periodRows.map((e) => {
+                      const day = dayFor.get(`${e.franchiseId}|${e.date}`);
+                      const c = consistency.get(e.date);
+                      return (
+                        <tr key={e.id}>
+                          <td className="num whitespace-nowrap">{formatUkDateLong(e.date)}</td>
+                          <td className="r num">{e.stops ?? "—"}</td>
+                          <td className="r num hidden sm:table-cell">{e.parcels ?? "—"}</td>
+                          <td className="r num hidden md:table-cell">{e.excessParcels ?? "—"}</td>
+                          <td className="r num hidden md:table-cell">{e.stopPay == null ? "—" : formatGBP(e.stopPay)}</td>
+                          <td className="r num hidden md:table-cell">{e.parcelPay == null ? "—" : formatGBP(e.parcelPay)}</td>
+                          <td>{c ? <span className="flex items-center gap-2"><Badge tone={CONSISTENCY_TONE[c.status]}>{STOP_CONSISTENCY_LABEL[c.status]}</Badge>{c.usual != null && c.status === "unusual" ? <span className="text-xs text-muted">usually about {c.usual}</span> : null}</span> : <span className="text-muted">—</span>}</td>
+                          <td className="r num">{formatGBP(originalEarnings(e))}</td>
+                          <td className="r num hidden sm:table-cell">{day && (day.adjustmentsNet !== 0 || day.adjustmentCount > 0) ? formatGBP(day.adjustmentsNet, { signed: true }) : "—"}</td>
+                          <td className="r num font-medium">{day ? formatGBP(day.finalEarnings) : formatGBP(originalEarnings(e))}</td>
+                          <td className="num hidden sm:table-cell">{e.route ?? "—"}</td>
+                          <td className="r num hidden md:table-cell">{e.mileage ?? "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-line-strong font-semibold">
+                      <td>Total</td>
+                      <td className="r num">{periodRows.reduce((n, e) => n + (e.stops ?? 0), 0).toLocaleString("en-GB")}</td>
+                      <td className="r num hidden sm:table-cell">{periodRows.reduce((n, e) => n + (e.parcels ?? 0), 0).toLocaleString("en-GB")}</td>
+                      <td className="hidden md:table-cell" /><td className="hidden md:table-cell" /><td className="hidden md:table-cell" /><td />
+                      <td className="r num">{formatGBP(sumPence(periodRows.map((e) => originalEarnings(e))))}</td>
+                      <td className="hidden sm:table-cell" />
+                      <td className="r num">{formatGBP(periodTotal)}</td>
+                      <td className="hidden sm:table-cell" /><td className="hidden md:table-cell" />
+                    </tr>
+                  </tfoot>
+                </table>
+              </TableWrap>
+            )}
+          </Section>
+        );
+      })}
 
       <Section title="Pay Adjustments" description="Last 3 pay periods" actions={<LinkButton href="/adjustments" variant="quiet" size="sm">All Adjustments</LinkButton>}>
         {adjustments.length === 0 ? <EmptyState title="No Adjustments" /> : (
