@@ -69,7 +69,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
               <tbody>
                 {[...rows].filter((d) => d.daysWorked > 0).sort((a, b) => b.originalEarnings - a.originalEarnings).map((d) => (
                   <tr key={`${d.franchiseId}-${d.key}`}>
-                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
+                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise ? <span className="block text-xs font-normal text-muted sm:hidden">{d.franchise}</span> : null}</td>
                     {showFranchise ? <td className="hidden sm:table-cell">{d.franchise}</td> : null}
                     <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
                     <td className="r num hidden sm:table-cell">{d.stops.toLocaleString("en-GB")}</td>
@@ -204,7 +204,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                 const source = fileByKey.get(key);
                 return (
                   <tr key={`${d.franchiseId}-${d.key}`}>
-                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
+                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise ? <span className="block text-xs font-normal text-muted sm:hidden">{franchiseName.get(d.franchiseId) ?? ""}</span> : null}</td>
                     {showFranchise ? <td className="hidden sm:table-cell">{franchiseName.get(d.franchiseId) ?? ""}</td> : null}
                     <td className="num">{[...(routesByKey.get(key) ?? [])].join(" / ") || "—"}</td>
                     <td className="r num hidden sm:table-cell">{d.stops ?? "—"}</td>
