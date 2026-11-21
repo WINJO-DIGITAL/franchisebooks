@@ -8,6 +8,7 @@ import { loadPeriodData, hiddenFranchiseFilter } from "@/lib/data/period";
 import { addDays, formatUkDate, formatUkDateLong, isISODate } from "@/lib/dates";
 import { periodContaining, periodFromParam, periodLabel } from "@/lib/finance/periods";
 import { PeriodNav } from "@/components/ui/period-nav";
+import { DayPicker } from "@/components/ui/day-picker";
 import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
@@ -162,11 +163,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
         actions={<><LinkButton href={`/earnings?period=${periodContaining(date).start}`} variant="secondary">Pay Period View</LinkButton>{ctx.canWrite ? <LinkButton href={`/adjustments/new?date=${date}`}>Add Pay Adjustment</LinkButton> : null}</>}
       />
       <form method="get" className="mb-6 flex flex-wrap items-center gap-2">
-        <Link href={`/earnings?date=${addDays(date, -1)}`} className={buttonClass("secondary", "sm")} aria-label="Previous day"><ChevronLeft className="size-4" aria-hidden /></Link>
-        <label className="sr-only" htmlFor="earnings-date">Date</label>
-        <input id="earnings-date" type="date" name="date" defaultValue={date} max={ctx.today} className="h-9 rounded-lg border border-line-strong bg-surface px-3 text-sm" />
-        <button type="submit" className={buttonClass("secondary", "sm")}>Go</button>
-        {date < ctx.today ? <Link href={`/earnings?date=${addDays(date, 1)}`} className={buttonClass("secondary", "sm")} aria-label="Next day"><ChevronRight className="size-4" aria-hidden /></Link> : null}
+        <DayPicker date={date} max={ctx.today} />
       </form>
 
       <Section>
