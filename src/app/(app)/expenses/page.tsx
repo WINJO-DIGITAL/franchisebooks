@@ -25,6 +25,18 @@ const FILTERS = [
   { key: "unallocated", label: "Unallocated" },
 ] as const;
 
+function Row({ label, value, tone, strong = false, large = false, note }: { label: string; value: string; tone?: "bad"; strong?: boolean; large?: boolean; note?: string }) {
+  return (
+    <div className="py-3">
+      <div className="flex items-baseline justify-between gap-4">
+        <dt className={strong ? "font-semibold" : "text-ink-soft"}>{label}</dt>
+        <dd className={`num ${large ? "text-2xl" : "text-base"} ${strong ? "font-semibold" : "font-medium"} ${tone === "bad" ? "text-bad" : ""}`}>{value}</dd>
+      </div>
+      {note ? <p className="mt-0.5 text-right text-xs text-muted">{note}</p> : null}
+    </div>
+  );
+}
+
 export default async function ExpensesPage({ searchParams }: { searchParams: Promise<{ period?: string; show?: string; add?: string }> }) {
   const params = await searchParams;
   const ctx = await getContext();
@@ -69,18 +81,19 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
 
       <Section>
         <Panel>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-            <Stat size="lg" label="Total Before VAT" value={formatGBP(summary.beforeVat)} sub={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : undefined} />
-            <Stat label="VAT" value={formatGBP(summary.vat)} />
-            <Stat label="Total With VAT" value={formatGBP(summary.withVat)} sub={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : undefined} />
+          <dl className="divide-y divide-line">
+            {costs.some(isFuel) ? <Row label="Fuel" value={formatGBP(fuelTotal)} tone="bad" /> : null}
+            <Row label="Other expenses" value={formatGBP(otherTotal)} tone="bad" />
+            <Row label="Total before VAT" value={formatGBP(summary.beforeVat)} tone="bad" strong note={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : undefined} />
+            <Row label="VAT" value={formatGBP(summary.vat)} tone="bad" />
             {summary.vatNotStatedCount > 0 ? (
-              <Stat label="VAT Not Stated" value={formatGBP(summary.vatNotStated)} sub={`${items(summary.vatNotStatedCount)}: the document does not say whether VAT is included`} />
+              <Row label="VAT not stated" value={formatGBP(summary.vatNotStated)} note={`${items(summary.vatNotStatedCount)}: the document does not say whether VAT is included`} />
             ) : null}
-            <Stat label="Total Spent" value={formatGBP(summary.totalSpent)} />
-            <Stat label="Fuel" value={costs.some(isFuel) ? formatGBP(fuelTotal) : "None"} />
-            <Stat label="Other expenses" value={formatGBP(otherTotal)} />
-            <Stat label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} sub={unallocated.length ? `${items(unallocated.length)} to assign` : undefined} />
-          </div>
+            <Row label="Total with VAT" value={formatGBP(summary.withVat)} tone="bad" strong large note={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : undefined} />
+            {sumPence(unallocated.map((c) => c.amount)) > 0 ? (
+              <Row label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} note={`${items(unallocated.length)} to assign`} />
+            ) : null}
+          </dl>
         </Panel>
       </Section>
 
