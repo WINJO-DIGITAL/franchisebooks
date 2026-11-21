@@ -80,7 +80,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
             <table className="ledger">
               <thead>
                 <tr>
-                  <th>Driver</th><th>Route</th><th className="r">Days</th><th className="r">Stops</th>
+                  <th>Driver</th><th>Route</th><th className="r">Stops</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,7 +88,6 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                   <tr key={d.key}>
                     <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise && d.franchise ? <span className="block text-xs font-normal text-muted">{d.franchise}</span> : null}</td>
                     <td className="num">{d.routes || "—"}</td>
-                    <td className="r num">{d.daysWorked}</td>
                     <td className="r num">{d.stops.toLocaleString("en-GB")}</td>
                   </tr>
                 ))}
@@ -96,7 +95,6 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
               <tfoot>
                 <tr>
                   <td>Total</td><td />
-                  <td className="r num">{rows.reduce((n, d) => n + d.daysWorked, 0)}</td>
                   <td className="r num">{t.stops.toLocaleString("en-GB")}</td>
                 </tr>
               </tfoot>
