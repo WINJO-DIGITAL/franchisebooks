@@ -86,50 +86,66 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       />
       <PeriodNav period={period} today={ctx.today} hrefFor={(p) => query({ period: p })} exportHref={`/api/export/costs?period=${period.start}`} />
 
-      <Section>
-        <Panel>
-          <dl className="divide-y divide-line">
-            <Row label={wagesLabel} value={formatGBP(wages)} tone="bad" />
-            {costs.some(isFuel) ? <Row label="Fuel" value={formatGBP(fuelTotal)} tone="bad" /> : null}
-            <Row label="Other expenses" value={formatGBP(otherTotal)} tone="bad" />
-            <Row label="Total before VAT" value={formatGBP(wages + summary.beforeVat)} tone="bad" strong note={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : undefined} />
-            <Row label="VAT" value={formatGBP(summary.vat)} tone="bad" />
-            {summary.vatNotStatedCount > 0 ? (
-              <Row label="VAT not stated" value={formatGBP(summary.vatNotStated)} note={`${items(summary.vatNotStatedCount)}: the document does not say whether VAT is included`} />
-            ) : null}
-            <Row label="Total with VAT" value={formatGBP(wages + summary.withVat)} tone="bad" strong large note={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : undefined} />
-            {sumPence(unallocated.map((c) => c.amount)) > 0 ? (
-              <Row label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} note={`${items(unallocated.length)} to assign`} />
-            ) : null}
-          </dl>
-        </Panel>
-      </Section>
-
       {summary.byCategory.length > 0 || wages > 0 ? (
-        <Section title="By Category">
-          <TableWrap>
-            <table className="ledger" data-testid="category-subtotals">
-              <thead><tr><th>Category</th><th className="r">Items</th><th className="r">Amount</th><th className="r hidden sm:table-cell">VAT Stated</th></tr></thead>
-              <tbody>
-                {wages > 0 ? (
-                  <tr>
-                    <td className="font-medium">{wagesLabel}</td>
-                    <td className="r num">{peoplePaid}</td>
-                    <td className="r num">{formatGBP(wages)}</td>
-                    <td className="r num hidden sm:table-cell"><span className="text-muted">—</span></td>
-                  </tr>
+        <Section title="Costs">
+          {(() => {
+            const rows = [
+              ...(wages > 0 ? [{ key: "wages", name: wagesLabel, count: peoplePaid, amount: wages, note: `${peoplePaid} ${peoplePaid === 1 ? "person" : "people"}` }] : []),
+              ...summary.byCategory.map((c) => ({ key: c.name, name: c.name, count: c.count, amount: c.amount, note: undefined as string | undefined })),
+            ];
+            const base = wages + summary.beforeVat;
+            const share = (amount: number) => (base > 0 ? Math.max(2, (amount / base) * 100) : 0);
+            const Line = ({ r }: { r: (typeof rows)[number] }) => (
+              <tr>
+                <td className="font-medium">
+                  {r.name}
+                  <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden>
+                    <span className="block h-1.5 rounded-full bg-bad/70" style={{ width: `${share(r.amount)}%` }} />
+                  </span>
+                  {r.note ? <span className="block text-xs font-normal text-muted">{r.note}</span> : null}
+                </td>
+                <td className="r num align-top">{r.count}</td>
+                <td className="r num align-top">{formatGBP(r.amount)}</td>
+              </tr>
+            );
+            const top = rows.slice(0, 5);
+            const rest = rows.slice(5);
+            return (
+              <>
+                <TableWrap>
+                  <table className="ledger" data-testid="category-subtotals">
+                    <thead><tr><th>Category</th><th className="r">Items</th><th className="r">Amount</th></tr></thead>
+                    <tbody>{top.map((r) => <Line key={r.key} r={r} />)}</tbody>
+                  </table>
+                </TableWrap>
+                {rest.length > 0 ? (
+                  <details className="mt-3 group">
+                    <summary className="cursor-pointer text-sm font-medium text-accent hover:underline">Show all {rows.length} categories</summary>
+                    <div className="mt-3">
+                      <TableWrap>
+                        <table className="ledger">
+                          <tbody>{rest.map((r) => <Line key={r.key} r={r} />)}</tbody>
+                        </table>
+                      </TableWrap>
+                    </div>
+                  </details>
                 ) : null}
-                {summary.byCategory.map((c) => (
-                  <tr key={c.name}>
-                    <td className="font-medium">{c.name}</td>
-                    <td className="r num">{c.count}</td>
-                    <td className="r num">{formatGBP(c.amount)}</td>
-                    <td className="r num hidden sm:table-cell">{c.vat ? formatGBP(c.vat) : <span className="text-muted">—</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableWrap>
+                <Panel className="mt-4">
+                  <dl className="divide-y divide-line">
+                    <Row label="Total before VAT" value={formatGBP(base)} tone="bad" strong note={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : undefined} />
+                    <Row label="VAT" value={formatGBP(summary.vat)} tone="bad" />
+                    {summary.vatNotStatedCount > 0 ? (
+                      <Row label="VAT not stated" value={formatGBP(summary.vatNotStated)} note={`${items(summary.vatNotStatedCount)}: the document does not say whether VAT is included`} />
+                    ) : null}
+                    <Row label="Total with VAT" value={formatGBP(wages + summary.withVat)} tone="bad" strong large note={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : undefined} />
+                    {sumPence(unallocated.map((c) => c.amount)) > 0 ? (
+                      <Row label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} note={`${items(unallocated.length)} to assign`} />
+                    ) : null}
+                  </dl>
+                </Panel>
+              </>
+            );
+          })()}
         </Section>
       ) : null}
 
