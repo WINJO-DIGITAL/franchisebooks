@@ -127,7 +127,7 @@ export default async function DashboardPage() {
         <Panel>
           {routeIncome ? (
             <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-              <Stat size="lg" tone="good" label="Income" value={formatGBP(daySummary.incomeFromDpd, { signed: true })} sub="From DPD payments" />
+              <Stat size="lg" tone="good" label="Income" value={formatGBP(daySummary.incomeFromDpd, { signed: true })} />
               <Stat label="Drivers working" value={String(daySummary.driverCount)} />
               <Stat label="Stops" value={daySummary.stops.toLocaleString("en-GB")} />
               <Stat label="Parcels" value={daySummary.parcels.toLocaleString("en-GB")} />
