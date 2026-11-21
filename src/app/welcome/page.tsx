@@ -6,7 +6,7 @@ import { PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { HeroDemo } from "@/components/marketing/hero-demo";
 import { FeatureTabs } from "@/components/marketing/feature-tabs";
 import { PriceSlider } from "@/components/marketing/price-slider";
-import { CheckPreview, DriverPayPreview, FranchisesPreview, ReportPreview } from "@/components/marketing/previews";
+import { BrowserShot } from "@/components/marketing/browser-shot";
 import { SiteFooter, SiteHeader } from "@/components/marketing/site-chrome";
 
 const TITLE = "Franchise Books by Winjo Digital: know what your DPD franchise earns and what each driver is owed";
@@ -52,20 +52,21 @@ export default function WelcomePage() {
         </section>
 
         <section id="how" aria-labelledby="how-title" className="scroll-mt-20">
-          <div className="mx-auto max-w-4xl px-4 py-14 sm:px-6 sm:py-20">
+          <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
             <h2 id="how-title" className={H2}>
-              Every Screen You Need, <span className="text-muted">Built From Your DPD Figures</span>
+              The Real App, <span className="text-muted">On Your Phone and Your Computer</span>
             </h2>
             <div className="mt-8">
               <FeatureTabs
                 panels={[
-                  { label: "Driver Pay", title: "Each Driver's Pay", node: <DriverPayPreview /> },
-                  { label: "Invoice Check", title: "Checked Against the Invoice", node: <CheckPreview /> },
-                  { label: "Franchises", title: "Every Franchise, One Login", node: <FranchisesPreview /> },
-                  { label: "Reports", title: "A Report for Each Period", node: <ReportPreview /> },
+                  { label: "Dashboard", title: "Your Whole Pay Period at a Glance", node: <BrowserShot src="/marketing/desktop-dash.webp" alt="Dashboard: the latest DPD report, and the pay period's income, wages, expenses and profit." /> },
+                  { label: "Driver Pay", title: "What Each Driver Is Owed", node: <BrowserShot src="/marketing/desktop-drivers.webp" alt="Drivers this pay period: days, stops, income and wage for each driver." /> },
+                  { label: "Income", title: "Every Day, Read From DPD", node: <BrowserShot src="/marketing/desktop-income.webp" alt="Income for one day: each driver's route, stops, parcels and income, read from the DPD portal." /> },
+                  { label: "Expenses", title: "Every Cost, VAT and All", node: <BrowserShot src="/marketing/desktop-expenses.webp" alt="Expenses for the pay period, with VAT and each cost listed." /> },
                 ]}
               />
             </div>
+            <p className="mt-4 text-sm text-muted">Screens from a demo account. Every name and figure is made up.</p>
           </div>
         </section>
 
