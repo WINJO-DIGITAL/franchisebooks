@@ -148,9 +148,9 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         </EmptyState>
       ) : (
         <TableWrap>
-          <table className="ledger">
+          <table className="ledger [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-3 sm:[&_th]:!px-3">
             <thead>
-              <tr><th>Date</th><th>What</th><th className="hidden sm:table-cell">Supplier</th><th className="hidden sm:table-cell">Vehicle</th>{!ctx.franchise ? <th>Franchise</th> : null}<th>Belongs To</th><th className="r">Amount</th><th className="r hidden sm:table-cell">VAT</th><th /></tr>
+              <tr><th>Date</th><th>What</th><th className="hidden sm:table-cell">Supplier</th><th className="hidden sm:table-cell">Vehicle</th>{!ctx.franchise ? <th className="hidden sm:table-cell">Franchise</th> : null}<th>Belongs To</th><th className="r">Amount</th><th className="r hidden sm:table-cell">VAT</th><th /></tr>
             </thead>
             <tbody>
               {visible.map((c) => (
@@ -163,18 +163,19 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                   <td>
                     <span className="font-medium">{c.kind === "fuel" ? "Fuel" : c.categoryName}</span>
                     {c.description ? <span className="block text-sm text-muted">{c.description}{c.litres ? ` · ${c.litres} L` : ""}</span> : c.litres ? <span className="block text-sm text-muted">{c.litres} L</span> : null}
+                    {!ctx.franchise ? <span className="block text-sm text-muted sm:hidden">{c.franchiseId ? franchiseName.get(c.franchiseId) : "Franchise not set"}</span> : null}
                     <span className="block text-xs text-muted">{c.importedFileId ? <a href={`/api/files/${c.importedFileId}`} className="hover:underline">{SOURCE_LABEL[c.source] ?? c.source}</a> : (SOURCE_LABEL[c.source] ?? c.source)}{c.reference ? ` · ref ${c.reference}` : ""}</span>
                   </td>
                   <td className="hidden sm:table-cell">{c.supplier ?? "—"}</td>
                   <td className="num hidden sm:table-cell">{c.vehicleRegistration ?? "—"}</td>
-                  {!ctx.franchise ? <td>{c.franchiseId ? franchiseName.get(c.franchiseId) : <span className="text-muted">Not set</span>}</td> : null}
+                  {!ctx.franchise ? <td className="hidden sm:table-cell">{c.franchiseId ? franchiseName.get(c.franchiseId) : <span className="text-muted">Not set</span>}</td> : null}
                   <td>
                     {c.allocation.scope === "driver" ? (
                       <><Link href={`/drivers/${c.allocation.driverId}`} className="font-medium hover:underline">{names.get(c.allocation.driverId) ?? "Driver"}</Link>
                         <span className="block text-xs text-muted">{c.allocationMethod === "manual" ? "Assigned by you" : (c.allocationNote ?? "Matched automatically")}</span></>
                     ) : c.allocation.scope === "franchise" ? "Business cost" : <Badge tone="warn">Unallocated</Badge>}
                   </td>
-                  <td className="r num font-semibold">{formatGBP(c.amount)}</td>
+                  <td className="r num font-semibold whitespace-nowrap">{formatGBP(c.amount)}</td>
                   <td className="r num hidden sm:table-cell">{c.vat != null ? formatGBP(c.vat) : c.vatBasis === "gross" ? <span className="text-xs text-muted">Included</span> : c.vatBasis === "not_stated" ? <span className="text-xs text-muted">Not stated</span> : <span className="text-muted">—</span>}</td>
                   <td className="r whitespace-nowrap">
                     {ctx.canWrite ? (
@@ -189,7 +190,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
               ))}
             </tbody>
             <tfoot>
-              <tr><td colSpan={2}>Total shown</td><td className="hidden sm:table-cell" /><td className="hidden sm:table-cell" />{!ctx.franchise ? <td /> : null}<td /><td className="r num">{formatGBP(sumPence(visible.map((c) => c.amount)))}</td><td className="r num hidden sm:table-cell">{visible.some((c) => c.vat != null) ? formatGBP(sumPence(visible.map((c) => c.vat ?? 0))) : ""}</td><td /></tr>
+              <tr><td colSpan={2}>Total shown</td><td className="hidden sm:table-cell" /><td className="hidden sm:table-cell" />{!ctx.franchise ? <td className="hidden sm:table-cell" /> : null}<td /><td className="r num whitespace-nowrap">{formatGBP(sumPence(visible.map((c) => c.amount)))}</td><td className="r num hidden sm:table-cell">{visible.some((c) => c.vat != null) ? formatGBP(sumPence(visible.map((c) => c.vat ?? 0))) : ""}</td><td /></tr>
             </tfoot>
           </table>
         </TableWrap>
