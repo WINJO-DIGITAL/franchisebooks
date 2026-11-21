@@ -174,9 +174,9 @@ export default async function DashboardPage() {
                       <dd className="num text-xl font-semibold text-bad">−{formatGBP(wages)}</dd>
                     </div>
                     {row("Expenses", formatGBP(costs), "text-bad", "−")}
-                    <div className="flex items-baseline justify-between gap-4 pt-3">
-                      <dt className="font-semibold">Profit / Loss</dt>
-                      <dd className={`num text-2xl font-semibold ${profit < 0 ? "text-bad" : "text-good"}`}>{m.revenueStatus === "unavailable" ? "—" : formatGBP(profit)}</dd>
+                    <div className={`mt-3 flex items-center justify-between gap-4 rounded-lg px-4 py-4 ${profit < 0 ? "bg-bad-soft" : "bg-good-soft"}`}>
+                      <dt className="text-base font-semibold text-ink">Profit / Loss</dt>
+                      <dd className={`num text-3xl font-bold tracking-tight ${profit < 0 ? "text-bad" : "text-good"}`}>{m.revenueStatus === "unavailable" ? "—" : formatGBP(profit, { signed: true })}</dd>
                     </div>
                   </dl>
                 );
@@ -224,7 +224,7 @@ export default async function DashboardPage() {
                         <div><p className="text-xs text-muted">Income</p><p className="num font-medium text-good">{formatGBP(f.incomeFromDpd, { signed: true })}</p></div>
                         <div><p className="text-xs text-muted">Wages</p><p className="num font-medium text-bad">−{formatGBP(f.wages)}</p></div>
                         <div><p className="text-xs text-muted">Costs</p><p className="num font-medium text-bad">−{formatGBP(f.fuel + f.otherExpenses)}</p></div>
-                        <div><p className="text-xs text-muted">Profit / Loss</p><p className={`num font-semibold ${f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses < 0 ? "text-bad" : "text-good"}`}>{formatGBP(f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses)}</p></div>
+                        <div className={`-my-1 rounded-md px-2 py-1 ${f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses < 0 ? "bg-bad-soft" : "bg-good-soft"}`}><p className="text-xs font-medium text-ink-soft">Profit / Loss</p><p className={`num font-bold ${f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses < 0 ? "text-bad" : "text-good"}`}>{formatGBP(f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses, { signed: true })}</p></div>
                       </div>
                     </li>
                   ))}
@@ -235,7 +235,7 @@ export default async function DashboardPage() {
                     <div><p className="text-xs text-muted">Income</p><p className="num font-semibold text-good">{formatGBP(franchiseTotals.income, { signed: true })}</p></div>
                     <div><p className="text-xs text-muted">Wages</p><p className="num font-semibold text-bad">−{formatGBP(franchiseTotals.wages)}</p></div>
                     <div><p className="text-xs text-muted">Costs</p><p className="num font-semibold text-bad">−{formatGBP(franchiseTotals.costs)}</p></div>
-                    <div><p className="text-xs text-muted">Profit / Loss</p><p className={`num font-semibold ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit)}</p></div>
+                    <div className={`-my-1 rounded-md px-2 py-1 ${franchiseTotals.profit < 0 ? "bg-bad-soft" : "bg-good-soft"}`}><p className="text-xs font-medium text-ink-soft">Profit / Loss</p><p className={`num font-bold ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit, { signed: true })}</p></div>
                   </div>
                 </div>
               </Panel>
@@ -260,7 +260,7 @@ export default async function DashboardPage() {
                             <td className="r num text-good">{formatGBP(f.incomeFromDpd, { signed: true })}</td>
                             <td className="r num text-bad">−{formatGBP(f.wages)}</td>
                             <td className="r num text-bad">−{formatGBP(f.fuel + f.otherExpenses)}</td>
-                            <td className={`r num font-semibold ${profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(profit)}</td>
+                            <td className={`r num font-bold ${profit < 0 ? "bg-bad-soft text-bad" : "bg-good-soft text-good"}`}>{formatGBP(profit, { signed: true })}</td>
                           </tr>
                         );
                       })}
@@ -271,7 +271,7 @@ export default async function DashboardPage() {
                         <td className="r num text-good">{formatGBP(franchiseTotals.income, { signed: true })}</td>
                         <td className="r num text-bad">−{formatGBP(franchiseTotals.wages)}</td>
                         <td className="r num text-bad">−{formatGBP(franchiseTotals.costs)}</td>
-                        <td className={`r num ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit)}</td>
+                        <td className={`r num font-bold ${franchiseTotals.profit < 0 ? "bg-bad-soft text-bad" : "bg-good-soft text-good"}`}>{formatGBP(franchiseTotals.profit, { signed: true })}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -363,8 +363,8 @@ export default async function DashboardPage() {
                       {routeIncome ? `−${formatGBP(d.wage ?? 0)}` : formatGBP(d.finalEarnings)}
                     </td>
                     {routeIncome ? (
-                      <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight font-semibold sm:text-base ${d.originalEarnings - (d.wage ?? 0) < 0 ? "text-bad" : "text-good"}`}>
-                        {formatGBP(d.originalEarnings - (d.wage ?? 0))}
+                      <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight font-bold sm:text-base ${d.originalEarnings - (d.wage ?? 0) < 0 ? "bg-bad-soft text-bad" : "bg-good-soft text-good"}`}>
+                        {formatGBP(d.originalEarnings - (d.wage ?? 0), { signed: true })}
                       </td>
                     ) : null}
                   </tr>
