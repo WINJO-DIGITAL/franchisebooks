@@ -10,6 +10,7 @@ import { addMonths, formatMonth, formatUkDateTime, isISODate, monthOf } from "@/
 import { lastCompletedPeriod, periodContaining, periodLabel, previousPeriod, recentPeriods, type DpdPeriod } from "@/lib/finance/periods";
 import { REPORT_KIND_LABEL } from "@/lib/reports/end-of-period";
 import { loadDriverPayLines, wagesLinesFrom } from "@/lib/reports/end-of-period";
+import { loadVatSummary, recentQuarters } from "@/lib/reports/vat";
 import { loadStatementRows } from "@/lib/statements/rows";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatGBP, fromDb } from "@/lib/money";
@@ -31,7 +32,7 @@ interface Totals {
   profitStatus?: string;
 }
 
-export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ statements?: string }> }) {
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ statements?: string; vat?: string }> }) {
   const ctx = await getContext();
   // The sliding-scale report is a Max perk: its link is shown to Max accounts only.
   const showScaleReport = (await currentPlan(ctx.supabase)) === "max";
@@ -58,6 +59,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const statementPeriod = isISODate(params.statements) && params.statements <= closed.start ? periodContaining(params.statements) : closed;
   const statements = ctx.canWrite ? await loadStatementRows(ctx, statementPeriod) : null;
   // Wages to Pay uses the same per-driver calculation as the Driver Pay Report, so the two always agree.
+  // VAT summary for a calendar quarter: the last completed quarter by default, the others from the buttons.
+  const vatQuarters = recentQuarters(ctx.today);
+  const chosenVat = vatQuarters.find((q) => q.start === params.vat) ?? vatQuarters[0]!;
+  const vat = ctx.canWrite ? await loadVatSummary(createAdminClient(), { accountId: ctx.accountId, quarter: chosenVat, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }) : null;
   const payLines = ctx.canWrite ? await loadDriverPayLines(createAdminClient(), { accountId: ctx.accountId, franchiseId: ctx.franchiseId, period: statementPeriod }) : null;
   const wages = payLines ? { lines: wagesLinesFrom(payLines.lines, payLines.dr), total: payLines.owed, complete: payLines.complete } : null;
 
@@ -114,6 +119,31 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             <a className={buttonClass("secondary", "sm")} href={`/api/export/wages?period=${statementPeriod.start}`}>Download Spreadsheet</a>
             {!wages.complete ? <span className="text-sm text-muted">Some drivers have an incomplete statement, counted as £0 until it is fixed.</span> : null}
           </div>
+        </Section>
+      ) : null}
+
+      {vat ? (
+        <Section title="VAT Summary" description="The VAT stated on the documents for one calendar quarter. Only figures a document states are counted. Give these to your accountant with the quarter's invoices.">
+          <nav aria-label="VAT quarter" className="mb-4 flex flex-wrap gap-2">
+            {vatQuarters.map((q) => (
+              <Link key={q.start} href={`/reports?vat=${q.start}`} className={buttonClass(q.start === chosenVat.start ? "primary" : "secondary", "sm")}>{q.label}</Link>
+            ))}
+          </nav>
+          <TableWrap>
+            <table className="ledger" data-testid="vat-summary">
+              <thead><tr><th>Measure</th><th className="r">Amount</th><th className="r hidden sm:table-cell">Items</th></tr></thead>
+              <tbody>
+                <tr><td className="font-medium">Input VAT on costs (stated)</td><td className="r num">{formatGBP(vat.inputVat)}</td><td className="r num hidden sm:table-cell">{vat.inputVatItems}</td></tr>
+                <tr><td className="font-medium">VAT on DPD extra payments (stated)</td><td className="r num">{formatGBP(vat.dpdExtrasVat)}</td><td className="r num hidden sm:table-cell">{vat.dpdExtrasItems}</td></tr>
+                <tr><td>Costs where the amount includes VAT, with no VAT figure</td><td className="r num">{formatGBP(vat.includedAmount)}</td><td className="r num hidden sm:table-cell">{vat.includedItems}</td></tr>
+                <tr><td>Costs where the document does not say whether VAT is included</td><td className="r num">{formatGBP(vat.notStatedAmount)}</td><td className="r num hidden sm:table-cell">{vat.notStatedItems}</td></tr>
+              </tbody>
+            </table>
+          </TableWrap>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <a className={buttonClass("secondary", "sm")} href={`/api/export/vat?from=${chosenVat.from}&to=${chosenVat.to}`}>Download Spreadsheet</a>
+          </div>
+          <p className="mt-3 text-sm text-muted">Output VAT on DPD&apos;s daily payments is not stated in the payment reports, so it is not shown here. Confirm the VAT position with your accountant before you file.{vat.notStatedItems > 0 ? " Check the items where VAT is not stated before filing." : ""}</p>
         </Section>
       ) : null}
 

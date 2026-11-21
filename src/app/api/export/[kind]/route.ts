@@ -2,10 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getContext } from "@/lib/context";
 import { loadAdjustments, loadCosts, loadDriverNames, loadPeriodData } from "@/lib/data/period";
 import { periodFromParam } from "@/lib/finance/periods";
+import { isISODate } from "@/lib/dates";
 import { summarisePeriod } from "@/lib/finance/calc";
 import { adjustmentLabel, SOURCE_LABEL } from "@/lib/labels";
 import { csvMoney, toCsv } from "@/lib/reports/csv";
 import { loadDriverPayLines, wagesLinesFrom } from "@/lib/reports/end-of-period";
+import { loadVatSummary } from "@/lib/reports/vat";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +48,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     header = ["DR Number", "Driver", "Franchises", "Amount to pay (GBP)", "Complete"];
     rows = wages.map((l) => [l.dr ?? "", l.name, l.franchises, csvMoney(l.total), l.complete ? "Yes" : "No"]);
     rows.push(["", "Total", "", csvMoney(owed), complete ? "Yes" : "No"]);
+  } else if (kind === "vat") {
+    // VAT for a calendar quarter, as the documents state it. The quarter is given by its first and last day.
+    if (!ctx.canWrite) return new NextResponse("Forbidden", { status: 403 });
+    const from = request.nextUrl.searchParams.get("from") ?? "";
+    const to = request.nextUrl.searchParams.get("to") ?? "";
+    if (!isISODate(from) || !isISODate(to) || to < from) return new NextResponse("Bad quarter", { status: 400 });
+    const summary = await loadVatSummary(createAdminClient(), { accountId: ctx.accountId, quarter: { start: from.slice(0, 7), from, to, label: "" }, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds });
+    header = ["Measure", "Amount (GBP)", "Items"];
+    rows = [
+      ["Input VAT on costs (stated)", csvMoney(summary.inputVat), summary.inputVatItems],
+      ["VAT on DPD extra payments (stated)", csvMoney(summary.dpdExtrasVat), summary.dpdExtrasItems],
+      ["Costs where the amount includes VAT, with no VAT figure", csvMoney(summary.includedAmount), summary.includedItems],
+      ["Costs where the document does not say whether VAT is included", csvMoney(summary.notStatedAmount), summary.notStatedItems],
+    ];
+    return new NextResponse("﻿" + toCsv(header, rows), {
+      headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="vat-${from}-to-${to}.csv"`, "cache-control": "private, no-store" },
+    });
   } else {
     return new NextResponse("Not found", { status: 404 });
   }
