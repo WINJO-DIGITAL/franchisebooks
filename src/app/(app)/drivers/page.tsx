@@ -8,17 +8,19 @@ import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
 import { loadPeriodData, hiddenFranchiseFilter } from "@/lib/data/period";
 import { formatUkDate } from "@/lib/dates";
-import { periodContaining, periodLabel } from "@/lib/finance/periods";
+import { periodFromParam, periodLabel } from "@/lib/finance/periods";
+import { PeriodNav } from "@/components/ui/period-nav";
 import { summarisePeriod } from "@/lib/finance/calc";
 import { formatGBP } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Drivers" };
 
-export default async function DriversPage({ searchParams }: { searchParams: Promise<{ show?: string; q?: string; sort?: string }> }) {
-  const { show, q: searchText, sort: sortParam } = await searchParams;
+export default async function DriversPage({ searchParams }: { searchParams: Promise<{ show?: string; q?: string; sort?: string; period?: string }> }) {
+  const { show, q: searchText, sort: sortParam, period: periodParam } = await searchParams;
   const ctx = await getContext();
-  const period = periodContaining(ctx.today);
-  const { start } = period;
+  // Any DPD pay period: the current one by default, or an earlier one picked with the arrows.
+  const period = periodFromParam(periodParam, ctx.today);
+  const { start, end } = period;
   // The dates table is added by a migration: until it has been run the page shows no dates rather than failing.
   const [datesResult, names] = await Promise.all([
     ctx.supabase.from("compliance_dates").select("id, subject_type, driver_id, vehicle_registration, kind, label, expires_on, notes").order("expires_on").order("id"),
@@ -39,7 +41,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const [drivers, assignments, data, workedRows, unregisteredRows] = await Promise.all([
     fetchAll(() => ctx.supabase.from("drivers").select("id, display_name, is_active, start_date, leaving_date, dpd_driver_ref").order("display_name").order("id")),
     fetchAll(() => ctx.supabase.from("driver_assignments").select("id, driver_id, franchise_id, route, vehicle_registration, start_date, end_date").order("start_date", { ascending: false }).order("id")),
-    loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: ctx.today, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
+    loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
     // Every driver who has ever had a day read from DPD, in any period. An inactive driver with none is left off the list.
     fetchAll(() => ctx.supabase.from("daily_earnings").select("driver_id").eq("account_id", ctx.accountId).eq("is_current", true).not("driver_id", "is", null).order("id")),
     fetchAll(() => {
@@ -126,7 +128,18 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Drivers"
         description={`${workedThisPeriod} worked in ${periodLabel(period)} · ${visible.filter((d) => d.is_active).length} on the books${ctx.franchise ? ` on ${franchiseLabel(ctx.franchise)}` : ""}`}
-        actions={ctx.canWrite ? <LinkButton href="/drivers/new">Add Driver</LinkButton> : null}
+        actions={<>{ctx.canWrite ? <LinkButton href={`/reports?statements=${period.start}`} variant="secondary">Driver Statements</LinkButton> : null}{ctx.canWrite ? <LinkButton href="/drivers/new">Add Driver</LinkButton> : null}</>}
+      />
+      <PeriodNav
+        period={period}
+        today={ctx.today}
+        hrefFor={(p) => {
+          const q = new URLSearchParams({ period: p });
+          if (show) q.set("show", show);
+          if (searchText) q.set("q", searchText);
+          if (sortParam) q.set("sort", sortParam);
+          return `/drivers?${q.toString()}`;
+        }}
       />
 
       {unregistered.size > 0 ? (
@@ -175,7 +188,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             <select id="driver-sort" name="sort" defaultValue={sort} className="h-10 rounded-lg border border-line-strong bg-surface px-2 text-sm">
               <option value="name">Name</option>
               <option value="stops">Stops this pay period</option>
-              <option value="earned">Pay this pay period</option>
+              <option value="earned">Pay for this period</option>
               <option value="days">Days worked this pay period</option>
             </select>
             <button type="submit" className={buttonClass("secondary", "sm")}>Apply</button>
@@ -191,7 +204,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                   <th className="r">Stops</th>
                   <th className="r">Parcels</th>
                   <th className="r">Pay on {formatUkDate(latestDay)}</th>
-                  <th className="r">Pay This Period</th>
+                  <th className="r">Pay for Period</th>
                 </tr>
               </thead>
               <tbody>
@@ -226,7 +239,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             <thead>
               <tr>
                 <th>Driver</th><th>Franchise</th><th>Route</th><th>Vehicle</th>
-                <th className="r">Days This Period</th><th className="r">Pay This Period</th>
+                <th className="r">Days This Period</th><th className="r">Pay for Period</th>
               </tr>
             </thead>
             <tbody>
