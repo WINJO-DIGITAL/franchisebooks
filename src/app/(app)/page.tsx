@@ -69,7 +69,10 @@ export default async function DashboardPage() {
   ]);
   const rateDriverIds = new Set((data.dayRates ?? []).map((r) => r.driverId));
   const workedDriverIds = new Set(data.earnings.map((e) => e.driverId).filter((id): id is string => id != null));
-  const driversNeedingRate = [...workedDriverIds].filter((id) => !rateDriverIds.has(id))
+  // The franchisee (the owner who drives, if they do) does not need a day rate, so is not asked for one.
+  const { data: franchiseeRows } = await ctx.supabase.from("drivers").select("id").eq("account_id", accountId).eq("is_franchisee", true);
+  const franchiseeIds = new Set((franchiseeRows ?? []).map((r) => r.id));
+  const driversNeedingRate = [...workedDriverIds].filter((id) => !rateDriverIds.has(id) && !franchiseeIds.has(id))
     .map((id) => ({ id, name: data.driverNames.get(id) ?? "Driver" }))
     .sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
   const setupItems = setupChecklist({

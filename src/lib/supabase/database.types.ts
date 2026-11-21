@@ -401,14 +401,14 @@ isOneToOne: false
                   ]
                 },"drivers": {
                   Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"display_name": string,"dpd_driver_ref": string | null,"email": string | null,"id": string,"is_active": boolean,"leaving_date": string | null,"notes": string | null,"phone": string | null,"start_date": string | null,"updated_at": string,"vat_number": string | null,"self_billing_agreement": boolean,"statement_no": number | null
+                    "account_id": string,"created_at": string,"created_by": string | null,"display_name": string,"dpd_driver_ref": string | null,"email": string | null,"id": string,"is_active": boolean,"leaving_date": string | null,"notes": string | null,"phone": string | null,"start_date": string | null,"updated_at": string,"vat_number": string | null,"self_billing_agreement": boolean,"statement_no": number | null,"is_franchisee": boolean
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"display_name": string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"self_billing_agreement"?: boolean,"statement_no"?: number | null
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"display_name": string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"self_billing_agreement"?: boolean,"statement_no"?: number | null,"is_franchisee"?: boolean
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"display_name"?: string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"self_billing_agreement"?: boolean,"statement_no"?: number | null
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"display_name"?: string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"self_billing_agreement"?: boolean,"statement_no"?: number | null,"is_franchisee"?: boolean
                   }
                   Relationships: [
                     {
