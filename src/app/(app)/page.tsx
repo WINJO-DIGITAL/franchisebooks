@@ -64,8 +64,7 @@ export default async function DashboardPage() {
     profit: franchiseRows.reduce((t, f) => t + f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses, 0),
   };
   const rankedDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings));
-  const topDrivers = rankedDrivers.slice(0, 5);
-  // Totals cover every driver with days this period, so they reconcile to the franchise profit. Left is income less wage.
+  // Totals cover every driver with days this period, so they reconcile to the franchise profit. Profit / loss is income less wage.
   const everyWageKnown = rankedDrivers.every((d) => d.wageComplete && d.wage != null);
   const totalIncomeAll = rankedDrivers.reduce((t, d) => t + d.originalEarnings, 0);
   const totalWageAll = rankedDrivers.reduce((t, d) => t + (d.wage ?? 0), 0);
@@ -333,10 +332,10 @@ export default async function DashboardPage() {
       ) : null}
 
       {/* Driver performance */}
-      {topDrivers.length > 0 ? (
+      {rankedDrivers.length > 0 ? (
         <Section title="Drivers This Pay Period" actions={<LinkButton href="/drivers" variant="quiet" size="sm">View Drivers</LinkButton>}>
           <TableWrap>
-            <table className="ledger">
+            <table className="ledger [&_td]:!px-1.5 [&_th]:!px-1.5 [&_th]:tracking-normal [&_th]:text-[0.6875rem] sm:[&_th]:text-xs sm:[&_td]:!px-3 sm:[&_th]:!px-3">
               <thead>
                 <tr>
                   <th>Driver</th>
@@ -346,30 +345,30 @@ export default async function DashboardPage() {
                   <th className="r">{routeIncome ? "Income" : "DPD earnings"}</th>
                   {routeIncome ? null : <th className="r">Adjustments</th>}
                   <th className="r">{routeIncome ? "Wage" : "Pay"}</th>
-                  {routeIncome ? <th className="r">Left</th> : null}
+                  {routeIncome ? <th className="r whitespace-normal">Profit / Loss</th> : null}
                 </tr>
               </thead>
               <tbody>
-                {topDrivers.map((d) => (
+                {rankedDrivers.map((d) => (
                   <tr key={`${d.franchiseId}-${d.key}`}>
-                    <td className="font-medium">
+                    <td className="font-medium max-w-[7.5rem] break-words sm:max-w-none">
                       {d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <span>{d.name} <Badge tone="warn">Not registered</Badge></span>}
                       {(() => {
                         const routes = [...(routesByDriver.get(`${d.franchiseId}|${d.key}`) ?? [])].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true }));
                         const where = [!ctx.franchise ? franchiseName.get(d.franchiseId) : null, routes.length ? `Route ${routes.join(" / ")}` : null].filter(Boolean).join(" · ");
-                        return where ? <span className="block text-xs font-normal text-muted">{where}</span> : null;
+                        return where ? <span className="hidden text-xs font-normal text-muted sm:block">{where}</span> : null;
                       })()}
                     </td>
                     <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
                     <td className="r num hidden sm:table-cell">{d.avgStopsPerDayX10 == null ? "—" : (d.avgStopsPerDayX10 / 10).toFixed(1)}</td>
                     <td className="r num hidden sm:table-cell">{formatGBP(d.earningsPerStop)}</td>
-                    <td className="r num">{formatGBP(d.originalEarnings)}</td>
+                    <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base ${routeIncome ? "text-good" : ""}`}>{formatGBP(d.originalEarnings)}</td>
                     {routeIncome ? null : <td className="r num">{d.adjustmentsNet === 0 ? "—" : formatGBP(d.adjustmentsNet, { signed: true })}</td>}
-                    <td className="r num font-semibold">
-                      {routeIncome ? (d.wageComplete && d.wage != null ? formatGBP(d.wage) : <span className="font-normal text-muted">No rate</span>) : formatGBP(d.finalEarnings)}
+                    <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight font-semibold sm:text-base ${routeIncome ? "text-bad" : ""}`}>
+                      {routeIncome ? (d.wageComplete && d.wage != null ? `−${formatGBP(d.wage)}` : <span className="font-normal text-muted">No rate</span>) : formatGBP(d.finalEarnings)}
                     </td>
                     {routeIncome ? (
-                      <td className="r num font-semibold text-ink">
+                      <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight font-semibold sm:text-base ${d.wageComplete && d.wage != null && d.originalEarnings - d.wage < 0 ? "text-bad" : d.wageComplete && d.wage != null ? "text-good" : ""}`}>
                         {d.wageComplete && d.wage != null ? formatGBP(d.originalEarnings - d.wage) : <span className="font-normal text-muted">—</span>}
                       </td>
                     ) : null}
@@ -381,19 +380,14 @@ export default async function DashboardPage() {
                   <tr className="border-t-2 border-line-strong font-semibold">
                     <td>Total, {rankedDrivers.length} {rankedDrivers.length === 1 ? "driver" : "drivers"}</td>
                     <td className="r num hidden sm:table-cell" colSpan={3} />
-                    <td className="r num">{formatGBP(totalIncomeAll)}</td>
-                    <td className="r num">{m.wagesComplete ? formatGBP(totalWageAll) : <span className="font-normal text-muted">{formatGBP(totalWageAll)}+</span>}</td>
-                    <td className="r num">{everyWageKnown ? formatGBP(totalIncomeAll - totalWageAll) : <span className="font-normal text-muted">—</span>}</td>
+                    <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-good">{formatGBP(totalIncomeAll)}</td>
+                    <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-bad">−{formatGBP(totalWageAll)}{m.wagesComplete ? "" : "+"}</td>
+                    <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base ${everyWageKnown ? ((totalIncomeAll - totalWageAll) < 0 ? "text-bad" : "text-good") : ""}`}>{everyWageKnown ? formatGBP(totalIncomeAll - totalWageAll) : <span className="font-normal text-muted">—</span>}</td>
                   </tr>
                 </tfoot>
               ) : null}
             </table>
           </TableWrap>
-          {rankedDrivers.length > topDrivers.length ? (
-            <p className="mt-3 text-center">
-              <Link href="/drivers" className="text-sm font-medium text-accent hover:underline">See all {rankedDrivers.length} drivers</Link>
-            </p>
-          ) : null}
         </Section>
       ) : null}
 
