@@ -31,9 +31,9 @@ const BY_HAND = [
 ];
 
 const STEPS = [
-  { title: "Connect DPD", text: "Add your DPD portal login once. It is stored encrypted, and the connection is read-only: it can look and download, never change anything in DPD." },
-  { title: "We Read It Every Night", text: "Your daily payments, charges and invoices come in by themselves, for every franchise on your account." },
-  { title: "Payday Is Already Worked Out", text: "See income, expenses and what each driver is owed, day by day, with a report ready the Monday after each four-week period." },
+  { when: "Once", title: "Connect DPD", text: "Add your DPD portal login once. It is stored encrypted, and the connection is read-only: it can look and download, never change anything in DPD." },
+  { when: "Every Night", title: "We Read It Every Night", text: "Your daily payments, charges and invoices come in by themselves, for every franchise on your account." },
+  { when: "Monday After Each Period", title: "Payday Is Already Worked Out", text: "See income, expenses and what each driver is owed, day by day, with a report ready the Monday after each four-week period." },
 ];
 
 const REPORTING_RULES = [
@@ -150,11 +150,12 @@ export default function WelcomePage() {
           <BandHeading id="how" intro="Three steps, and the last one is done for you every night.">
             Connect Once. After That, It&rsquo;s Done.
           </BandHeading>
-          <ol className="mt-10 grid border-y border-line-strong md:grid-cols-3 md:divide-x md:divide-line-strong">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="border-b border-line py-7 last:border-b-0 md:border-b-0 md:px-7 md:first:pl-0 md:last:pr-0">
-                <span className="num text-4xl font-light tracking-tight text-accent">{String(i + 1).padStart(2, "0")}</span>
-                <h3 className="mt-3 text-lg font-semibold tracking-tight">{s.title}</h3>
+          <ol className="mt-10 space-y-0 border-l-2 border-accent/80 pl-6 sm:pl-8 md:ml-2 md:grid md:grid-cols-3 md:gap-8 md:space-y-0 md:border-l-0 md:border-t-2 md:border-accent/80 md:pl-0 md:pt-6">
+            {STEPS.map((s) => (
+              <li key={s.title} className="relative pb-10 last:pb-0 md:pb-0">
+                <span aria-hidden className="absolute -left-[2.05rem] top-1.5 size-3 rounded-full border-2 border-accent bg-paper sm:-left-[2.55rem] md:-top-[1.8rem] md:left-0" />
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">{s.when}</p>
+                <h3 className="mt-2 font-display text-[1.35rem] font-semibold leading-snug tracking-tight">{s.title}</h3>
                 <p className="mt-2 text-[0.9375rem] leading-relaxed text-ink-soft">{s.text}</p>
               </li>
             ))}
