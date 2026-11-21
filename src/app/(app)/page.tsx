@@ -59,6 +59,10 @@ export default async function DashboardPage() {
   const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => (routeIncome ? f.incomeFromDpd : f.driverCosts)));
   const rankedDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings));
   const topDrivers = rankedDrivers.slice(0, 5);
+  // Totals cover every driver with days this period, so they reconcile to the franchise profit. Left is income less wage.
+  const everyWageKnown = rankedDrivers.every((d) => d.wageComplete && d.wage != null);
+  const totalIncomeAll = rankedDrivers.reduce((t, d) => t + d.originalEarnings, 0);
+  const totalWageAll = rankedDrivers.reduce((t, d) => t + (d.wage ?? 0), 0);
   // Route numbers per driver this pay period, shown with a slash between them so they never read as one large number.
   const routesByDriver = new Map<string, Set<string>>();
   for (const e of data.earnings.filter((e) => e.date >= monthStart && e.route)) {
@@ -255,6 +259,35 @@ export default async function DashboardPage() {
       {/* Driver performance */}
       {topDrivers.length > 0 ? (
         <Section title="Drivers This Pay Period" actions={<LinkButton href="/drivers" variant="quiet" size="sm">View Drivers</LinkButton>}>
+          {routeIncome ? (
+            <Panel flush className="sm:hidden">
+              <ul className="divide-y divide-line">
+                {topDrivers.map((d) => (
+                  <li key={`m-${d.franchiseId}-${d.key}`} className="px-4 py-3.5">
+                    <p className="font-medium">
+                      {d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <span>{d.name} <Badge tone="warn">Not registered</Badge></span>}
+                    </p>
+                    <div className="mt-2 grid grid-cols-[1fr_auto_auto_auto] items-baseline gap-x-2 text-sm">
+                      <span className="text-muted">Income</span>
+                      <span className="num text-right">{formatGBP(d.originalEarnings)}</span>
+                      <span className="num text-right text-muted">{d.wageComplete && d.wage != null ? `− ${formatGBP(d.wage)}` : "No rate"}</span>
+                      <span className="num text-right font-semibold">{d.wageComplete && d.wage != null ? `= ${formatGBP(d.originalEarnings - d.wage)}` : "—"}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t-2 border-line-strong bg-sunken/50 px-4 py-3.5">
+                <p className="font-semibold">Total, {rankedDrivers.length} {rankedDrivers.length === 1 ? "driver" : "drivers"}</p>
+                <div className="mt-2 grid grid-cols-[1fr_auto_auto_auto] items-baseline gap-x-2 text-sm font-semibold">
+                  <span className="text-muted">All drivers</span>
+                  <span className="num text-right">{formatGBP(totalIncomeAll)}</span>
+                  <span className="num text-right">{m.wagesComplete ? `− ${formatGBP(totalWageAll)}` : `− ${formatGBP(totalWageAll)}+`}</span>
+                  <span className="num text-right">{everyWageKnown ? `= ${formatGBP(totalIncomeAll - totalWageAll)}` : "—"}</span>
+                </div>
+              </div>
+            </Panel>
+          ) : null}
+          <div className={routeIncome ? "hidden sm:block" : undefined}>
           <TableWrap>
             <table className="ledger">
               <thead>
@@ -266,6 +299,7 @@ export default async function DashboardPage() {
                   <th className="r">{routeIncome ? "Income" : "DPD earnings"}</th>
                   {routeIncome ? null : <th className="r">Adjustments</th>}
                   <th className="r">{routeIncome ? "Wage" : "Pay"}</th>
+                  {routeIncome ? <th className="r">Left</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -287,11 +321,35 @@ export default async function DashboardPage() {
                     <td className="r num font-semibold">
                       {routeIncome ? (d.wageComplete && d.wage != null ? formatGBP(d.wage) : <span className="font-normal text-muted">No rate</span>) : formatGBP(d.finalEarnings)}
                     </td>
+                    {routeIncome ? (
+                      <td className="r num font-semibold text-ink">
+                        {d.wageComplete && d.wage != null ? formatGBP(d.originalEarnings - d.wage) : <span className="font-normal text-muted">—</span>}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
+              {routeIncome ? (
+                <tfoot>
+                  <tr className="border-t-2 border-line-strong font-semibold">
+                    <td>Total, {rankedDrivers.length} {rankedDrivers.length === 1 ? "driver" : "drivers"}</td>
+                    <td className="r num hidden sm:table-cell" colSpan={3} />
+                    <td className="r num">{formatGBP(totalIncomeAll)}</td>
+                    <td className="r num">{m.wagesComplete ? formatGBP(totalWageAll) : <span className="font-normal text-muted">{formatGBP(totalWageAll)}+</span>}</td>
+                    <td className="r num">{everyWageKnown ? formatGBP(totalIncomeAll - totalWageAll) : <span className="font-normal text-muted">—</span>}</td>
+                  </tr>
+                </tfoot>
+              ) : null}
             </table>
           </TableWrap>
+          </div>
+          {routeIncome && m.wagesComplete && m.operatingProfit != null ? (
+            <dl className="mt-4 max-w-md space-y-1.5 text-sm">
+              <div className="flex justify-between gap-3"><dt className="text-ink-soft">Left after wages, all drivers</dt><dd className="num font-medium">{formatGBP(totalIncomeAll - totalWageAll)}</dd></div>
+              <div className="flex justify-between gap-3"><dt className="text-ink-soft">Less DPD charges and expenses</dt><dd className="num font-medium">{formatGBP(-(m.fuel + m.otherExpenses))}</dd></div>
+              <div className="flex justify-between gap-3 border-t border-line pt-1.5"><dt className="font-semibold">Profit, this franchise</dt><dd className={m.operatingProfit < 0 ? "num font-semibold text-bad" : "num font-semibold"}>{formatGBP(m.operatingProfit)}</dd></div>
+            </dl>
+          ) : null}
           {rankedDrivers.length > topDrivers.length ? (
             <p className="mt-3 text-center">
               <Link href="/drivers" className="text-sm font-medium text-accent hover:underline">See all {rankedDrivers.length} drivers</Link>
