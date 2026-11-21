@@ -10,12 +10,13 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 
 ### You (owner) to do
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
-- [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
+- [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), and `STRIPE_PORTAL_CONFIGURATION_ID_LIVE` = `bpc_1UdiQOLEEs7hsljuIpbZ8YsV` (the Franchise Books portal, not the account default), then say "go live" (you).
+- [ ] Delete the test customer "Franchise Books test run" (`cus_VfNfDF6wFI0aHV`) in the Stripe test dashboard (you).
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
 
 ### Assistant to do
 - [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
-- [ ] Test an Essential to Max change in the billing portal, and check the first history reads in the sync log (assistant).
+- [ ] Check an Essential to Max change end to end through the app: create a test login through sign-up and checkout, upgrade it, then check the plan row, the webhook and the first history reads in the sync log (assistant, needs a test login from you).
 
 ## Current implementation (summary)
 - Next.js app with Supabase (Postgres, RLS) and a background worker that reads DPD with headless Chromium.
