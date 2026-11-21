@@ -12,6 +12,7 @@ import { loadPeriodData } from "@/lib/data/period";
 import { loadSyncOverview } from "@/lib/data/status";
 import { dpdSetupReady } from "@/lib/dpd/readiness";
 import { addDays, eachDay, formatUkDate, formatUkDateLong, formatUkDayMonth } from "@/lib/dates";
+import { DUE_SOON_DAYS } from "@/lib/compliance/dates";
 import { periodContaining, periodLabel } from "@/lib/finance/periods";
 import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
 import { FIGURE_STATUS } from "@/lib/labels";
@@ -29,6 +30,8 @@ export default async function DashboardPage() {
   const trendStart = addDays(today, -13);
   const loadFrom = trendStart < monthStart ? trendStart : monthStart;
 
+  // Driver and vehicle dates that have passed or fall within the next month. Read on its own so the dashboard still loads without them.
+  const datesDue = await supabase.from("compliance_dates").select("id", { count: "exact", head: true }).eq("account_id", accountId).lte("expires_on", addDays(today, DUE_SOON_DAYS));
   const [data, sync] = await Promise.all([
     loadPeriodData(supabase, { accountId, from: loadFrom, to: today, franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
     loadSyncOverview(supabase, accountId),
@@ -90,6 +93,13 @@ export default async function DashboardPage() {
 
   return (
     <>
+      {(datesDue.count ?? 0) > 0 ? (
+        <div className="mb-6">
+          <Notice tone="warn" title={`${datesDue.count} driver or vehicle date${datesDue.count === 1 ? "" : "s"} overdue or due within ${DUE_SOON_DAYS} days`}>
+            <Link href="/drivers#dates" className="underline">Open Driver and Vehicle Dates</Link>
+          </Notice>
+        </div>
+      ) : null}
       <PageHeader
         title="Dashboard"
         description={`${formatUkDateLong(today)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}

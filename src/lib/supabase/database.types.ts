@@ -5,7 +5,27 @@ export type Database = {
   
   "public": {
           Tables: {
-            "accounts": {
+            "account_closure_requests": {
+                  Row: {
+                    "account_id": string,"completed_at": string | null,"id": string,"note": string | null,"requested_at": string,"requested_by": string | null,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"completed_at"?: string | null,"id"?: string,"note"?: string | null,"requested_at"?: string,"requested_by"?: string | null,"status"?: string
+                  }
+                  Update: {
+                    "account_id"?: string,"completed_at"?: string | null,"id"?: string,"note"?: string | null,"requested_at"?: string,"requested_by"?: string | null,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "account_closure_requests_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"accounts": {
                   Row: {
                     "created_at": string,"id": string,"name": string
                   }
@@ -15,6 +35,20 @@ export type Database = {
                   }
                   Update: {
                     "created_at"?: string,"id"?: string,"name"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"alert_log": {
+                  Row: {
+                    "alert_key": string,"bucket": string,"recipient": string | null,"sent_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "alert_key": string,"bucket": string,"recipient"?: string | null,"sent_at"?: string
+                  }
+                  Update: {
+                    "alert_key"?: string,"bucket"?: string,"recipient"?: string | null,"sent_at"?: string
                   }
                   Relationships: [
                     
@@ -91,16 +125,42 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"daily_earnings": {
+                },"compliance_dates": {
                   Row: {
-                    "account_id": string,"additional_payments": number,"created_at": string,"deductions": number,"driver_id": string | null,"driver_key": string,"extracted_at": string,"extraction_confidence": number | null,"excess_parcels": number | null,"mileage": number | null,"stop_pay": number | null,"parcel_pay": number | null,"franchise_id": string,"gross_earnings": number,"id": string,"imported_file_id": string,"is_current": boolean,"net_earnings": number | null,"original_earnings": number | null,"parcels": number | null,"pay_per_parcel": number | null,"pay_per_stop": number | null,"report_date": string,"route": string | null,"source": string,"source_driver_name": string,"source_driver_ref": string | null,"stops": number | null,"superseded_at": string | null,"superseded_by": string | null,"superseded_reason": string | null
+                    "account_id": string,"created_at": string,"created_by": string | null,"driver_id": string | null,"expires_on": string,"id": string,"kind": string,"label": string | null,"notes": string | null,"subject_type": string,"updated_at": string,"vehicle_registration": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"additional_payments"?: number,"created_at"?: string,"deductions"?: number,"driver_id"?: string | null,"driver_key": string,"extracted_at"?: string,"extraction_confidence"?: number | null,"excess_parcels"?: number | null,"mileage"?: number | null,"stop_pay"?: number | null,"parcel_pay"?: number | null,"franchise_id": string,"gross_earnings": number,"id"?: string,"imported_file_id": string,"is_current"?: boolean,"net_earnings"?: number | null,"original_earnings"?: never,"parcels"?: number | null,"pay_per_parcel"?: number | null,"pay_per_stop"?: number | null,"report_date": string,"route"?: string | null,"source": string,"source_driver_name": string,"source_driver_ref"?: string | null,"stops"?: number | null,"superseded_at"?: string | null,"superseded_by"?: string | null,"superseded_reason"?: string | null
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"driver_id"?: string | null,"expires_on": string,"id"?: string,"kind": string,"label"?: string | null,"notes"?: string | null,"subject_type": string,"updated_at"?: string,"vehicle_registration"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"additional_payments"?: number,"created_at"?: string,"deductions"?: number,"driver_id"?: string | null,"driver_key"?: string,"extracted_at"?: string,"extraction_confidence"?: number | null,"excess_parcels"?: number | null,"mileage"?: number | null,"stop_pay"?: number | null,"parcel_pay"?: number | null,"franchise_id"?: string,"gross_earnings"?: number,"id"?: string,"imported_file_id"?: string,"is_current"?: boolean,"net_earnings"?: number | null,"original_earnings"?: never,"parcels"?: number | null,"pay_per_parcel"?: number | null,"pay_per_stop"?: number | null,"report_date"?: string,"route"?: string | null,"source"?: string,"source_driver_name"?: string,"source_driver_ref"?: string | null,"stops"?: number | null,"superseded_at"?: string | null,"superseded_by"?: string | null,"superseded_reason"?: string | null
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"driver_id"?: string | null,"expires_on"?: string,"id"?: string,"kind"?: string,"label"?: string | null,"notes"?: string | null,"subject_type"?: string,"updated_at"?: string,"vehicle_registration"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "compliance_dates_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "compliance_dates_driver_id_fkey"
+      columns: ["driver_id"]
+isOneToOne: false
+      referencedRelation: "drivers"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"daily_earnings": {
+                  Row: {
+                    "account_id": string,"additional_payments": number,"created_at": string,"deductions": number,"driver_id": string | null,"driver_key": string,"excess_parcels": number | null,"extracted_at": string,"extraction_confidence": number | null,"franchise_id": string,"gross_earnings": number,"id": string,"imported_file_id": string,"is_current": boolean,"mileage": number | null,"net_earnings": number | null,"original_earnings": number | null,"parcel_pay": number | null,"parcels": number | null,"pay_per_parcel": number | null,"pay_per_stop": number | null,"report_date": string,"route": string | null,"source": string,"source_driver_name": string,"source_driver_ref": string | null,"stop_pay": number | null,"stops": number | null,"superseded_at": string | null,"superseded_by": string | null,"superseded_reason": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"additional_payments"?: number,"created_at"?: string,"deductions"?: number,"driver_id"?: string | null,"driver_key": string,"excess_parcels"?: number | null,"extracted_at"?: string,"extraction_confidence"?: number | null,"franchise_id": string,"gross_earnings": number,"id"?: string,"imported_file_id": string,"is_current"?: boolean,"mileage"?: number | null,"net_earnings"?: number | null,"original_earnings"?: never,"parcel_pay"?: number | null,"parcels"?: number | null,"pay_per_parcel"?: number | null,"pay_per_stop"?: number | null,"report_date": string,"route"?: string | null,"source": string,"source_driver_name": string,"source_driver_ref"?: string | null,"stop_pay"?: number | null,"stops"?: number | null,"superseded_at"?: string | null,"superseded_by"?: string | null,"superseded_reason"?: string | null
+                  }
+                  Update: {
+                    "account_id"?: string,"additional_payments"?: number,"created_at"?: string,"deductions"?: number,"driver_id"?: string | null,"driver_key"?: string,"excess_parcels"?: number | null,"extracted_at"?: string,"extraction_confidence"?: number | null,"franchise_id"?: string,"gross_earnings"?: number,"id"?: string,"imported_file_id"?: string,"is_current"?: boolean,"mileage"?: number | null,"net_earnings"?: number | null,"original_earnings"?: never,"parcel_pay"?: number | null,"parcels"?: number | null,"pay_per_parcel"?: number | null,"pay_per_stop"?: number | null,"report_date"?: string,"route"?: string | null,"source"?: string,"source_driver_name"?: string,"source_driver_ref"?: string | null,"stop_pay"?: number | null,"stops"?: number | null,"superseded_at"?: string | null,"superseded_by"?: string | null,"superseded_reason"?: string | null
                   }
                   Relationships: [
                     {
@@ -137,14 +197,14 @@ isOneToOne: false
                   ]
                 },"dpd_invoices": {
                   Row: {
-                    "account_id": string,"created_at": string,"due_date": string | null,"franchise_id": string,"id": string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems": NonNullable<Json>,"reconciled": boolean,"vat_total": number,"kind": string,"refers_to": NonNullable<Json>
+                    "account_id": string,"created_at": string,"due_date": string | null,"franchise_id": string,"id": string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"kind": string,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems": NonNullable<Json>,"reconciled": boolean,"refers_to": NonNullable<Json>,"vat_total": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"due_date"?: string | null,"franchise_id": string,"id"?: string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems"?: NonNullable<Json>,"reconciled": boolean,"vat_total": number,"kind"?: string,"refers_to"?: NonNullable<Json>
+                    "account_id": string,"created_at"?: string,"due_date"?: string | null,"franchise_id": string,"id"?: string,"invoice_date": string,"invoice_no": string,"invoice_total": number,"kind"?: string,"lines": NonNullable<Json>,"net_total": number,"period_end": string,"period_start": string,"problems"?: NonNullable<Json>,"reconciled": boolean,"refers_to"?: NonNullable<Json>,"vat_total": number
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"due_date"?: string | null,"franchise_id"?: string,"id"?: string,"invoice_date"?: string,"invoice_no"?: string,"invoice_total"?: number,"lines"?: NonNullable<Json>,"net_total"?: number,"period_end"?: string,"period_start"?: string,"problems"?: NonNullable<Json>,"reconciled"?: boolean,"vat_total"?: number,"kind"?: string,"refers_to"?: NonNullable<Json>
+                    "account_id"?: string,"created_at"?: string,"due_date"?: string | null,"franchise_id"?: string,"id"?: string,"invoice_date"?: string,"invoice_no"?: string,"invoice_total"?: number,"kind"?: string,"lines"?: NonNullable<Json>,"net_total"?: number,"period_end"?: string,"period_start"?: string,"problems"?: NonNullable<Json>,"reconciled"?: boolean,"refers_to"?: NonNullable<Json>,"vat_total"?: number
                   }
                   Relationships: [
                     {
@@ -158,6 +218,52 @@ isOneToOne: false
       columns: ["franchise_id","account_id"]
 isOneToOne: false
       referencedRelation: "franchises"
+      referencedColumns: ["id","account_id"]
+    }
+                  ]
+                },"dpd_logins": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"id": string,"label": string,"last_error": string | null,"last_success_at": string | null,"username": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"label": string,"last_error"?: string | null,"last_success_at"?: string | null,"username": string
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"label"?: string,"last_error"?: string | null,"last_success_at"?: string | null,"username"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dpd_logins_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"driver_accounts": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"driver_id": string,"email": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"driver_id": string,"email": string,"user_id": string
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"driver_id"?: string,"email"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "driver_accounts_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "driver_accounts_driver_id_account_id_fkey"
+      columns: ["driver_id","account_id"]
+isOneToOne: false
+      referencedRelation: "drivers"
       referencedColumns: ["id","account_id"]
     }
                   ]
@@ -181,148 +287,6 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "driver_aliases_driver_id_account_id_fkey"
-      columns: ["driver_id","account_id"]
-isOneToOne: false
-      referencedRelation: "drivers"
-      referencedColumns: ["id","account_id"]
-    }
-                  ]
-                },"user_billing": {
-                  Row: {
-                    "cancel_at_period_end": boolean,"current_period_end": string | null,"plan": string,"status": string,"stripe_customer_id": string | null,"stripe_subscription_id": string | null,"updated_at": string,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"plan"?: string,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id": string
-                  }
-                  Update: {
-                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"plan"?: string,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
-                  }
-                  Relationships: []
-                },"unreadable_documents": {
-                  Row: {
-                    "id": string,"account_id": string,"franchise_id": string,"document_no": string,"status": string,"reason": string,"pdf_path": string | null,"text_path": string | null,"first_seen_at": string,"last_seen_at": string,"resolved_at": string | null
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "id"?: string,"account_id": string,"franchise_id": string,"document_no": string,"status": string,"reason": string,"pdf_path"?: string | null,"text_path"?: string | null,"first_seen_at"?: string,"last_seen_at"?: string,"resolved_at"?: string | null
-                  }
-                  Update: {
-                    "id"?: string,"account_id"?: string,"franchise_id"?: string,"document_no"?: string,"status"?: string,"reason"?: string,"pdf_path"?: string | null,"text_path"?: string | null,"first_seen_at"?: string,"last_seen_at"?: string,"resolved_at"?: string | null
-                  }
-                  Relationships: []
-                },"sync_dispatches": {
-                  Row: {
-                    "night": string,"attempt": number,"dispatched_at": string,"started": boolean,"message": string | null
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "night": string,"attempt": number,"dispatched_at"?: string,"started"?: boolean,"message"?: string | null
-                  }
-                  Update: {
-                    "night"?: string,"attempt"?: number,"dispatched_at"?: string,"started"?: boolean,"message"?: string | null
-                  }
-                  Relationships: []
-                },"alert_log": {
-                  Row: {
-                    "alert_key": string,"bucket": string,"sent_at": string,"recipient": string | null
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "alert_key": string,"bucket": string,"sent_at"?: string,"recipient"?: string | null
-                  }
-                  Update: {
-                    "alert_key"?: string,"bucket"?: string,"sent_at"?: string,"recipient"?: string | null
-                  }
-                  Relationships: []
-                },"driver_statements": {
-                  Row: {
-                    "id": string,"account_id": string,"franchise_id": string,"driver_id": string,"period_start": string,"period_end": string,"statement_no": string,"title": string,"storage_path": string,"totals": Json,"trigger": string,"generated_by": string | null,"generated_at": string,"emailed_at": string | null
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "id"?: string,"account_id": string,"franchise_id": string,"driver_id": string,"period_start": string,"period_end": string,"statement_no": string,"title": string,"storage_path": string,"totals"?: Json,"trigger": string,"generated_by"?: string | null,"generated_at"?: string,"emailed_at"?: string | null
-                  }
-                  Update: {
-                    "id"?: string,"account_id"?: string,"franchise_id"?: string,"driver_id"?: string,"period_start"?: string,"period_end"?: string,"statement_no"?: string,"title"?: string,"storage_path"?: string,"totals"?: Json,"trigger"?: string,"generated_by"?: string | null,"generated_at"?: string,"emailed_at"?: string | null
-                  }
-                  Relationships: []
-                },"account_closure_requests": {
-                  Row: {
-                    "account_id": string,"completed_at": string | null,"id": string,"note": string | null,"requested_at": string,"requested_by": string | null,"status": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "account_id": string,"completed_at"?: string | null,"id"?: string,"note"?: string | null,"requested_at"?: string,"requested_by"?: string | null,"status"?: string
-                  }
-                  Update: {
-                    "account_id"?: string,"completed_at"?: string | null,"id"?: string,"note"?: string | null,"requested_at"?: string,"requested_by"?: string | null,"status"?: string
-                  }
-                  Relationships: []
-                },"driver_accounts": {
-                  Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"driver_id": string,"email": string,"user_id": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"driver_id": string,"email": string,"user_id": string
-                  }
-                  Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"driver_id"?: string,"email"?: string,"user_id"?: string
-                  }
-                  Relationships: []
-                },"dpd_logins": {
-                  Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"id": string,"label": string,"last_error": string | null,"last_success_at": string | null,"username": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"label": string,"last_error"?: string | null,"last_success_at"?: string | null,"username": string
-                  }
-                  Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"label"?: string,"last_error"?: string | null,"last_success_at"?: string | null,"username"?: string
-                  }
-                  Relationships: []
-                },"sliding_scale_rates": {
-                  Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"fuel_type": string,"id": string,"miles_from": number | null,"miles_to": number | null,"note": string | null,"rate": number,"stops_from": number,"stops_to": number | null,"vehicle_size": string | null,"vehicle_type": string
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"fuel_type"?: string,"id"?: string,"miles_from"?: number | null,"miles_to"?: number | null,"note"?: string | null,"rate": number,"stops_from": number,"stops_to"?: number | null,"vehicle_size"?: string | null,"vehicle_type": string
-                  }
-                  Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"fuel_type"?: string,"id"?: string,"miles_from"?: number | null,"miles_to"?: number | null,"note"?: string | null,"rate"?: number,"stops_from"?: number,"stops_to"?: number | null,"vehicle_size"?: string | null,"vehicle_type"?: string
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "sliding_scale_rates_account_id_fkey"
-      columns: ["account_id"]
-isOneToOne: false
-      referencedRelation: "accounts"
-      referencedColumns: ["id"]
-    }
-                  ]
-                },"driver_day_rates": {
-                  Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"day_rate": number,"pay_basis": string,"driver_id": string,"effective_from": string,"id": string,"note": string | null,"bonus_after_stops": number | null,"bonus_per_stop": number | null,"streak_after_days": number | null,"streak_day_rate": number | null
-                  }
-                  ComputedFields: never
-                  Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"day_rate": number,"pay_basis"?: string,"driver_id": string,"effective_from": string,"id"?: string,"note"?: string | null,"bonus_after_stops"?: number | null,"bonus_per_stop"?: number | null,"streak_after_days"?: number | null,"streak_day_rate"?: number | null
-                  }
-                  Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"day_rate"?: number,"pay_basis"?: string,"driver_id"?: string,"effective_from"?: string,"id"?: string,"note"?: string | null,"bonus_after_stops"?: number | null,"bonus_per_stop"?: number | null,"streak_after_days"?: number | null,"streak_day_rate"?: number | null
-                  }
-                  Relationships: [
-                    {
-      foreignKeyName: "driver_day_rates_account_id_fkey"
-      columns: ["account_id"]
-isOneToOne: false
-      referencedRelation: "accounts"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "driver_day_rates_driver_id_account_id_fkey"
       columns: ["driver_id","account_id"]
 isOneToOne: false
       referencedRelation: "drivers"
@@ -399,16 +363,74 @@ isOneToOne: false
       referencedColumns: ["id","account_id"]
     }
                   ]
-                },"drivers": {
+                },"driver_day_rates": {
                   Row: {
-                    "account_id": string,"created_at": string,"created_by": string | null,"display_name": string,"dpd_driver_ref": string | null,"email": string | null,"id": string,"is_active": boolean,"leaving_date": string | null,"notes": string | null,"phone": string | null,"start_date": string | null,"updated_at": string,"vat_number": string | null,"self_billing_agreement": boolean,"statement_no": number | null,"is_franchisee": boolean
+                    "account_id": string,"bonus_after_stops": number | null,"bonus_per_stop": number | null,"created_at": string,"created_by": string | null,"day_rate": number,"driver_id": string,"effective_from": string,"id": string,"note": string | null,"pay_basis": string,"streak_after_days": number | null,"streak_day_rate": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"display_name": string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"self_billing_agreement"?: boolean,"statement_no"?: number | null,"is_franchisee"?: boolean
+                    "account_id": string,"bonus_after_stops"?: number | null,"bonus_per_stop"?: number | null,"created_at"?: string,"created_by"?: string | null,"day_rate": number,"driver_id": string,"effective_from": string,"id"?: string,"note"?: string | null,"pay_basis"?: string,"streak_after_days"?: number | null,"streak_day_rate"?: number | null
                   }
                   Update: {
-                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"display_name"?: string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"start_date"?: string | null,"updated_at"?: string,"vat_number"?: string | null,"self_billing_agreement"?: boolean,"statement_no"?: number | null,"is_franchisee"?: boolean
+                    "account_id"?: string,"bonus_after_stops"?: number | null,"bonus_per_stop"?: number | null,"created_at"?: string,"created_by"?: string | null,"day_rate"?: number,"driver_id"?: string,"effective_from"?: string,"id"?: string,"note"?: string | null,"pay_basis"?: string,"streak_after_days"?: number | null,"streak_day_rate"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "driver_day_rates_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "driver_day_rates_driver_id_account_id_fkey"
+      columns: ["driver_id","account_id"]
+isOneToOne: false
+      referencedRelation: "drivers"
+      referencedColumns: ["id","account_id"]
+    }
+                  ]
+                },"driver_statements": {
+                  Row: {
+                    "account_id": string,"driver_id": string,"emailed_at": string | null,"franchise_id": string,"generated_at": string,"generated_by": string | null,"id": string,"period_end": string,"period_start": string,"statement_no": string,"storage_path": string,"title": string,"totals": NonNullable<Json>,"trigger": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"driver_id": string,"emailed_at"?: string | null,"franchise_id": string,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end": string,"period_start": string,"statement_no": string,"storage_path": string,"title": string,"totals"?: NonNullable<Json>,"trigger": string
+                  }
+                  Update: {
+                    "account_id"?: string,"driver_id"?: string,"emailed_at"?: string | null,"franchise_id"?: string,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string,"period_start"?: string,"statement_no"?: string,"storage_path"?: string,"title"?: string,"totals"?: NonNullable<Json>,"trigger"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "driver_statements_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "driver_statements_driver_id_fkey"
+      columns: ["driver_id"]
+isOneToOne: false
+      referencedRelation: "drivers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "driver_statements_franchise_id_fkey"
+      columns: ["franchise_id"]
+isOneToOne: false
+      referencedRelation: "franchises"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"drivers": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"display_name": string,"dpd_driver_ref": string | null,"email": string | null,"id": string,"is_active": boolean,"is_franchisee": boolean,"leaving_date": string | null,"notes": string | null,"phone": string | null,"self_billing_agreement": boolean,"start_date": string | null,"statement_no": number | null,"updated_at": string,"vat_number": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"display_name": string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"is_franchisee"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"self_billing_agreement"?: boolean,"start_date"?: string | null,"statement_no"?: number | null,"updated_at"?: string,"vat_number"?: string | null
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"display_name"?: string,"dpd_driver_ref"?: string | null,"email"?: string | null,"id"?: string,"is_active"?: boolean,"is_franchisee"?: boolean,"leaving_date"?: string | null,"notes"?: string | null,"phone"?: string | null,"self_billing_agreement"?: boolean,"start_date"?: string | null,"statement_no"?: number | null,"updated_at"?: string,"vat_number"?: string | null
                   }
                   Relationships: [
                     {
@@ -523,14 +545,14 @@ isOneToOne: false
                   ]
                 },"expenses": {
                   Row: {
-                    "account_id": string,"amount": number,"vat_amount": number | null,"category_id": string,"created_at": string,"created_by": string | null,"dedupe_key": string,"description": string,"expense_date": string,"franchise_id": string | null,"id": string,"imported_file_id": string | null,"is_void": boolean,"source": string,"source_driver_name": string | null,"supplier": string | null,"transaction_ref": string | null,"vehicle_registration": string | null,"void_reason": string | null,"voided_at": string | null,"voided_by": string | null
+                    "account_id": string,"amount": number,"category_id": string,"created_at": string,"created_by": string | null,"dedupe_key": string,"description": string,"expense_date": string,"franchise_id": string | null,"id": string,"imported_file_id": string | null,"is_void": boolean,"source": string,"source_driver_name": string | null,"supplier": string | null,"transaction_ref": string | null,"vat_amount": number | null,"vehicle_registration": string | null,"void_reason": string | null,"voided_at": string | null,"voided_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"amount": number,"vat_amount"?: number | null,"category_id": string,"created_at"?: string,"created_by"?: string | null,"dedupe_key": string,"description"?: string,"expense_date": string,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"source": string,"source_driver_name"?: string | null,"supplier"?: string | null,"transaction_ref"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
+                    "account_id": string,"amount": number,"category_id": string,"created_at"?: string,"created_by"?: string | null,"dedupe_key": string,"description"?: string,"expense_date": string,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"source": string,"source_driver_name"?: string | null,"supplier"?: string | null,"transaction_ref"?: string | null,"vat_amount"?: number | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"amount"?: number,"vat_amount"?: number | null,"category_id"?: string,"created_at"?: string,"created_by"?: string | null,"dedupe_key"?: string,"description"?: string,"expense_date"?: string,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"source"?: string,"source_driver_name"?: string | null,"supplier"?: string | null,"transaction_ref"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
+                    "account_id"?: string,"amount"?: number,"category_id"?: string,"created_at"?: string,"created_by"?: string | null,"dedupe_key"?: string,"description"?: string,"expense_date"?: string,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"source"?: string,"source_driver_name"?: string | null,"supplier"?: string | null,"transaction_ref"?: string | null,"vat_amount"?: number | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -577,18 +599,24 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "accounts"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "franchises_dpd_login_id_fkey"
+      columns: ["dpd_login_id"]
+isOneToOne: false
+      referencedRelation: "dpd_logins"
+      referencedColumns: ["id"]
     }
                   ]
                 },"fuel_transactions": {
                   Row: {
-                    "account_id": string,"card_reference": string | null,"created_at": string,"created_by": string | null,"dedupe_key": string,"description": string | null,"franchise_id": string | null,"id": string,"imported_file_id": string | null,"is_void": boolean,"litres": number | null,"price_per_litre": number | null,"source": string,"source_driver_name": string | null,"supplier": string | null,"total_cost": number,"transaction_date": string,"transaction_ref": string | null,"transaction_time": string | null,"vehicle_registration": string | null,"void_reason": string | null,"voided_at": string | null,"voided_by": string | null,"vat_amount": number | null,"vat_basis": string | null
+                    "account_id": string,"card_reference": string | null,"created_at": string,"created_by": string | null,"dedupe_key": string,"description": string | null,"franchise_id": string | null,"id": string,"imported_file_id": string | null,"is_void": boolean,"litres": number | null,"price_per_litre": number | null,"source": string,"source_driver_name": string | null,"supplier": string | null,"total_cost": number,"transaction_date": string,"transaction_ref": string | null,"transaction_time": string | null,"vat_amount": number | null,"vat_basis": string | null,"vehicle_registration": string | null,"void_reason": string | null,"voided_at": string | null,"voided_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"card_reference"?: string | null,"created_at"?: string,"created_by"?: string | null,"dedupe_key": string,"description"?: string | null,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"litres"?: number | null,"price_per_litre"?: number | null,"source": string,"source_driver_name"?: string | null,"supplier"?: string | null,"total_cost": number,"transaction_date": string,"transaction_ref"?: string | null,"transaction_time"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null,"vat_amount"?: number | null,"vat_basis"?: string | null
+                    "account_id": string,"card_reference"?: string | null,"created_at"?: string,"created_by"?: string | null,"dedupe_key": string,"description"?: string | null,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"litres"?: number | null,"price_per_litre"?: number | null,"source": string,"source_driver_name"?: string | null,"supplier"?: string | null,"total_cost": number,"transaction_date": string,"transaction_ref"?: string | null,"transaction_time"?: string | null,"vat_amount"?: number | null,"vat_basis"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
                   }
                   Update: {
-                    "account_id"?: string,"card_reference"?: string | null,"created_at"?: string,"created_by"?: string | null,"dedupe_key"?: string,"description"?: string | null,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"litres"?: number | null,"price_per_litre"?: number | null,"source"?: string,"source_driver_name"?: string | null,"supplier"?: string | null,"total_cost"?: number,"transaction_date"?: string,"transaction_ref"?: string | null,"transaction_time"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null,"vat_amount"?: number | null,"vat_basis"?: string | null
+                    "account_id"?: string,"card_reference"?: string | null,"created_at"?: string,"created_by"?: string | null,"dedupe_key"?: string,"description"?: string | null,"franchise_id"?: string | null,"id"?: string,"imported_file_id"?: string | null,"is_void"?: boolean,"litres"?: number | null,"price_per_litre"?: number | null,"source"?: string,"source_driver_name"?: string | null,"supplier"?: string | null,"total_cost"?: number,"transaction_date"?: string,"transaction_ref"?: string | null,"transaction_time"?: string | null,"vat_amount"?: number | null,"vat_basis"?: string | null,"vehicle_registration"?: string | null,"void_reason"?: string | null,"voided_at"?: string | null,"voided_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -723,14 +751,14 @@ isOneToOne: false
                   ]
                 },"monthly_reports": {
                   Row: {
-                    "account_id": string,"franchise_id": string | null,"generated_at": string,"generated_by": string | null,"id": string,"period_end": string | null,"period_start": string | null,"report_month": string,"storage_path": string,"totals": NonNullable<Json>,"trigger": string,"kind": string
+                    "account_id": string,"franchise_id": string | null,"generated_at": string,"generated_by": string | null,"id": string,"kind": string,"period_end": string | null,"period_start": string | null,"report_month": string,"storage_path": string,"totals": NonNullable<Json>,"trigger": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month": string,"storage_path": string,"totals"?: NonNullable<Json>,"trigger"?: string,"kind"?: string
+                    "account_id": string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"kind"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month": string,"storage_path": string,"totals"?: NonNullable<Json>,"trigger"?: string
                   }
                   Update: {
-                    "account_id"?: string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month"?: string,"storage_path"?: string,"totals"?: NonNullable<Json>,"trigger"?: string,"kind"?: string
+                    "account_id"?: string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"kind"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month"?: string,"storage_path"?: string,"totals"?: NonNullable<Json>,"trigger"?: string
                   }
                   Relationships: [
                     {
@@ -765,6 +793,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "accounts"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "revenue_entries_driver_id_account_id_fkey"
+      columns: ["driver_id","account_id"]
+isOneToOne: false
+      referencedRelation: "drivers"
+      referencedColumns: ["id","account_id"]
     },{
       foreignKeyName: "revenue_entries_franchise_id_account_id_fkey"
       columns: ["franchise_id","account_id"]
@@ -811,6 +845,40 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"sliding_scale_rates": {
+                  Row: {
+                    "account_id": string,"created_at": string,"created_by": string | null,"fuel_type": string,"id": string,"miles_from": number | null,"miles_to": number | null,"note": string | null,"rate": number,"stops_from": number,"stops_to": number | null,"vehicle_size": string | null,"vehicle_type": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"created_at"?: string,"created_by"?: string | null,"fuel_type"?: string,"id"?: string,"miles_from"?: number | null,"miles_to"?: number | null,"note"?: string | null,"rate": number,"stops_from": number,"stops_to"?: number | null,"vehicle_size"?: string | null,"vehicle_type": string
+                  }
+                  Update: {
+                    "account_id"?: string,"created_at"?: string,"created_by"?: string | null,"fuel_type"?: string,"id"?: string,"miles_from"?: number | null,"miles_to"?: number | null,"note"?: string | null,"rate"?: number,"stops_from"?: number,"stops_to"?: number | null,"vehicle_size"?: string | null,"vehicle_type"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "sliding_scale_rates_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"sync_dispatches": {
+                  Row: {
+                    "attempt": number,"dispatched_at": string,"message": string | null,"night": string,"started": boolean
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "attempt": number,"dispatched_at"?: string,"message"?: string | null,"night": string,"started"?: boolean
+                  }
+                  Update: {
+                    "attempt"?: number,"dispatched_at"?: string,"message"?: string | null,"night"?: string,"started"?: boolean
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"sync_logs": {
                   Row: {
                     "account_id": string,"created_at": string,"detail": Json | null,"event": string,"franchise_id": string | null,"id": string,"import_job_id": string | null,"integration": string,"level": string,"message": string
@@ -842,6 +910,46 @@ isOneToOne: false
       referencedRelation: "import_jobs"
       referencedColumns: ["id"]
     }
+                  ]
+                },"unreadable_documents": {
+                  Row: {
+                    "account_id": string,"document_no": string,"first_seen_at": string,"franchise_id": string,"id": string,"last_seen_at": string,"pdf_path": string | null,"reason": string,"resolved_at": string | null,"status": string,"text_path": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account_id": string,"document_no": string,"first_seen_at"?: string,"franchise_id": string,"id"?: string,"last_seen_at"?: string,"pdf_path"?: string | null,"reason": string,"resolved_at"?: string | null,"status": string,"text_path"?: string | null
+                  }
+                  Update: {
+                    "account_id"?: string,"document_no"?: string,"first_seen_at"?: string,"franchise_id"?: string,"id"?: string,"last_seen_at"?: string,"pdf_path"?: string | null,"reason"?: string,"resolved_at"?: string | null,"status"?: string,"text_path"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "unreadable_documents_account_id_fkey"
+      columns: ["account_id"]
+isOneToOne: false
+      referencedRelation: "accounts"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "unreadable_documents_franchise_id_fkey"
+      columns: ["franchise_id"]
+isOneToOne: false
+      referencedRelation: "franchises"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"user_billing": {
+                  Row: {
+                    "cancel_at_period_end": boolean,"current_period_end": string | null,"plan": string,"status": string,"stripe_customer_id": string | null,"stripe_subscription_id": string | null,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"plan"?: string,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "cancel_at_period_end"?: boolean,"current_period_end"?: string | null,"plan"?: string,"status"?: string,"stripe_customer_id"?: string | null,"stripe_subscription_id"?: string | null,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"user_franchise_access": {
                   Row: {
@@ -895,17 +1003,11 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "read_dpd_login_secret":
-{ Args: { "p_login_id": string }; Returns: string
-                           },
-            "save_dpd_login_secret":
-{ Args: { "p_login_id": string,"p_ciphertext": string }; Returns: undefined
-                           },
             "billing_allows_access":
-{ Args: Record<string, never>; Returns: boolean
+{ Args: Record<PropertyKey, never>; Returns: boolean
                            },
 "billing_plan":
-{ Args: Record<string, never>; Returns: string | null
+{ Args: Record<PropertyKey, never>; Returns: string
                            },
 "bootstrap_account":
 { Args: { "p_business_name": string,"p_full_name": string }; Returns: string
@@ -1031,6 +1133,9 @@ isOneToOne: false
 "link_earnings_to_driver":
 { Args: { "p_alias": string,"p_driver_id": string,"p_driver_key": string,"p_franchise_id": string }; Returns: number
                            },
+"read_dpd_login_secret":
+{ Args: { "p_login_id": string }; Returns: string
+                           },
 "read_integration_secret":
 { Args: { "p_connection_id": string }; Returns: string
                            },
@@ -1088,6 +1193,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"save_dpd_login_secret":
+{ Args: { "p_ciphertext": string,"p_login_id": string }; Returns: undefined
+                           },
 "save_integration_secret":
 { Args: { "p_ciphertext": string,"p_connection_id": string }; Returns: undefined
                            },

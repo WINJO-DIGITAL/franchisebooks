@@ -18,6 +18,8 @@ PostgreSQL on Supabase. Migrations in `supabase/migrations/` (apply with `npx su
 
 **Money in** — `daily_earnings` (imported DPD figures; `is_current` + `superseded_by` keep replaced rows), `revenue_entries` (franchise revenue, confirmed/estimated).
 
+**Reminders** — `compliance_dates` (driver and vehicle expiry dates; reminders only, changes no pay).
+
 **Pay changes** — `earnings_adjustments` (append-only ledger; `reverses_adjustment_id` links a reversal), `driver_cover_records` (the agreed allocation, stored separately from DPD figures).
 
 **Costs** — `fuel_transactions`, `expenses`, `expense_categories`, `expense_allocations` (who a cost is attributed to; history kept via `is_current`).

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DatesPanel, type DateRow } from "@/components/drivers/dates-panel";
 import { LinkDriverForm } from "@/components/drivers/forms";
 import { Badge, EmptyState, Notice, PageHeader, Section, TableWrap } from "@/components/ui/bits";
 import { buttonClass, LinkButton } from "@/components/ui/button";
@@ -18,6 +19,22 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const ctx = await getContext();
   const period = periodContaining(ctx.today);
   const { start } = period;
+  // The dates table is added by a migration: until it has been run the page shows no dates rather than failing.
+  const [datesResult, names] = await Promise.all([
+    ctx.supabase.from("compliance_dates").select("id, subject_type, driver_id, vehicle_registration, kind, label, expires_on, notes").order("expires_on").order("id"),
+    fetchAll(() => ctx.supabase.from("drivers").select("id, display_name").order("display_name").order("id")),
+  ]);
+  const dateRecords = datesResult.error ? [] : (datesResult.data ?? []);
+  const driverName = new Map(names.map((d) => [d.id, d.display_name]));
+  const dateRows: DateRow[] = dateRecords.map((r) => ({
+    id: r.id,
+    subjectType: r.subject_type as "driver" | "vehicle",
+    subject: r.subject_type === "driver" ? (driverName.get(r.driver_id ?? "") ?? "Unknown driver") : (r.vehicle_registration ?? ""),
+    kind: r.kind,
+    label: r.label,
+    expiresOn: r.expires_on,
+    notes: r.notes,
+  }));
 
   const [drivers, assignments, data, workedRows, unregisteredRows] = await Promise.all([
     fetchAll(() => ctx.supabase.from("drivers").select("id, display_name, is_active, start_date, leaving_date, dpd_driver_ref").order("display_name").order("id")),
@@ -117,6 +134,15 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
           </TableWrap>
         </Section>
       ) : null}
+
+      <Section id="dates" title="Driver and Vehicle Dates" description="Expiry dates to be reminded of: a driver's licence, right to work or DBS check, and a van's MOT, service, road tax or insurance. These are reminders only and change no pay.">
+        <DatesPanel
+          rows={dateRows}
+          drivers={drivers.filter((d) => d.is_active).map((d) => ({ id: d.id, name: d.display_name }))}
+          today={ctx.today}
+          canWrite={ctx.canWrite}
+        />
+      </Section>
 
       {visible.length === 0 ? (
         <EmptyState title="No Drivers Yet" action={ctx.canWrite ? <LinkButton href="/drivers/new">Add Your First Driver</LinkButton> : undefined}>
