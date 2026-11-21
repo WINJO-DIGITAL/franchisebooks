@@ -43,9 +43,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { rows: statementRows } = await loadStatementRows(ctx, period);
     const { data: driverRefs } = await ctx.supabase.from("drivers").select("id, dpd_driver_ref").eq("account_id", ctx.accountId);
     const wages = wagesToPay(statementRows, new Map((driverRefs ?? []).map((d) => [d.id, d.dpd_driver_ref])));
-    header = ["DR Number", "Driver", "Franchises", "Amount to pay (GBP)"];
-    rows = wages.lines.map((l) => [l.dr ?? "", l.name, l.franchises, l.total == null ? "Incomplete" : csvMoney(l.total)]);
-    rows.push(["", "Total", "", wages.complete ? csvMoney(wages.total) : "Incomplete"]);
+    header = ["DR Number", "Driver", "Franchises", "Amount to pay (GBP)", "Complete"];
+    rows = wages.lines.map((l) => [l.dr ?? "", l.name, l.franchises, csvMoney(l.total), l.complete ? "Yes" : "No"]);
+    rows.push(["", "Total", "", csvMoney(wages.total), wages.complete ? "Yes" : "No"]);
   } else {
     return new NextResponse("Not found", { status: 404 });
   }

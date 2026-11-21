@@ -44,8 +44,10 @@ export interface WagesLine {
   dr: string | null;
   name: string;
   franchises: number;
-  /** Amount to pay, all franchises added together. Null when any statement for this driver is incomplete. */
-  total: Pence | null;
+  /** Amount to pay, all franchises added together. An incomplete statement counts as £0 here, so the total is always a figure. */
+  total: Pence;
+  /** False when any of this driver's statements is incomplete, so the amount is not final. */
+  complete: boolean;
 }
 
 /**
@@ -56,16 +58,16 @@ export function wagesToPay(rows: StatementRow[], dr: Map<string, string | null>)
   const byDriver = new Map<string, StatementRow[]>();
   for (const r of rows) byDriver.set(r.driverId, [...(byDriver.get(r.driverId) ?? []), r]);
   const lines: WagesLine[] = [...byDriver.entries()].map(([driverId, rs]) => {
-    const complete = rs.every((r) => r.total != null);
     return {
       driverId,
       dr: dr.get(driverId) ?? null,
       name: rs[0]!.name,
       franchises: rs.length,
-      total: complete ? sumPence(rs.map((r) => r.total ?? 0)) : null,
+      total: sumPence(rs.map((r) => r.total ?? 0)),
+      complete: rs.every((r) => r.total != null),
     };
   }).sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
-  const complete = lines.every((l) => l.total != null);
-  const total = sumPence(lines.map((l) => l.total ?? 0));
+  const complete = lines.every((l) => l.complete);
+  const total = sumPence(lines.map((l) => l.total));
   return { lines, total, complete };
 }

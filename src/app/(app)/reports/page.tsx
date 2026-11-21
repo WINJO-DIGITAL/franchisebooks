@@ -98,7 +98,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                     <td className="font-medium">{l.name}</td>
                     <td className="num">{l.dr ?? "—"}</td>
                     <td className="r num hidden sm:table-cell">{l.franchises}</td>
-                    <td className="r num font-semibold">{l.total == null ? <span className="font-normal text-muted">Incomplete</span> : formatGBP(l.total)}</td>
+                    <td className="r num font-semibold">{formatGBP(l.total)}{l.complete ? null : <span className="block text-xs font-normal text-muted">Incomplete</span>}</td>
                   </tr>
                 ))}
               </tbody>
@@ -106,14 +106,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <tr className="border-t-2 border-line-strong font-semibold">
                   <td>Total, {wages.lines.length} {wages.lines.length === 1 ? "driver" : "drivers"}</td><td />
                   <td className="hidden sm:table-cell" />
-                  <td className="r num">{wages.complete ? formatGBP(wages.total) : <span className="font-normal text-muted">Incomplete</span>}</td>
+                  <td className="r num">{formatGBP(wages.total)}{wages.complete ? null : <span className="block text-xs font-normal text-muted">Incomplete lines count as £0</span>}</td>
                 </tr>
               </tfoot>
             </table>
           </TableWrap>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <a className={buttonClass("secondary", "sm")} href={`/api/export/wages?period=${statementPeriod.start}`}>Download Spreadsheet</a>
-            {!wages.complete ? <span className="text-sm text-muted">Some drivers have an incomplete statement, so the total is not final until those are fixed.</span> : null}
+            {!wages.complete ? <span className="text-sm text-muted">Some drivers have an incomplete statement, counted as £0 until it is fixed.</span> : null}
           </div>
         </Section>
       ) : null}

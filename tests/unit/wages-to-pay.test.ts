@@ -21,9 +21,16 @@ describe("wagesToPay", () => {
     expect(out.total).toBe(14_000);
   });
 
-  it("does not state a total for a driver whose statement is incomplete", () => {
+  it("counts an incomplete statement as £0 and flags it, so the total is always a figure", () => {
     const out = wagesToPay([row({ total: 10_000 }), row({ franchiseId: "f2", total: null, reason: "No day rate" })], new Map());
-    expect(out.lines[0]!.total).toBeNull();
+    expect(out.lines[0]).toMatchObject({ total: 10_000, complete: false });
+    expect(out.total).toBe(10_000);
     expect(out.complete).toBe(false);
+  });
+
+  it("a driver with only an incomplete statement is £0 and flagged", () => {
+    const out = wagesToPay([row({ driverId: "d9", total: null, reason: "No day rate" })], new Map());
+    expect(out.lines[0]).toMatchObject({ total: 0, complete: false });
+    expect(out.total).toBe(0);
   });
 });
