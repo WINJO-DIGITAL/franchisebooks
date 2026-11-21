@@ -27,13 +27,11 @@ export default async function DashboardPage() {
   const maxPlan = (await currentPlan(supabase)) === "max";
   const period = periodContaining(today);
   const monthStart = period.start;
-  const trendStart = addDays(today, -13);
-  const loadFrom = trendStart < monthStart ? trendStart : monthStart;
 
   // Driver and vehicle dates that have passed or fall within the next month. Read on its own so the dashboard still loads without them.
   const datesDue = await supabase.from("compliance_dates").select("id", { count: "exact", head: true }).eq("account_id", accountId).lte("expires_on", addDays(today, DUE_SOON_DAYS));
   const [data, sync] = await Promise.all([
-    loadPeriodData(supabase, { accountId, from: loadFrom, to: today, franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
+    loadPeriodData(supabase, { accountId, from: monthStart, to: today, franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
     loadSyncOverview(supabase, accountId),
   ]);
 
@@ -49,7 +47,7 @@ export default async function DashboardPage() {
   const routeIncome = m.earningsMeaning === "route_income";
 
   const driverDays = buildDriverDays(data.earnings, data.adjustments, data.driverNames);
-  const trend: DailyPoint[] = eachDay(trendStart, today).map((date) => {
+  const trend: DailyPoint[] = eachDay(monthStart, today).map((date) => {
     const days = driverDays.filter((d) => d.date === date);
     const value = sumPence(days.map((d) => (routeIncome ? d.originalEarnings : d.finalEarnings)));
     return { date, label: formatUkDate(date).slice(0, 5), value: Math.max(0, value), valueLabel: formatGBP(value), hasData: days.some((d) => d.hasReport) };
@@ -200,7 +198,7 @@ export default async function DashboardPage() {
           )}
           {!noData ? (
             <div className="mt-6 border-t border-line pt-4">
-              <DailyColumns points={trend} caption={routeIncome ? "Income per day, last 14 days" : "Driver pay per day, last 14 days"} />
+              <DailyColumns points={trend} caption={routeIncome ? "Income per day" : "Driver pay per day"} />
             </div>
           ) : null}
         </Panel>
