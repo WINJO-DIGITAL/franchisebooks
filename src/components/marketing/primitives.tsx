@@ -43,35 +43,3 @@ export function Frame({ title, subtitle, children, className, caption = "Illustr
     </figure>
   );
 }
-
-/** A band of the page: a small folio label in the margin, and the content beside it. */
-export function Band({ id, folio, label, tone = "paper", children }: { id: string; folio: string; label: string; tone?: "paper" | "surface" | "sunken"; children: ReactNode }) {
-  return (
-    <section
-      id={id}
-      aria-labelledby={`${id}-title`}
-      className={cn(
-        "scroll-mt-20",
-        tone === "surface" && "border-y border-line bg-surface",
-        tone === "sunken" && "border-y border-line bg-sunken/70",
-      )}
-    >
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 sm:py-20 lg:grid-cols-[11rem_minmax(0,1fr)] lg:gap-14 lg:py-24">
-        <p className="flex items-baseline gap-3 self-start border-t border-ink/70 pt-3 text-xs font-medium uppercase tracking-[0.14em] text-ink-soft lg:sticky lg:top-24">
-          <span className="num text-accent">{folio}</span>
-          {label}
-        </p>
-        <div className="min-w-0">{children}</div>
-      </div>
-    </section>
-  );
-}
-
-export function BandHeading({ id, children, intro }: { id: string; children: ReactNode; intro?: ReactNode }) {
-  return (
-    <div className="max-w-3xl">
-      <h2 id={`${id}-title`} className="text-balance font-display text-[2rem] font-semibold leading-[1.1] tracking-[-0.015em] sm:text-[2.6rem]">{children}</h2>
-      {intro ? <p className="mt-4 max-w-2xl text-pretty text-[1.0625rem] leading-relaxed text-ink-soft sm:text-lg">{intro}</p> : null}
-    </div>
-  );
-}

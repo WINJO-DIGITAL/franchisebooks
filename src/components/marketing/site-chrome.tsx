@@ -4,11 +4,9 @@ import { buttonClass } from "@/components/ui/button";
 import { MobileMenu } from "./mobile-menu";
 
 export const SECTION_LINKS = [
-  { href: "#how", label: "How It Works" },
-  { href: "#inside", label: "Inside the Platform" },
-  { href: "#trust", label: "Security" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#questions", label: "Questions" },
+  { href: "/welcome#how", label: "How It Works" },
+  { href: "/welcome#pricing", label: "Pricing" },
+  { href: "/welcome#questions", label: "Questions" },
 ] as const;
 
 export function SiteHeader() {
