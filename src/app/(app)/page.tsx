@@ -151,30 +151,36 @@ export default async function DashboardPage() {
         <Panel>
           {routeIncome ? (
             <>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-                <Stat label="Income" size="lg" value={m.revenueStatus === "unavailable" ? "—" : formatGBP(m.revenueTotal)} sub={m.otherDpdPayments > 0 ? `DPD payments + ${formatGBP(m.otherDpdPayments)} invoice extras` : "From DPD payments"} />
-                <Stat
-                  label="Wages"
-                  value={m.wagesComplete ? formatGBP(m.wages) : "—"}
-                  sub={m.wagesComplete ? "Day rate × days worked" : undefined}
-                />
-                <Stat
-                  label="Expenses"
-                  value={formatGBP(m.fuel + m.otherExpenses)}
-                  sub={m.unallocatedCosts > 0 ? <Link href="/expenses?show=unallocated" className="text-accent underline">{formatGBP(m.unallocatedCosts)} not yet assigned</Link> : "DPD charges and expenses"}
-                />
-                <Stat
-                  label="Profit"
-                  value={m.operatingProfit == null ? "—" : formatGBP(m.operatingProfit)}
-                  tone={m.operatingProfit == null ? undefined : m.operatingProfit < 0 ? "bad" : "good"}
-                  sub={m.operatingProfit == null ? "Shown once every driver has a day rate" : m.marginPercent != null ? `${m.marginPercent}% margin` : undefined}
-                />
-              </div>
-              {m.profitBeforeWages != null ? (
-                <p className="mt-4 border-t border-line pt-3 text-sm text-muted">
-                  Income less charges, before wages: <span className="num font-medium text-ink">{formatGBP(m.profitBeforeWages)}</span>
-                </p>
-              ) : null}
+              {(() => {
+                const income = m.revenueTotal;
+                const wages = m.wages;
+                const costs = m.fuel + m.otherExpenses;
+                const profit = income - wages - costs;
+                const waiting = m.driversMissingRate;
+                const row = (label: string, value: string, tone: string, sign: string) => (
+                  <div className="flex items-baseline justify-between gap-4 py-2.5">
+                    <dt className="text-ink-soft">{label}</dt>
+                    <dd className={`num text-xl font-semibold ${tone}`}>{sign}{value}</dd>
+                  </div>
+                );
+                return (
+                  <dl className="divide-y divide-line">
+                    {m.revenueStatus === "unavailable" ? null : row("Income", formatGBP(income), "text-good", "")}
+                    <div className="flex items-baseline justify-between gap-4 py-2.5">
+                      <dt className="text-ink-soft">
+                        Wages
+                        {waiting > 0 ? <span className="block text-xs text-muted">Excludes {waiting} {waiting === 1 ? "driver" : "drivers"} with no day rate yet</span> : null}
+                      </dt>
+                      <dd className="num text-xl font-semibold text-bad">−{formatGBP(wages)}</dd>
+                    </div>
+                    {row("Expenses", formatGBP(costs), "text-bad", "−")}
+                    <div className="flex items-baseline justify-between gap-4 pt-3">
+                      <dt className="font-semibold">{waiting > 0 ? "Profit so far" : "Profit"}</dt>
+                      <dd className={`num text-2xl font-semibold ${profit < 0 ? "text-bad" : "text-good"}`}>{m.revenueStatus === "unavailable" ? "—" : formatGBP(profit)}</dd>
+                    </div>
+                  </dl>
+                );
+              })()}
             </>
           ) : (
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-5">
