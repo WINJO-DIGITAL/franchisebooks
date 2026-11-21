@@ -9,7 +9,8 @@ import { ReasonDialog } from "@/components/ui/reason-dialog";
 import { voidCost } from "@/lib/actions/expenses";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { fetchAll } from "@/lib/data/fetch-all";
-import { loadCosts, loadDriverNames } from "@/lib/data/period";
+import { loadCosts, loadDriverNames, loadPeriodData } from "@/lib/data/period";
+import { driverIdentity, summarisePeriod } from "@/lib/finance/calc";
 import { addDays, formatUkDate } from "@/lib/dates";
 import { periodFromParam, periodLabel } from "@/lib/finance/periods";
 import { summariseCosts } from "@/lib/finance/cost-summary";
@@ -44,11 +45,17 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const show = FILTERS.some((f) => f.key === params.show) ? (params.show as (typeof FILTERS)[number]["key"]) : "all";
   const { start, end } = period;
 
-  const [costs, names, categories] = await Promise.all([
+  const [costs, names, categories, periodData] = await Promise.all([
     loadCosts(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
     loadDriverNames(ctx.supabase, ctx.accountId),
     fetchAll(() => ctx.supabase.from("expense_categories").select("id, name, kind, is_active").eq("is_active", true).order("sort_order").order("id")),
+    loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
   ]);
+  // Driver wages are a cost of the business, so they sit here with fuel and other expenses. Income is never reduced by them.
+  const periodTotals = summarisePeriod(periodData).combined;
+  const wages = periodTotals.wages;
+  const wagesLabel = periodTotals.earningsMeaning === "route_income" ? "Driver wages" : "Driver pay";
+  const peoplePaid = new Set(periodData.earnings.map((e) => driverIdentity(e.driverId, e.sourceDriverName))).size;
   const { data: activeDrivers } = await ctx.supabase.from("drivers").select("id, display_name").eq("is_active", true).order("display_name");
   const drivers = (activeDrivers ?? []).map((d) => ({ id: d.id, label: d.display_name }));
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
@@ -82,14 +89,15 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <Section>
         <Panel>
           <dl className="divide-y divide-line">
+            <Row label={wagesLabel} value={formatGBP(wages)} tone="bad" />
             {costs.some(isFuel) ? <Row label="Fuel" value={formatGBP(fuelTotal)} tone="bad" /> : null}
             <Row label="Other expenses" value={formatGBP(otherTotal)} tone="bad" />
-            <Row label="Total before VAT" value={formatGBP(summary.beforeVat)} tone="bad" strong note={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : undefined} />
+            <Row label="Total before VAT" value={formatGBP(wages + summary.beforeVat)} tone="bad" strong note={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : undefined} />
             <Row label="VAT" value={formatGBP(summary.vat)} tone="bad" />
             {summary.vatNotStatedCount > 0 ? (
               <Row label="VAT not stated" value={formatGBP(summary.vatNotStated)} note={`${items(summary.vatNotStatedCount)}: the document does not say whether VAT is included`} />
             ) : null}
-            <Row label="Total with VAT" value={formatGBP(summary.withVat)} tone="bad" strong large note={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : undefined} />
+            <Row label="Total with VAT" value={formatGBP(wages + summary.withVat)} tone="bad" strong large note={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : undefined} />
             {sumPence(unallocated.map((c) => c.amount)) > 0 ? (
               <Row label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} note={`${items(unallocated.length)} to assign`} />
             ) : null}
@@ -97,15 +105,23 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
         </Panel>
       </Section>
 
-      {summary.byCategory.length > 0 ? (
+      {summary.byCategory.length > 0 || wages > 0 ? (
         <Section title="By Category">
           <TableWrap>
             <table className="ledger" data-testid="category-subtotals">
               <thead><tr><th>Category</th><th className="r">Items</th><th className="r">Amount</th><th className="r hidden sm:table-cell">VAT Stated</th></tr></thead>
               <tbody>
+                {wages > 0 ? (
+                  <tr>
+                    <td className="font-medium">{wagesLabel}</td>
+                    <td className="r num">{peoplePaid}</td>
+                    <td className="r num">{formatGBP(wages)}</td>
+                    <td className="r num hidden sm:table-cell"><span className="text-muted">—</span></td>
+                  </tr>
+                ) : null}
                 {summary.byCategory.map((c) => (
                   <tr key={c.name}>
-                    <td className="font-medium">{c.name}{c.businessCost ? <Badge className="ml-2">Business cost</Badge> : null}</td>
+                    <td className="font-medium">{c.name}</td>
                     <td className="r num">{c.count}</td>
                     <td className="r num">{formatGBP(c.amount)}</td>
                     <td className="r num hidden sm:table-cell">{c.vat ? formatGBP(c.vat) : <span className="text-muted">—</span>}</td>
