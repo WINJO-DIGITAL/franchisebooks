@@ -70,14 +70,16 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
       <Section>
         <Panel>
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-            <Stat size="lg" label="Total Before VAT" value={formatGBP(summary.beforeVat)} sub={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : items(costs.length)} />
-            <Stat label="VAT" value={formatGBP(summary.vat)} sub={summary.vat === 0 ? "No VAT stated" : "As stated on the documents"} />
-            <Stat label="Total With VAT" value={formatGBP(summary.withVat)} sub={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : "Before VAT plus VAT"} />
-            <Stat label="VAT Not Stated" value={summary.vatNotStatedCount > 0 ? formatGBP(summary.vatNotStated) : "None"} sub={summary.vatNotStatedCount > 0 ? `${items(summary.vatNotStatedCount)}: the document does not say whether VAT is included` : "Every cost states its VAT"} />
-            <Stat label="Total Spent" value={formatGBP(summary.totalSpent)} sub={items(costs.length)} />
-            <Stat label="Fuel" value={costs.some(isFuel) ? formatGBP(fuelTotal) : "None"} sub={litres > 0 ? `${litres.toLocaleString("en-GB", { maximumFractionDigits: 0 })} litres` : costs.some(isFuel) ? undefined : "No fuel data imported"} />
+            <Stat size="lg" label="Total Before VAT" value={formatGBP(summary.beforeVat)} sub={summary.vatNotStatedCount + summary.vatInclusiveCount > 0 ? "Only costs that state their VAT" : undefined} />
+            <Stat label="VAT" value={formatGBP(summary.vat)} />
+            <Stat label="Total With VAT" value={formatGBP(summary.withVat)} sub={summary.vatInclusiveCount > 0 ? `Includes ${formatGBP(summary.vatInclusive)} stated as including VAT` : undefined} />
+            {summary.vatNotStatedCount > 0 ? (
+              <Stat label="VAT Not Stated" value={formatGBP(summary.vatNotStated)} sub={`${items(summary.vatNotStatedCount)}: the document does not say whether VAT is included`} />
+            ) : null}
+            <Stat label="Total Spent" value={formatGBP(summary.totalSpent)} />
+            <Stat label="Fuel" value={costs.some(isFuel) ? formatGBP(fuelTotal) : "None"} />
             <Stat label="Other expenses" value={formatGBP(otherTotal)} />
-            <Stat label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} sub={unallocated.length ? `${items(unallocated.length)} to assign` : "Nothing waiting"} />
+            <Stat label="Unallocated" value={formatGBP(sumPence(unallocated.map((c) => c.amount)))} sub={unallocated.length ? `${items(unallocated.length)} to assign` : undefined} />
           </div>
         </Panel>
       </Section>
