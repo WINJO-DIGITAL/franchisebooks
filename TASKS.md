@@ -12,8 +12,6 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
 - [ ] To go live, add the live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you). Everything else for live is already set: the live prices, webhook secret and portal ID are on Vercel, and the live portal charges upgrades straight away.
 - [ ] Delete the test customer "Franchise Books test run" (`cus_VfNfDF6wFI0aHV`) in the Stripe test dashboard (you).
-- [ ] Database backups: add GitHub secrets `SUPABASE_DB_URL` (session pooler string) and `BACKUP_PASSPHRASE`, run the "Database backup" workflow once, then restore it into the empty project and say so (you). Steps in docs/BACKUP.md. The daily run fails until the secrets are set.
-- [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
 
 ### Assistant to do
 - [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
@@ -35,7 +33,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - End-to-end tests: 195 passing, 62 skipped by design (phone-only and desktop-only tests), against the local stack and a production build.
 
 ## Log of finished work (not a checklist)
-- Daily database backup: encrypted copy of the database every day, kept 14 days in GitHub artifacts (free plan). Steps in docs/BACKUP.md; not yet tested by a restore.
+- Daily database backup: encrypted copy of the database every day, kept 14 days in GitHub artifacts (free plan). First run succeeded 21/11/2026. A test restore needs the passphrase (owner); steps in docs/BACKUP.md.
 - Two-step sign-in: anyone can turn it on for their own login in Settings (authenticator app code after the password). A password-only session is stopped at the code page for every page and API call. This is enforced by the app; the database itself does not require the code, so it protects sign-in, not a direct database connection.
 - Team: the owner invites managers and viewers from Settings, chooses which franchises each can see, changes that later, or removes them. A removed person whose name is on records they entered keeps a blocked login (so the records stay linked) and cannot sign in or see anything.
 - Portal change warning: when several DPD reads fail on layout in a day (across accounts, or the same step repeatedly), one email goes to ALERT_EMAIL, at most every six hours. History reads queued before a downgrade are skipped.
