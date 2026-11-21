@@ -209,7 +209,7 @@ export default async function DashboardPage() {
                   <th className="sm:min-w-56">{routeIncome ? "Income" : "Driver pay"}</th>
                   {routeIncome ? <th className="r hidden sm:table-cell">Wages</th> : <th className="r hidden sm:table-cell">Fuel</th>}
                   <th className="r hidden sm:table-cell">{routeIncome ? "Expenses" : "Other"}</th>
-                  <th className="r">Profit</th>
+                  <th className="r">{routeIncome ? "After Costs" : "Profit"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -238,6 +238,11 @@ export default async function DashboardPage() {
                           {formatGBP(f.operatingProfit)}{f.profitStatus === "estimated" ? " (est.)" : ""}
                         </span>
                       )}
+                      {routeIncome && f.operatingProfit != null ? (
+                        <span className="block text-xs font-normal text-muted sm:hidden">
+                          Less {formatGBP(f.wages)}{f.wagesComplete ? "" : "+"} wages, {formatGBP(f.fuel + f.otherExpenses)} costs
+                        </span>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
