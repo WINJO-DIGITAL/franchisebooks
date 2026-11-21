@@ -175,7 +175,7 @@ export default async function DashboardPage() {
                     </div>
                     {row("Expenses", formatGBP(costs), "text-bad", "−")}
                     <div className="flex items-baseline justify-between gap-4 pt-3">
-                      <dt className="font-semibold">Profit</dt>
+                      <dt className="font-semibold">Profit / Loss</dt>
                       <dd className={`num text-2xl font-semibold ${profit < 0 ? "text-bad" : "text-good"}`}>{m.revenueStatus === "unavailable" ? "—" : formatGBP(profit)}</dd>
                     </div>
                   </dl>
@@ -224,7 +224,7 @@ export default async function DashboardPage() {
                         <div><p className="text-xs text-muted">Income</p><p className="num font-medium text-good">{formatGBP(f.incomeFromDpd, { signed: true })}</p></div>
                         <div><p className="text-xs text-muted">Wages</p><p className="num font-medium text-bad">−{formatGBP(f.wages)}</p></div>
                         <div><p className="text-xs text-muted">Costs</p><p className="num font-medium text-bad">−{formatGBP(f.fuel + f.otherExpenses)}</p></div>
-                        <div><p className="text-xs text-muted">Profit</p><p className={`num font-semibold ${f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses < 0 ? "text-bad" : "text-good"}`}>{formatGBP(f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses)}</p></div>
+                        <div><p className="text-xs text-muted">Profit / Loss</p><p className={`num font-semibold ${f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses < 0 ? "text-bad" : "text-good"}`}>{formatGBP(f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses)}</p></div>
                       </div>
                     </li>
                   ))}
@@ -235,7 +235,7 @@ export default async function DashboardPage() {
                     <div><p className="text-xs text-muted">Income</p><p className="num font-semibold text-good">{formatGBP(franchiseTotals.income, { signed: true })}</p></div>
                     <div><p className="text-xs text-muted">Wages</p><p className="num font-semibold text-bad">−{formatGBP(franchiseTotals.wages)}</p></div>
                     <div><p className="text-xs text-muted">Costs</p><p className="num font-semibold text-bad">−{formatGBP(franchiseTotals.costs)}</p></div>
-                    <div><p className="text-xs text-muted">Profit</p><p className={`num font-semibold ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit)}</p></div>
+                    <div><p className="text-xs text-muted">Profit / Loss</p><p className={`num font-semibold ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit)}</p></div>
                   </div>
                 </div>
               </Panel>
@@ -248,7 +248,7 @@ export default async function DashboardPage() {
                         <th className="r">Income</th>
                         <th className="r">Wages</th>
                         <th className="r">Expenses</th>
-                        <th className="r">Profit</th>
+                        <th className="r">Profit / Loss</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -289,7 +289,7 @@ export default async function DashboardPage() {
                     <th className="sm:min-w-56">Driver pay</th>
                     <th className="r hidden sm:table-cell">Fuel</th>
                     <th className="r hidden sm:table-cell">Other</th>
-                    <th className="r">Profit</th>
+                    <th className="r">Profit / Loss</th>
                   </tr>
                 </thead>
                 <tbody>
