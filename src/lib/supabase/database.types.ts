@@ -723,14 +723,14 @@ isOneToOne: false
                   ]
                 },"monthly_reports": {
                   Row: {
-                    "account_id": string,"franchise_id": string | null,"generated_at": string,"generated_by": string | null,"id": string,"period_end": string | null,"period_start": string | null,"report_month": string,"storage_path": string,"totals": NonNullable<Json>,"trigger": string
+                    "account_id": string,"franchise_id": string | null,"generated_at": string,"generated_by": string | null,"id": string,"period_end": string | null,"period_start": string | null,"report_month": string,"storage_path": string,"totals": NonNullable<Json>,"trigger": string,"kind": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "account_id": string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month": string,"storage_path": string,"totals"?: NonNullable<Json>,"trigger"?: string
+                    "account_id": string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month": string,"storage_path": string,"totals"?: NonNullable<Json>,"trigger"?: string,"kind"?: string
                   }
                   Update: {
-                    "account_id"?: string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month"?: string,"storage_path"?: string,"totals"?: NonNullable<Json>,"trigger"?: string
+                    "account_id"?: string,"franchise_id"?: string | null,"generated_at"?: string,"generated_by"?: string | null,"id"?: string,"period_end"?: string | null,"period_start"?: string | null,"report_month"?: string,"storage_path"?: string,"totals"?: NonNullable<Json>,"trigger"?: string,"kind"?: string
                   }
                   Relationships: [
                     {

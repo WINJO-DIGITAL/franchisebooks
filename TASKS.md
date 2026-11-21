@@ -11,6 +11,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 ### You (owner) to do
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
 - [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you).
+- [ ] Run `supabase/migrations/20261122000100_report_kinds.sql` in the Supabase SQL Editor (you); until then the three new reports are simply not made.
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
 
 ### Assistant to do
@@ -34,6 +35,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - End-to-end tests: 195 passing, 62 skipped by design (phone-only and desktop-only tests), against the local stack and a production build.
 
 ## Log of finished work (not a checklist)
+- End-of-period reports: Driver Pay Report and Profit and Loss (Essential) and Sliding Scale Discrepancy (Max, PDF and CSV), made automatically the evening after each period closes and listed on the Reports page.
 - Fuel importer fix, pay per day or per stop, period reports on Mondays, shared DPD setup, encrypted logins (merged to main).
 - Franchise fee category, payment details (excess, mileage, stop/parcel pay), driver daily table and PDF section.
 - Period check, sliding scale storage and page, Stripe billing, homepage and sign-up, onboarding with progress screen.

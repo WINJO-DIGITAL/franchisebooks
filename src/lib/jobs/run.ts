@@ -91,7 +91,35 @@ async function execute(db: AdminClient, job: Job, ctx: RunContext): Promise<JobO
           }
         }
       }
-      return { status: "succeeded", message, result: { generated, statements } };
+      // The end-of-period reports: Driver Pay and Profit and Loss for everyone, Sliding Scale Discrepancy for Max accounts.
+      // None of them can hold up the Period Report, so a failure is noted and the rest carry on.
+      const extras: string[] = [];
+      if (period) {
+        const { generateExtraReport } = await import("@/lib/reports/generate");
+        const { accountPlan } = await import("@/lib/billing/plan");
+        const isMax = (await accountPlan(db, job.account_id)) === "max";
+        const franchiseIds = (franchises ?? []).map((f) => f.id);
+        const plan: { kind: "driver_pay" | "profit_loss" | "discrepancy"; scopes: (string | null)[] }[] = [
+          { kind: "driver_pay", scopes: franchiseIds.length === 1 ? franchiseIds : [null, ...franchiseIds] },
+          { kind: "profit_loss", scopes: franchiseIds.length === 1 ? franchiseIds : [null, ...franchiseIds] },
+          ...(isMax ? [{ kind: "discrepancy" as const, scopes: franchiseIds }] : []),
+        ];
+        for (const { kind, scopes: list } of plan) {
+          for (const franchiseId of list) {
+            try {
+              const made = await generateExtraReport(db, { accountId: job.account_id, kind, franchiseId, period, trigger: "auto" });
+              if (made) extras.push(made.label);
+            } catch (error) {
+              await db.from("sync_logs").insert({
+                account_id: job.account_id, integration: "system", import_job_id: job.id, franchise_id: franchiseId, level: "warning",
+                event: "end_of_period_report_failed", message: `The ${kind.replace("_", " ")} report could not be made: ${error instanceof Error ? error.message : String(error)}`, detail: { period, kind } as unknown as JsonObject,
+              });
+            }
+          }
+        }
+        if (extras.length > 0) message += ` End-of-period reports: ${extras.length}.`;
+      }
+      return { status: "succeeded", message, result: { generated, statements, extras } };
     }
     default:
       throw new Error(`Unknown job type ${job.job_type}`);

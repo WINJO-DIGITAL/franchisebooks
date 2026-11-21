@@ -11,13 +11,21 @@ interface Option {
 }
 
 export function GenerateReportForm({
-  periods, months, franchises, defaultReport, defaultFranchiseId, allowAll,
-}: { periods: Option[]; months: Option[]; franchises: Option[]; defaultReport: string; defaultFranchiseId: string | null; allowAll: boolean }) {
+  periods, months, franchises, defaultReport, defaultFranchiseId, allowAll, showDiscrepancy,
+}: { showDiscrepancy: boolean; periods: Option[]; months: Option[]; franchises: Option[]; defaultReport: string; defaultFranchiseId: string | null; allowAll: boolean }) {
   const router = useRouter();
   return (
-    <ActionForm action={generateReport} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSuccess={() => router.refresh()}>
+    <ActionForm action={generateReport} className="grid gap-4 sm:grid-cols-2 sm:items-end" onSuccess={() => router.refresh()}>
       {(state) => (
         <>
+          <Field label="Which report?" error={state.fieldErrors?.type}>
+            <Select name="type" defaultValue="period">
+              <option value="period">Period Report</option>
+              <option value="driver_pay">Driver Pay Report</option>
+              <option value="profit_loss">Profit and Loss</option>
+              {showDiscrepancy ? <option value="discrepancy">Sliding Scale Discrepancy</option> : null}
+            </Select>
+          </Field>
           <Field label="What period?" error={state.fieldErrors?.report}>
             <Select name="report" defaultValue={defaultReport}>
               <optgroup label="DPD four-week periods">

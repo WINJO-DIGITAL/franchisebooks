@@ -15,7 +15,9 @@ import { dpdSetupReady } from "@/lib/dpd/readiness";
 import { enqueueJob } from "@/lib/jobs/queue";
 import { dispatchSyncWorkflow } from "@/lib/github/dispatch";
 import { pokeWorker } from "@/lib/jobs/run";
-import { generateMonthlyReport } from "@/lib/reports/generate";
+import { currentPlan } from "@/lib/billing/plan";
+import { REPORT_KIND_LABEL } from "@/lib/reports/end-of-period";
+import { generateExtraReport, generateMonthlyReport } from "@/lib/reports/generate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { JsonObject } from "@/lib/supabase/json";
 import { dbFailure, fail, ok, parseForm, unexpectedFailure, type ActionState } from "./helpers";
@@ -174,7 +176,7 @@ export async function disconnectDropbox(_prev: ActionState, _formData: FormData)
 export async function generateReport(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const ctx = await getContext();
   // "report" is "month:2026-10" or "period:2026-10-12" (the first day of a DPD four-week period).
-  const parsed = parseForm(z.object({ report: z.string().regex(/^(month:\d{4}-\d{2}|period:\d{4}-\d{2}-\d{2})$/, "Choose a month or period."), franchiseId: optionalUuid }), formData);
+  const parsed = parseForm(z.object({ report: z.string().regex(/^(month:\d{4}-\d{2}|period:\d{4}-\d{2}-\d{2})$/, "Choose a month or period."), franchiseId: optionalUuid, type: z.enum(["period", "driver_pay", "profit_loss", "discrepancy"]).optional() }), formData);
   if ("error" in parsed) return parsed.error;
   const [kind, value] = parsed.data.report.split(":") as ["month" | "period", string];
   const period = kind === "period" ? periodContaining(value) : null;
@@ -185,6 +187,23 @@ export async function generateReport(_prev: ActionState, formData: FormData): Pr
     role: ctx.role, allFranchises: ctx.allFranchises, visibleFranchiseIds: ctx.franchises.map((f) => f.id), franchiseId: parsed.data.franchiseId ?? null,
   });
   if (scopeProblem) return fail(scopeProblem);
+  const type = parsed.data.type ?? "period";
+  if (type !== "period") {
+    // The end-of-period reports are for a DPD four-week period. The Sliding Scale Discrepancy is a Max report for one franchise.
+    if (!period) return fail("Choose a DPD four-week period for this report.");
+    if (type === "discrepancy") {
+      if ((await currentPlan(ctx.supabase)) !== "max") return fail("The Sliding Scale Discrepancy report is part of the Max plan.");
+      if (!parsed.data.franchiseId) return fail("Choose a franchise: this report is made for one franchise at a time.");
+    }
+    try {
+      const made = await generateExtraReport(createAdminClient(), { accountId: ctx.accountId, kind: type, franchiseId: parsed.data.franchiseId, period, trigger: "manual", userId: ctx.userId });
+      if (!made) return fail(type === "discrepancy" ? "Choose this franchise's sliding scale in Settings first, so there is a scale to check against." : "This report is not available yet. Try again shortly.");
+      revalidatePath("/reports");
+      return ok(`${REPORT_KIND_LABEL[type]} generated for ${periodLabel(period)}.`, { id: made.id });
+    } catch (error) {
+      return unexpectedFailure(error, "The report could not be generated.");
+    }
+  }
   try {
     const report = await generateMonthlyReport(createAdminClient(), {
       accountId: ctx.accountId, month, period, franchiseId: parsed.data.franchiseId, trigger: "manual", userId: ctx.userId,

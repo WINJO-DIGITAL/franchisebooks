@@ -24,7 +24,7 @@ PostgreSQL on Supabase. Migrations in `supabase/migrations/` (apply with `npx su
 
 **Imports and operations** — `imported_files` (every source document: SHA-256, origin, outcome; unique per account+hash), `import_jobs` (durable queue; a unique index prevents overlapping jobs per type/franchise/date), `sync_logs`, `review_items` (things awaiting a decision), `integration_connections`, `integration_folders`, `app_private.integration_secrets` (encrypted tokens; not readable by users).
 
-**Insight** — `anomalies` (explainable alerts with owner status), `monthly_reports`, `audit_logs` (append-only).
+**Insight** — `anomalies` (explainable alerts with owner status), `monthly_reports` (with `kind`: period, driver_pay, profit_loss, discrepancy), `audit_logs` (append-only).
 
 ## Guarantees enforced in the database
 

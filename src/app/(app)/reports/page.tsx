@@ -8,6 +8,7 @@ import { buttonClass } from "@/components/ui/button";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { addMonths, formatMonth, formatUkDateTime, isISODate, monthOf } from "@/lib/dates";
 import { lastCompletedPeriod, periodContaining, periodLabel, previousPeriod, recentPeriods, type DpdPeriod } from "@/lib/finance/periods";
+import { REPORT_KIND_LABEL } from "@/lib/reports/end-of-period";
 import { planDriverStatements } from "@/lib/statements/generate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatGBP, fromDb } from "@/lib/money";
@@ -24,6 +25,7 @@ interface Totals {
   fuel?: string;
   otherExpenses?: string;
   operatingProfit?: string | null;
+  summary?: string;
   profitStatus?: string;
 }
 
@@ -39,11 +41,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const { data: settings } = await ctx.supabase.from("app_settings").select("report_frequency").eq("account_id", ctx.accountId).maybeSingle();
   const byPeriod = settings?.report_frequency === "dpd_period";
   const defaultReport = byPeriod ? `period:${lastCompletedPeriod(ctx.today).start}` : `month:${addMonths(current, -1)}`;
-  const { data: reports } = await ctx.supabase
+  // "kind" is added by a migration; until it has run, every report is a Period Report.
+  const withKind = await ctx.supabase
     .from("monthly_reports")
-    .select("id, report_month, period_start, period_end, franchise_id, trigger, totals, generated_at")
+    .select("id, report_month, period_start, period_end, franchise_id, trigger, totals, generated_at, kind")
     .order("generated_at", { ascending: false })
     .limit(60);
+  const reports = withKind.error
+    ? ((await ctx.supabase.from("monthly_reports").select("id, report_month, period_start, period_end, franchise_id, trigger, totals, generated_at").order("generated_at", { ascending: false }).limit(60)).data ?? []).map((r) => ({ ...r, kind: "period" }))
+    : (withKind.data ?? []);
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const closed = lastCompletedPeriod(ctx.today);
   const statementPeriods = [closed, previousPeriod(closed), previousPeriod(previousPeriod(closed)), previousPeriod(previousPeriod(previousPeriod(closed)))];
@@ -69,8 +75,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             defaultReport={defaultReport}
             defaultFranchiseId={ctx.franchiseId}
             allowAll={ctx.allFranchises}
+            showDiscrepancy={showScaleReport}
           />
-          <p className="mt-3 text-sm text-muted">Reports use the figures held at the moment you press the button. Generating again later creates a new copy; earlier copies are kept.</p>
+          <p className="mt-3 text-sm text-muted">The Driver Pay Report, Profit and Loss{showScaleReport ? " and Sliding Scale Discrepancy" : ""} are for a DPD four-week period, and are also made automatically the evening after each period closes. Reports use the figures held at the moment you press the button. Generating again later creates a new copy; earlier copies are kept.</p>
         </Panel>
       </Section>
 
@@ -126,7 +133,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       ) : null}
 
       <Section title="Previous Reports">
-        {(reports ?? []).length === 0 ? (
+        {reports.length === 0 ? (
           <EmptyState title="No Reports Yet">Generate your first report above.</EmptyState>
         ) : (
           <TableWrap>
@@ -135,22 +142,26 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <tr><th>Report</th><th>Scope</th><th className="r">Income</th><th className="r">Wages / Driver Costs</th><th className="r">Fuel &amp; Expenses</th><th className="r">Profit</th><th>Generated</th><th /></tr>
               </thead>
               <tbody>
-                {(reports ?? []).map((r) => {
+                {reports.map((r) => {
                   const t = (r.totals ?? {}) as Totals;
+                  const kind = (r.kind ?? "period") as keyof typeof REPORT_KIND_LABEL;
+                  const extra = kind !== "period";
                   return (
                     <tr key={r.id}>
-                      <td className="font-medium">{r.period_start && r.period_end ? periodLabel({ start: r.period_start, end: r.period_end }) : formatMonth(r.report_month.slice(0, 7))}</td>
+                      <td className="font-medium">{r.period_start && r.period_end ? periodLabel({ start: r.period_start, end: r.period_end }) : formatMonth(r.report_month.slice(0, 7))}{extra ? <Badge className="ml-2">{REPORT_KIND_LABEL[kind]}</Badge> : null}</td>
                       <td>{r.franchise_id ? (franchiseName.get(r.franchise_id) ?? t.scopeLabel ?? "Franchise") : "All franchises"}</td>
+                      {extra && kind !== "profit_loss" ? <td className="text-sm" colSpan={4}>{t.summary ?? ""}</td> : <>
                       <td className="r num">{t.earningsMeaning === "route_income" && t.revenue != null ? formatGBP(fromDb(t.revenue)) : "—"}</td>
                       <td className="r num">{t.driverCosts != null ? `${formatGBP(fromDb(t.driverCosts))}${t.earningsMeaning === "route_income" && t.wagesComplete === false ? "+" : ""}` : "—"}</td>
                       <td className="r num">{t.fuel != null ? formatGBP(fromDb(t.fuel) + fromDb(t.otherExpenses ?? 0)) : "—"}</td>
                       <td className="r num">
                         {t.operatingProfit == null ? <span className="text-muted">{t.earningsMeaning === "route_income" ? "Set day rates" : "No revenue"}</span> : <>{formatGBP(fromDb(t.operatingProfit))}{t.profitStatus === "estimated" ? <Badge tone="warn" className="ml-1.5">Est.</Badge> : null}</>}
-                      </td>
+                      </td></>}
                       <td className="whitespace-nowrap text-sm text-muted">{formatUkDateTime(r.generated_at)}{r.trigger === "auto" ? <Badge className="ml-2">Automatic</Badge> : null}</td>
                       <td className="r whitespace-nowrap">
                         <a className={buttonClass("quiet", "sm")} href={`/api/reports/${r.id}?view=1`} target="_blank" rel="noreferrer">View</a>
                         <a className={buttonClass("secondary", "sm")} href={`/api/reports/${r.id}`}>Download PDF</a>
+                        {kind === "discrepancy" ? <a className={buttonClass("secondary", "sm")} href={`/api/reports/${r.id}?format=csv`}>Download CSV</a> : null}
                       </td>
                     </tr>
                   );
