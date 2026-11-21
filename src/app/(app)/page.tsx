@@ -14,7 +14,7 @@ import { dpdSetupReady } from "@/lib/dpd/readiness";
 import { addDays, eachDay, formatUkDate, formatUkDateLong, formatUkDayMonth } from "@/lib/dates";
 import { DUE_SOON_DAYS } from "@/lib/compliance/dates";
 import { periodContaining, periodLabel } from "@/lib/finance/periods";
-import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
+import { buildDriverDays, driverIdentity, mergeDriverRows, summarisePeriod } from "@/lib/finance/calc";
 import { FIGURE_STATUS } from "@/lib/labels";
 import { setupChecklist } from "@/lib/onboarding/steps";
 import { formatGBP, sumPence } from "@/lib/money";
@@ -63,16 +63,19 @@ export default async function DashboardPage() {
     costs: franchiseRows.reduce((t, f) => t + f.fuel + f.otherExpenses, 0),
     profit: franchiseRows.reduce((t, f) => t + f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses, 0),
   };
-  const rankedDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings));
+  // One row per person, even when they work for more than one franchise.
+  const rankedDrivers = mergeDriverRows([...m.drivers].filter((d) => d.daysWorked > 0)).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings));
   // Totals cover every driver with days this period, so they reconcile to the franchise profit. Profit / loss is income less wage.
   const everyWageKnown = rankedDrivers.every((d) => d.wageComplete && d.wage != null);
   const totalIncomeAll = rankedDrivers.reduce((t, d) => t + d.originalEarnings, 0);
   const totalWageAll = rankedDrivers.reduce((t, d) => t + (d.wage ?? 0), 0);
   // Route numbers per driver this pay period, shown with a slash between them so they never read as one large number.
   const routesByDriver = new Map<string, Set<string>>();
-  for (const e of data.earnings.filter((e) => e.date >= monthStart && e.route)) {
-    const k = `${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`;
-    routesByDriver.set(k, (routesByDriver.get(k) ?? new Set()).add(e.route!));
+  const franchisesByDriver = new Map<string, Set<string>>();
+  for (const e of data.earnings.filter((e) => e.date >= monthStart)) {
+    const k = driverIdentity(e.driverId, e.sourceDriverName);
+    if (e.route) routesByDriver.set(k, (routesByDriver.get(k) ?? new Set()).add(e.route));
+    franchisesByDriver.set(k, (franchisesByDriver.get(k) ?? new Set()).add(franchiseName.get(e.franchiseId) ?? ""));
   }
   const noFranchises = ctx.franchises.length === 0;
   const noData = data.earnings.length === 0 && data.costs.length === 0;
@@ -350,12 +353,14 @@ export default async function DashboardPage() {
               </thead>
               <tbody>
                 {rankedDrivers.map((d) => (
-                  <tr key={`${d.franchiseId}-${d.key}`}>
+                  <tr key={d.key}>
                     <td className="font-medium max-w-[7.5rem] break-words sm:max-w-none">
                       {d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <span>{d.name} <Badge tone="warn">Not registered</Badge></span>}
                       {(() => {
-                        const routes = [...(routesByDriver.get(`${d.franchiseId}|${d.key}`) ?? [])].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true }));
-                        const where = [!ctx.franchise ? franchiseName.get(d.franchiseId) : null, routes.length ? `Route ${routes.join(" / ")}` : null].filter(Boolean).join(" · ");
+                        const identity = driverIdentity(d.driverId, d.name);
+                        const routes = [...(routesByDriver.get(identity) ?? [])].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true }));
+                        const franchisesHere = [...(franchisesByDriver.get(identity) ?? [])].filter(Boolean);
+                        const where = [!ctx.franchise && franchisesHere.length ? franchisesHere.join(", ") : null, routes.length ? `Route ${routes.join(" / ")}` : null].filter(Boolean).join(" · ");
                         return where ? <span className="hidden text-xs font-normal text-muted sm:block">{where}</span> : null;
                       })()}
                     </td>
@@ -365,7 +370,7 @@ export default async function DashboardPage() {
                     <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base ${routeIncome ? "text-good" : ""}`}>{formatGBP(d.originalEarnings, { signed: true })}</td>
                     {routeIncome ? null : <td className="r num">{d.adjustmentsNet === 0 ? "—" : formatGBP(d.adjustmentsNet, { signed: true })}</td>}
                     <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight font-semibold sm:text-base ${routeIncome ? "text-bad" : ""}`}>
-                      {routeIncome ? (d.wageComplete && d.wage != null ? `−${formatGBP(d.wage)}` : <span className="font-normal text-muted">No rate</span>) : formatGBP(d.finalEarnings)}
+                      {routeIncome ? (d.wage == null ? <span className="font-normal text-muted">No rate</span> : <>−{formatGBP(d.wage)}{d.wageComplete ? "" : "+"}</>) : formatGBP(d.finalEarnings)}
                     </td>
                     {routeIncome ? (
                       <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight font-semibold sm:text-base ${d.wageComplete && d.wage != null && d.originalEarnings - d.wage < 0 ? "text-bad" : d.wageComplete && d.wage != null ? "text-good" : ""}`}>

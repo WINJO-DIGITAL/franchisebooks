@@ -621,6 +621,68 @@ function combineStatus(statuses: FigureStatus[]): FigureStatus {
  * only reported when every franchise with activity has revenue entered;
  * otherwise it would silently understate revenue.
  */
+/**
+ * Who a driver row belongs to: the registered driver, or, for an unregistered report row, the name as read from the report.
+ * The same person can appear under several franchises, or under more than one report reference, so rows are joined on this.
+ */
+export function driverIdentity(driverId: string | null, name: string): string {
+  return driverId ?? `name:${name.trim().replace(/\s+/g, " ").toLowerCase()}`;
+}
+
+/**
+ * One row per person for the combined view. A driver who works for two franchises, or who appears under two report
+ * references, becomes one row with the figures added together. A row whose wage is incomplete keeps its wage marked as
+ * incomplete, so the merged wage is never stated as final.
+ */
+export function mergeDriverRows(rows: DriverSummary[]): DriverSummary[] {
+  const groups = new Map<string, DriverSummary[]>();
+  for (const r of rows) {
+    const id = driverIdentity(r.driverId, r.name);
+    groups.set(id, [...(groups.get(id) ?? []), r]);
+  }
+  return [...groups.entries()].map(([id, g]) => {
+    if (g.length === 1) return g[0]!;
+    const sum = (f: (d: DriverSummary) => number) => g.reduce((t, d) => t + f(d), 0);
+    const days = sum((d) => d.daysWorked);
+    const stops = sum((d) => d.stops);
+    const original = sum((d) => d.originalEarnings);
+    const stopsIncomplete = g.some((d) => d.stopsIncomplete);
+    const parcelsIncomplete = g.some((d) => d.parcelsIncomplete);
+    const knownWages = g.filter((d) => d.wage != null);
+    const wage = knownWages.length === 0 ? null : knownWages.reduce((t, d) => t + (d.wage ?? 0), 0);
+    return {
+      key: id,
+      driverId: g.find((d) => d.driverId)?.driverId ?? null,
+      name: g[0]!.name,
+      registered: g.some((d) => d.registered),
+      franchiseId: "",
+      daysWorked: days,
+      parcels: sum((d) => d.parcels),
+      stops,
+      parcelsIncomplete,
+      stopsIncomplete,
+      originalEarnings: original,
+      additionalPayments: sum((d) => d.additionalPayments),
+      deductions: sum((d) => d.deductions),
+      adjustmentsNet: sum((d) => d.adjustmentsNet),
+      finalEarnings: sum((d) => d.finalEarnings),
+      fuel: sum((d) => d.fuel),
+      otherExpenses: sum((d) => d.otherExpenses),
+      allocatedRevenue: null,
+      contribution: null,
+      contributionStatus: "unavailable",
+      earningsPerParcel: parcelsIncomplete ? null : perUnit(original, sum((d) => d.parcels)),
+      earningsPerStop: stopsIncomplete ? null : perUnit(original, stops),
+      parcelsPerStopX100: parcelsIncomplete || stopsIncomplete || stops === 0 ? null : Math.round((sum((d) => d.parcels) * 100) / stops),
+      avgEarningsPerDay: perUnit(original, days),
+      avgStopsPerDayX10: days === 0 || stopsIncomplete ? null : Math.round((stops * 10) / days),
+      avgParcelsPerDayX10: days === 0 || parcelsIncomplete ? null : Math.round((sum((d) => d.parcels) * 10) / days),
+      wage,
+      wageComplete: g.every((d) => d.wageComplete),
+    };
+  });
+}
+
 export function combineFranchises(franchises: FranchiseSummary[]): FranchiseSummary {
   const sum = (pick: (f: FranchiseSummary) => Pence) => sumPence(franchises.map(pick));
   const revenueTotal = sum((f) => f.revenueTotal);
