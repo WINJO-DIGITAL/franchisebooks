@@ -55,17 +55,12 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const summary = summarisePeriod(data).combined;
   const routeIncome = summary.earningsMeaning === "route_income";
   // Per driver this pay period: income (DPD payments), wage (day rate × days) and days worked, across all franchises.
-  const byDriver = new Map<string, { income: number; wage: number; wageComplete: boolean; days: number; stops: number }>();
+  const byDriver = new Map<string, { days: number; stops: number; parcels: number }>();
   for (const d of summary.drivers) {
     if (!d.driverId) continue;
-    const e = byDriver.get(d.driverId) ?? { income: 0, wage: 0, wageComplete: true, days: 0, stops: 0 };
-    byDriver.set(d.driverId, { income: e.income + d.originalEarnings, wage: e.wage + (d.wage ?? 0), wageComplete: e.wageComplete && d.wageComplete, days: e.days + d.daysWorked, stops: e.stops + d.stops });
+    const e = byDriver.get(d.driverId) ?? { days: 0, stops: 0, parcels: 0 };
+    byDriver.set(d.driverId, { days: e.days + d.daysWorked, stops: e.stops + d.stops, parcels: e.parcels + d.parcels });
   }
-  const currentRate = (driverId: string) => {
-    let best: { from: string; rate: number } | null = null;
-    for (const r of data.dayRates ?? []) if (r.driverId === driverId && r.effectiveFrom <= ctx.today && (!best || r.effectiveFrom > best.from)) best = { from: r.effectiveFrom, rate: r.dayRate };
-    return best?.rate ?? null;
-  };
   const payByDriver = new Map<string, { pay: number; days: number }>();
   for (const d of summary.drivers) {
     if (!d.driverId) continue;
@@ -79,7 +74,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const listable = (d: { id: string; is_active: boolean }) => d.is_active || everWorked.has(d.id);
   const showInactive = show === "all";
   const search = (searchText ?? "").trim().toLowerCase();
-  const sort = sortParam === "income" || sortParam === "days" ? sortParam : "name";
+  const sort = sortParam === "stops" || sortParam === "days" ? sortParam : "name";
   const visible = drivers
     .filter((d) => {
       if (!listable(d)) return false;
@@ -89,7 +84,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
       return assignments.some((a) => a.driver_id === d.id && a.franchise_id === ctx.franchiseId);
     })
     .sort((a, b) => {
-      if (sort === "income") return (byDriver.get(b.id)?.income ?? 0) - (byDriver.get(a.id)?.income ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
+      if (sort === "stops") return (byDriver.get(b.id)?.stops ?? 0) - (byDriver.get(a.id)?.stops ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
       if (sort === "days") return (byDriver.get(b.id)?.days ?? 0) - (byDriver.get(a.id)?.days ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
       return a.display_name.localeCompare(b.display_name, "en-GB");
     });
@@ -157,7 +152,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             <label className="sr-only" htmlFor="driver-sort">Sort by</label>
             <select id="driver-sort" name="sort" defaultValue={sort} className="h-10 rounded-lg border border-line-strong bg-surface px-2 text-sm">
               <option value="name">Name</option>
-              <option value="income">Income this pay period</option>
+              <option value="stops">Stops this pay period</option>
               <option value="days">Days worked this pay period</option>
             </select>
             <button type="submit" className={buttonClass("secondary", "sm")}>Apply</button>
@@ -170,17 +165,14 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                   <th className="hidden sm:table-cell">Franchise</th>
                   <th className="hidden sm:table-cell">Route</th>
                   <th className="r">Days</th>
-                  <th className="r hidden sm:table-cell">Stops</th>
-                  <th className="r">Income</th>
-                  <th className="r hidden sm:table-cell">Day Rate</th>
-                  <th className="r">Wage</th>
+                  <th className="r">Stops</th>
+                  <th className="r">Parcels</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((d) => {
                   const now = current(d.id);
                   const figures = byDriver.get(d.id);
-                  const rate = currentRate(d.id);
                   const where = now.length ? now.map((a) => [franchiseName.get(a.franchise_id) ?? "—", a.route].filter(Boolean).join(" · route ")).join(", ") : "";
                   return (
                     <tr key={d.id}>
@@ -192,12 +184,8 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                       <td className="hidden sm:table-cell">{now.length ? now.map((a) => franchiseName.get(a.franchise_id) ?? "—").join(", ") : <span className="text-muted">Not assigned</span>}</td>
                       <td className="num hidden sm:table-cell">{now.map((a) => a.route).filter(Boolean).join(" / ") || <span className="text-muted">—</span>}</td>
                       <td className="r num">{figures?.days ?? 0}</td>
-                      <td className="r num hidden sm:table-cell">{figures ? figures.stops.toLocaleString("en-GB") : <span className="text-muted">—</span>}</td>
-                      <td className="r num font-medium">{figures ? formatGBP(figures.income) : <span className="text-muted">—</span>}</td>
-                      <td className="r num hidden sm:table-cell">{rate == null ? <span className="text-muted">Not set</span> : formatGBP(rate)}</td>
-                      <td className="r num">
-                        {!figures || figures.days === 0 ? <span className="text-muted">—</span> : figures.wageComplete ? formatGBP(figures.wage) : <Link href={`/drivers/${d.id}`} className="text-accent underline">No rate</Link>}
-                      </td>
+                      <td className="r num">{figures ? figures.stops.toLocaleString("en-GB") : <span className="text-muted">—</span>}</td>
+                      <td className="r num">{figures ? figures.parcels.toLocaleString("en-GB") : <span className="text-muted">—</span>}</td>
                     </tr>
                   );
                 })}
