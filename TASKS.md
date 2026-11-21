@@ -10,15 +10,13 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 
 ### You (owner) to do
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
-- [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), and `STRIPE_PORTAL_CONFIGURATION_ID_LIVE` = `bpc_1UdiQOLEEs7hsljuIpbZ8YsV` (the Franchise Books portal, not the account default), then say "go live" (you). The assistant will first set that live portal's plan change to charge straight away.
+- [ ] To go live, add the live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), then say "go live" (you). Everything else for live is already set: the live prices, webhook secret and portal ID are on Vercel, and the live portal charges upgrades straight away.
 - [ ] Delete the test customer "Franchise Books test run" (`cus_VfNfDF6wFI0aHV`) in the Stripe test dashboard (you).
-- [ ] Switch on two-step sign-in (authenticator app, "TOTP") on the live Supabase project: Authentication, Sign In / Providers, Multi-Factor, turn on enrolment and verification (you). Until then the Settings button says it is not switched on. Check your Supabase plan includes it.
 - [ ] Database backups: add GitHub secrets `SUPABASE_DB_URL` (session pooler string) and `BACKUP_PASSPHRASE`, run the "Database backup" workflow once, then restore it into the empty project and say so (you). Steps in docs/BACKUP.md. The daily run fails until the secrets are set.
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
 
 ### Assistant to do
 - [ ] On "go live": switch on the live webhook `we_1UdiPuLEEs7hsljuekFwuBLe`, set `STRIPE_MODE=live`, redeploy and check a live checkout (assistant).
-- [ ] Check an Essential to Max change end to end through the app: create a test login through sign-up and checkout, upgrade it, then check the plan row, the webhook and the first history reads in the sync log (assistant, needs a test login from you).
 
 ## Current implementation (summary)
 - Next.js app with Supabase (Postgres, RLS) and a background worker that reads DPD with headless Chromium.
