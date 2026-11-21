@@ -9,11 +9,36 @@ import { addDays, formatUkDate, formatUkDateLong, isISODate } from "@/lib/dates"
 import { periodContaining, periodFromParam, periodLabel } from "@/lib/finance/periods";
 import { PeriodNav } from "@/components/ui/period-nav";
 import { DayPicker } from "@/components/ui/day-picker";
-import { buildDriverDays, driverIdentity, mergeDriverRows, summarisePeriod } from "@/lib/finance/calc";
+import { buildDriverDays, driverIdentity, mergeDriverRows, originalEarnings, summarisePeriod } from "@/lib/finance/calc";
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Income" };
+
+/** A per-stop or per-parcel rate in pounds (as DPD states it), or "—" when none, or "varies" when the period has more than one. */
+function rateLabel(values: Set<string>): string {
+  if (values.size === 0) return "—";
+  if (values.size > 1) return "Varies";
+  const v = [...values][0]!;
+  const trimmed = Number(v).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  const [whole, dec = ""] = trimmed.split(".");
+  return `£${whole}.${dec.padEnd(2, "0")}`;
+}
+
+interface PayPerson {
+  key: string;
+  name: string;
+  driverId: string | null;
+  franchises: Set<string>;
+  routes: Set<string>;
+  stops: number;
+  parcels: number;
+  excessParcels: number;
+  mileage: number;
+  total: number;
+  stopRates: Set<string>;
+  parcelRates: Set<string>;
+}
 
 export default async function EarningsPage({ searchParams }: { searchParams: Promise<{ date?: string; period?: string }> }) {
   const params = await searchParams;
@@ -41,6 +66,24 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
       const id = driverIdentity(e.driverId, e.sourceDriverName);
       routesFor.set(id, (routesFor.get(id) ?? new Set()).add(e.route!));
     }
+    // The pay-period driver table: one row per person, with the DPD figures summed across the period.
+    const people = new Map<string, PayPerson>();
+    for (const e of data.earnings) {
+      const id = driverIdentity(e.driverId, e.sourceDriverName);
+      const p = people.get(id) ?? { key: id, name: (e.driverId ? data.driverNames.get(e.driverId) : null) ?? e.sourceDriverName, driverId: e.driverId, franchises: new Set<string>(), routes: new Set<string>(), stops: 0, parcels: 0, excessParcels: 0, mileage: 0, total: 0, stopRates: new Set<string>(), parcelRates: new Set<string>() };
+      p.franchises.add(franchiseName.get(e.franchiseId) ?? "");
+      if (e.route) p.routes.add(e.route);
+      p.stops += e.stops ?? 0;
+      p.parcels += e.parcels ?? 0;
+      p.excessParcels += e.excessParcels ?? 0;
+      p.mileage += e.mileage ?? 0;
+      p.total += originalEarnings(e);
+      if (e.payPerStop != null) p.stopRates.add(e.payPerStop);
+      if (e.payPerParcel != null) p.parcelRates.add(e.payPerParcel);
+      people.set(id, p);
+    }
+    const payRows = [...people.values()].sort((a, b) => b.total - a.total);
+    const payTotal = payRows.reduce((n, p) => n + p.total, 0);
     const rows = mergeDriverRows(perFranchise.map((x) => x.d)).map((d) => {
       const id = driverIdentity(d.driverId, d.name);
       return {
@@ -77,27 +120,41 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
         </Section>
         {rows.length === 0 && (!routeIncome || data.otherPayments.length === 0) ? <EmptyState title="No Earnings for This Pay Period" /> : routeIncome ? (
           <TableWrap>
-            <table className="ledger">
+            <table className="ledger [&_td]:!px-2 [&_th]:!px-2 sm:[&_td]:!px-3 sm:[&_th]:!px-3">
               <thead>
                 <tr>
-                  <th>Driver</th><th>Route</th><th className="r">Stops</th><th className="r">Income</th>
+                  <th>Driver</th><th className="r">Stops</th><th className="r">Parcels</th><th className="r">Excess Parcels</th>
+                  <th className="r">Stop Rate</th><th className="r">Excess Parcel Rate</th><th className="r">Total</th><th>Route</th><th className="r">Mileage</th>
                 </tr>
               </thead>
               <tbody>
-                {[...rows].filter((d) => d.daysWorked > 0).sort((a, b) => b.originalEarnings - a.originalEarnings).map((d) => (
-                  <tr key={d.key}>
-                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise && d.franchise ? <span className="block text-xs font-normal text-muted">{d.franchise}</span> : null}</td>
-                    <td className="num">{d.routes || "—"}</td>
-                    <td className="r num">{d.stops.toLocaleString("en-GB")}</td>
-                    <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
+                {payRows.map((p) => (
+                  <tr key={p.key}>
+                    <td className="font-medium">
+                      {p.driverId ? <Link href={`/drivers/${p.driverId}`} className="hover:underline">{p.name}</Link> : <>{p.name} <Badge tone="warn">Not registered</Badge></>}
+                      {showFranchise ? <span className="block text-xs font-normal text-muted">{[...p.franchises].filter(Boolean).join(", ")}</span> : null}
+                    </td>
+                    <td className="r num">{p.stops.toLocaleString("en-GB")}</td>
+                    <td className="r num">{p.parcels.toLocaleString("en-GB")}</td>
+                    <td className="r num">{p.excessParcels.toLocaleString("en-GB")}</td>
+                    <td className="r num">{rateLabel(p.stopRates)}</td>
+                    <td className="r num">{rateLabel(p.parcelRates)}</td>
+                    <td className="r num font-semibold">{formatGBP(p.total)}</td>
+                    <td className="num">{[...p.routes].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true })).join(" / ") || "—"}</td>
+                    <td className="r num">{p.mileage.toLocaleString("en-GB")}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr>
-                  <td>Total</td><td />
+                  <td>Total</td>
                   <td className="r num">{t.stops.toLocaleString("en-GB")}</td>
-                  <td className="r num">{formatGBP(rows.reduce((n, d) => n + (d.daysWorked > 0 ? d.originalEarnings : 0), 0))}</td>
+                  <td className="r num">{t.parcels.toLocaleString("en-GB")}</td>
+                  <td className="r num">{payRows.reduce((n, p) => n + p.excessParcels, 0).toLocaleString("en-GB")}</td>
+                  <td /><td />
+                  <td className="r num">{formatGBP(payTotal)}</td>
+                  <td />
+                  <td className="r num">{payRows.reduce((n, p) => n + p.mileage, 0).toLocaleString("en-GB")}</td>
                 </tr>
               </tfoot>
             </table>
