@@ -100,9 +100,11 @@ export async function loadDriverPayLines(db: AdminClient, input: { accountId: st
     };
   }).sort((a, b) => a.franchiseLabel.localeCompare(b.franchiseLabel) || a.name.localeCompare(b.name, "en-GB"));
 
-  const complete = lines.every((l) => l.statement.unpricedDates.length === 0);
-  const owed = lines.reduce((a, l) => a + l.statement.total, 0);
-  return { lines, complete, owed, dr };
+  // Only drivers who did at least one route in the period are paid on this report.
+  const worked = lines.filter((l) => l.statement.daysWorked >= 1);
+  const complete = worked.every((l) => l.statement.unpricedDates.length === 0);
+  const owed = worked.reduce((a, l) => a + l.statement.total, 0);
+  return { lines: worked, complete, owed, dr };
 }
 
 /** One line per driver for Wages to Pay: the consolidated pay, with an incomplete driver's amount marked. */
