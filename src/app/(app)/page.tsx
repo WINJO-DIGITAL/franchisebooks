@@ -373,7 +373,10 @@ export default async function DashboardPage() {
               {routeIncome ? (
                 <tfoot>
                   <tr className="border-t-2 border-line-strong font-semibold">
-                    <td>Total, {rankedDrivers.length} {rankedDrivers.length === 1 ? "driver" : "drivers"}</td>
+                    <td className="align-middle">
+                      <span className="block">Total</span>
+                      <span className="block text-xs font-normal text-muted">{rankedDrivers.length} {rankedDrivers.length === 1 ? "driver" : "drivers"}</span>
+                    </td>
                     <td className="r num hidden sm:table-cell" colSpan={3} />
                     <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-good">{formatGBP(totalIncomeAll, { signed: true })}</td>
                     <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-bad">−{formatGBP(totalWageAll)}</td>
