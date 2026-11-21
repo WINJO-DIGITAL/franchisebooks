@@ -9,7 +9,7 @@ import { fetchAll } from "@/lib/data/fetch-all";
 import { loadPeriodData, hiddenFranchiseFilter } from "@/lib/data/period";
 import { formatUkDate } from "@/lib/dates";
 import { periodContaining, periodLabel } from "@/lib/finance/periods";
-import { summarisePeriod } from "@/lib/finance/calc";
+import { originalEarnings, summarisePeriod } from "@/lib/finance/calc";
 import { formatGBP } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Drivers" };
@@ -55,11 +55,18 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const summary = summarisePeriod(data).combined;
   const routeIncome = summary.earningsMeaning === "route_income";
   // Per driver this pay period: income (DPD payments), wage (day rate × days) and days worked, across all franchises.
-  const byDriver = new Map<string, { days: number; stops: number; parcels: number }>();
+  const byDriver = new Map<string, { days: number; stops: number; parcels: number; earned: number }>();
   for (const d of summary.drivers) {
     if (!d.driverId) continue;
-    const e = byDriver.get(d.driverId) ?? { days: 0, stops: 0, parcels: 0 };
-    byDriver.set(d.driverId, { days: e.days + d.daysWorked, stops: e.stops + d.stops, parcels: e.parcels + d.parcels });
+    const e = byDriver.get(d.driverId) ?? { days: 0, stops: 0, parcels: 0, earned: 0 };
+    byDriver.set(d.driverId, { days: e.days + d.daysWorked, stops: e.stops + d.stops, parcels: e.parcels + d.parcels, earned: e.earned + d.originalEarnings });
+  }
+  // What each driver earned on the latest day with a DPD report in this period (the same day the Income page opens on).
+  const latestDay = [...new Set(data.earnings.map((e) => e.date))].sort().at(-1) ?? ctx.today;
+  const earnedOnDay = new Map<string, number>();
+  for (const e of data.earnings) {
+    if (e.date !== latestDay || !e.driverId) continue;
+    earnedOnDay.set(e.driverId, (earnedOnDay.get(e.driverId) ?? 0) + originalEarnings(e));
   }
   const payByDriver = new Map<string, { pay: number; days: number }>();
   for (const d of summary.drivers) {
@@ -74,7 +81,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const listable = (d: { id: string; is_active: boolean }) => d.is_active || everWorked.has(d.id);
   const showInactive = show === "all";
   const search = (searchText ?? "").trim().toLowerCase();
-  const sort = sortParam === "stops" || sortParam === "days" ? sortParam : "name";
+  const sort = sortParam === "stops" || sortParam === "days" || sortParam === "earned" ? sortParam : "name";
   const visible = drivers
     .filter((d) => {
       if (!listable(d)) return false;
@@ -85,6 +92,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
     })
     .sort((a, b) => {
       if (sort === "stops") return (byDriver.get(b.id)?.stops ?? 0) - (byDriver.get(a.id)?.stops ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
+      if (sort === "earned") return (byDriver.get(b.id)?.earned ?? 0) - (byDriver.get(a.id)?.earned ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
       if (sort === "days") return (byDriver.get(b.id)?.days ?? 0) - (byDriver.get(a.id)?.days ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
       return a.display_name.localeCompare(b.display_name, "en-GB");
     });
@@ -153,6 +161,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             <select id="driver-sort" name="sort" defaultValue={sort} className="h-10 rounded-lg border border-line-strong bg-surface px-2 text-sm">
               <option value="name">Name</option>
               <option value="stops">Stops this pay period</option>
+              <option value="earned">Earned this pay period</option>
               <option value="days">Days worked this pay period</option>
             </select>
             <button type="submit" className={buttonClass("secondary", "sm")}>Apply</button>
@@ -167,6 +176,8 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                   <th className="r">Days</th>
                   <th className="r">Stops</th>
                   <th className="r">Parcels</th>
+                  <th className="r">Earned on {formatUkDate(latestDay)}</th>
+                  <th className="r">Earned This Period</th>
                 </tr>
               </thead>
               <tbody>
@@ -186,6 +197,8 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                       <td className="r num">{figures?.days ?? 0}</td>
                       <td className="r num">{figures ? figures.stops.toLocaleString("en-GB") : <span className="text-muted">—</span>}</td>
                       <td className="r num">{figures ? figures.parcels.toLocaleString("en-GB") : <span className="text-muted">—</span>}</td>
+                      <td className="r num">{earnedOnDay.has(d.id) ? formatGBP(earnedOnDay.get(d.id)!) : <span className="text-muted">—</span>}</td>
+                      <td className="r num font-semibold">{figures ? formatGBP(figures.earned) : <span className="text-muted">—</span>}</td>
                     </tr>
                   );
                 })}
