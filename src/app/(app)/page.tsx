@@ -14,6 +14,7 @@ import { dpdSetupReady } from "@/lib/dpd/readiness";
 import { addDays, eachDay, formatUkDate, formatUkDateLong, formatUkDayMonth } from "@/lib/dates";
 import { DUE_SOON_DAYS } from "@/lib/compliance/dates";
 import { periodContaining, periodLabel } from "@/lib/finance/periods";
+import { summariseCosts } from "@/lib/finance/cost-summary";
 import { buildDriverDays, driverIdentity, mergeDriverRows, summarisePeriod } from "@/lib/finance/calc";
 import { FIGURE_STATUS } from "@/lib/labels";
 import { setupChecklist } from "@/lib/onboarding/steps";
@@ -154,31 +155,43 @@ export default async function DashboardPage() {
           {routeIncome ? (
             <>
               {(() => {
+                // Money out is shown in brackets. Costs are stated before VAT, and VAT is taken from the expense documents as stated.
+                const unavailable = m.revenueStatus === "unavailable";
                 const income = m.revenueTotal;
                 const wages = m.wages;
-                const costs = m.fuel + m.otherExpenses;
-                const profit = income - wages - costs;
-                const row = (label: string, value: string, tone: string, sign: string) => (
-                  <div className="flex items-baseline justify-between gap-4 py-2.5">
-                    <dt className="text-ink-soft">{label}</dt>
-                    <dd className={`num text-xl font-semibold ${tone}`}>{sign}{value}</dd>
+                const fuel = m.fuel;
+                const other = m.otherExpenses;
+                const costsBefore = wages + fuel + other;
+                const vatOnCosts = summariseCosts(data.costs).vat;
+                const costsWith = costsBefore + vatOnCosts;
+                const profitBefore = income - costsBefore;
+                const profitWith = income - costsWith;
+                const bracket = (pence: number) => (pence < 0 ? `(${formatGBP(-pence)})` : formatGBP(pence));
+                const line = (label: string, value: string, opts: { strong?: boolean; indent?: boolean; tone?: string } = {}) => (
+                  <div className="flex items-baseline justify-between gap-4 py-2">
+                    <dt className={`${opts.indent ? "pl-4" : ""} ${opts.strong ? "font-semibold text-ink" : "text-ink-soft"}`}>{label}</dt>
+                    <dd className={`num ${opts.strong ? "font-semibold text-ink" : "text-ink"} ${opts.tone ?? ""}`}>{value}</dd>
                   </div>
                 );
                 return (
-                  <dl className="divide-y divide-line">
-                    {m.revenueStatus === "unavailable" ? null : row("Income", formatGBP(income, { signed: true }), "text-good", "")}
-                    <div className="flex items-baseline justify-between gap-4 py-2.5">
-                      <dt className="text-ink-soft">
-                        Wages
-                      </dt>
-                      <dd className="num text-xl font-semibold text-bad">−{formatGBP(wages)}</dd>
+                  <div>
+                    <dl className="divide-y divide-line text-[0.9375rem]">
+                      {line("Income", unavailable ? "—" : bracket(income), { strong: true })}
+                      {line("Driver wages", unavailable ? "—" : bracket(-wages), { indent: true })}
+                      {line("Fuel", unavailable ? "—" : bracket(-fuel), { indent: true })}
+                      {line("Other expenses", unavailable ? "—" : bracket(-other), { indent: true })}
+                      {line("Costs before VAT", unavailable ? "—" : bracket(-costsBefore), { strong: true })}
+                      {line("VAT on costs", unavailable ? "—" : bracket(-vatOnCosts), { indent: true })}
+                      {line("Costs with VAT", unavailable ? "—" : bracket(-costsWith), { strong: true })}
+                    </dl>
+                    <div className={`mt-4 flex items-center justify-between gap-4 rounded-lg px-4 py-4 ${!unavailable && profitBefore < 0 ? "bg-bad-soft" : "bg-good-soft"}`}>
+                      <dt className="font-semibold text-ink">Profit / (Loss) before VAT</dt>
+                      <dd className={`num text-3xl font-bold tracking-tight ${!unavailable && profitBefore < 0 ? "text-bad" : "text-good"}`}>{unavailable ? "—" : bracket(profitBefore)}</dd>
                     </div>
-                    {row("Expenses", formatGBP(costs), "text-bad", "−")}
-                    <div className={`mt-3 flex items-center justify-between gap-4 rounded-lg px-4 py-4 ${profit < 0 ? "bg-bad-soft" : "bg-good-soft"}`}>
-                      <dt className="text-base font-semibold text-ink">Profit / Loss</dt>
-                      <dd className={`num text-3xl font-bold tracking-tight ${profit < 0 ? "text-bad" : "text-good"}`}>{m.revenueStatus === "unavailable" ? "—" : formatGBP(profit, { signed: true })}</dd>
-                    </div>
-                  </dl>
+                    <dl className="mt-2 divide-y divide-line text-[0.9375rem]">
+                      {line("Profit / (Loss) with VAT", unavailable ? "—" : bracket(profitWith), { strong: true, tone: !unavailable && profitWith < 0 ? "text-bad" : "text-good" })}
+                    </dl>
+                  </div>
                 );
               })()}
             </>
