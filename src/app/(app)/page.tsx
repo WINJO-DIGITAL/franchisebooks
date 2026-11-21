@@ -57,6 +57,12 @@ export default async function DashboardPage() {
 
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
   const maxFranchisePay = Math.max(1, ...monthSummary.franchises.map((f) => (routeIncome ? f.incomeFromDpd : f.driverCosts)));
+  const franchiseRows = monthSummary.franchises.filter((f) => f.franchiseId);
+  const franchisesNeedingRates = routeIncome ? franchiseRows.filter((f) => f.operatingProfit == null).length : 0;
+  const franchiseTotals = {
+    income: franchiseRows.reduce((t, f) => t + f.incomeFromDpd, 0),
+    profit: franchiseRows.every((f) => f.operatingProfit != null) ? franchiseRows.reduce((t, f) => t + (f.operatingProfit ?? 0), 0) : null,
+  };
   const rankedDrivers = [...m.drivers].filter((d) => d.daysWorked > 0).sort((a, b) => (routeIncome ? b.originalEarnings - a.originalEarnings : b.finalEarnings - a.finalEarnings));
   const topDrivers = rankedDrivers.slice(0, 5);
   // Totals cover every driver with days this period, so they reconcile to the franchise profit. Left is income less wage.
@@ -203,6 +209,42 @@ export default async function DashboardPage() {
       {/* Franchise comparison */}
       {!ctx.franchise && monthSummary.franchises.filter((f) => f.franchiseId).length > 1 ? (
         <Section title="Franchises This Pay Period">
+          {franchisesNeedingRates > 0 ? (
+            <p className="mb-3 text-sm text-ink-soft">
+              {franchisesNeedingRates} {franchisesNeedingRates === 1 ? "franchise needs" : "franchises need"} day rates.{" "}
+              <Link href="/drivers" className="font-medium text-accent underline">Set them</Link>
+            </p>
+          ) : null}
+          {routeIncome ? (
+            <Panel flush className="sm:hidden">
+              <ul className="divide-y divide-line">
+                {franchiseRows.map((f) => (
+                  <li key={`m-${f.franchiseId}`}>
+                    <details className="group">
+                      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3.5 [&::-webkit-details-marker]:hidden">
+                        <span className="min-w-0 flex-1 font-medium">{franchiseName.get(f.franchiseId!) ?? "Franchise"}</span>
+                        <span className="num text-right">{formatGBP(f.incomeFromDpd)}</span>
+                        <span className={`num w-24 text-right font-semibold ${f.operatingProfit != null && f.operatingProfit < 0 ? "text-bad" : ""}`}>
+                          {f.operatingProfit == null ? <span className="font-normal text-muted">—</span> : formatGBP(f.operatingProfit)}
+                        </span>
+                      </summary>
+                      <dl className="space-y-1 bg-sunken/50 px-4 py-3 text-sm">
+                        <div className="flex justify-between"><dt className="text-ink-soft">Income</dt><dd className="num">{formatGBP(f.incomeFromDpd)}</dd></div>
+                        <div className="flex justify-between"><dt className="text-ink-soft">Wages</dt><dd className="num">− {formatGBP(f.wages)}{f.wagesComplete ? "" : "+"}</dd></div>
+                        <div className="flex justify-between"><dt className="text-ink-soft">Costs</dt><dd className="num">− {formatGBP(f.fuel + f.otherExpenses)}</dd></div>
+                      </dl>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex items-center gap-3 border-t-2 border-line-strong bg-sunken/50 px-4 py-3.5 font-semibold">
+                <span className="min-w-0 flex-1">Total</span>
+                <span className="num text-right">{formatGBP(franchiseTotals.income)}</span>
+                <span className="num w-24 text-right">{franchiseTotals.profit == null ? <span className="font-normal text-muted">—</span> : formatGBP(franchiseTotals.profit)}</span>
+              </div>
+            </Panel>
+          ) : null}
+          <div className={routeIncome ? "hidden sm:block" : undefined}>
           <TableWrap>
             <table className="ledger">
               <thead>
@@ -237,22 +279,31 @@ export default async function DashboardPage() {
                     )}
                     <td className="r num hidden sm:table-cell">{routeIncome ? formatGBP(f.fuel + f.otherExpenses) : formatGBP(f.otherExpenses)}</td>
                     <td className="r num">
-                      {f.operatingProfit == null ? <span className="text-muted">{routeIncome ? "Set day rates" : "No revenue yet"}</span> : (
+                      {f.operatingProfit == null ? <span className="text-muted">{routeIncome ? "—" : "No revenue yet"}</span> : (
                         <span className={f.operatingProfit < 0 ? "text-bad" : ""}>
                           {formatGBP(f.operatingProfit)}{f.profitStatus === "estimated" ? " (est.)" : ""}
                         </span>
                       )}
-                      {routeIncome && f.operatingProfit != null ? (
-                        <span className="block text-xs font-normal text-muted sm:hidden">
-                          Less {formatGBP(f.wages)}{f.wagesComplete ? "" : "+"} wages, {formatGBP(f.fuel + f.otherExpenses)} costs
-                        </span>
-                      ) : null}
                     </td>
                   </tr>
                 ))}
               </tbody>
+              {routeIncome ? (
+                <tfoot>
+                  <tr className="border-t-2 border-line-strong font-semibold">
+                    <td>Total</td>
+                    <td className="r num hidden sm:table-cell">{franchiseRows.reduce((t, f) => t + f.driverCount, 0)}</td>
+                    <td className="r num hidden sm:table-cell">{franchiseRows.reduce((t, f) => t + f.stops, 0).toLocaleString("en-GB")}</td>
+                    <td><span className="num block text-right">{formatGBP(franchiseTotals.income)}</span></td>
+                    <td className="r num hidden sm:table-cell">{franchisesNeedingRates === 0 ? formatGBP(franchiseRows.reduce((t, f) => t + f.wages, 0)) : "—"}</td>
+                    <td className="r num hidden sm:table-cell">{formatGBP(franchiseRows.reduce((t, f) => t + f.fuel + f.otherExpenses, 0))}</td>
+                    <td className="r num">{franchiseTotals.profit == null ? <span className="font-normal text-muted">—</span> : formatGBP(franchiseTotals.profit)}</td>
+                  </tr>
+                </tfoot>
+              ) : null}
             </table>
           </TableWrap>
+          </div>
         </Section>
       ) : null}
 
