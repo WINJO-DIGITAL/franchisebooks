@@ -9,7 +9,7 @@ import { fetchAll } from "@/lib/data/fetch-all";
 import { loadPeriodData, hiddenFranchiseFilter } from "@/lib/data/period";
 import { formatUkDate } from "@/lib/dates";
 import { periodContaining, periodLabel } from "@/lib/finance/periods";
-import { originalEarnings, summarisePeriod } from "@/lib/finance/calc";
+import { summarisePeriod } from "@/lib/finance/calc";
 import { formatGBP } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Drivers" };
@@ -55,19 +55,33 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const summary = summarisePeriod(data).combined;
   const routeIncome = summary.earningsMeaning === "route_income";
   // Per driver this pay period: income (DPD payments), wage (day rate × days) and days worked, across all franchises.
-  const byDriver = new Map<string, { days: number; stops: number; parcels: number; earned: number }>();
+  // A driver's pay is what they are paid: day rate × days (plus any per-stop extra), from the wage calculation. Not DPD income.
+  // A driver with a day worked and no rate in force has an incomplete pay, shown as "No rate", never as a guessed figure.
+  const payOf = (d: (typeof summary.drivers)[number]) => (routeIncome ? d.wage : d.finalEarnings);
+  const byDriver = new Map<string, { days: number; stops: number; parcels: number; pay: number; payComplete: boolean }>();
   for (const d of summary.drivers) {
     if (!d.driverId) continue;
-    const e = byDriver.get(d.driverId) ?? { days: 0, stops: 0, parcels: 0, earned: 0 };
-    byDriver.set(d.driverId, { days: e.days + d.daysWorked, stops: e.stops + d.stops, parcels: e.parcels + d.parcels, earned: e.earned + d.originalEarnings });
+    const e = byDriver.get(d.driverId) ?? { days: 0, stops: 0, parcels: 0, pay: 0, payComplete: true };
+    const p = payOf(d);
+    byDriver.set(d.driverId, {
+      days: e.days + d.daysWorked,
+      stops: e.stops + d.stops,
+      parcels: e.parcels + d.parcels,
+      pay: e.pay + (p ?? 0),
+      payComplete: e.payComplete && p != null && d.wageComplete,
+    });
   }
-  // What each driver earned on the latest day with a DPD report in this period (the same day the Income page opens on).
+  // Pay for the latest day with a DPD report in this period, worked out the same way as the dashboard's day figures.
   const latestDay = [...new Set(data.earnings.map((e) => e.date))].sort().at(-1) ?? ctx.today;
-  const earnedOnDay = new Map<string, number>();
-  for (const e of data.earnings) {
-    if (e.date !== latestDay || !e.driverId) continue;
-    earnedOnDay.set(e.driverId, (earnedOnDay.get(e.driverId) ?? 0) + originalEarnings(e));
+  const dayPay = new Map<string, { pay: number; complete: boolean }>();
+  for (const d of summarisePeriod({ ...data, from: latestDay, to: latestDay }).combined.drivers) {
+    if (!d.driverId) continue;
+    const p = payOf(d);
+    const e = dayPay.get(d.driverId) ?? { pay: 0, complete: true };
+    dayPay.set(d.driverId, { pay: e.pay + (p ?? 0), complete: e.complete && p != null && d.wageComplete });
   }
+  const dayCell = (p: { pay: number; complete: boolean } | undefined) =>
+    !p || p.pay === 0 ? <span className="text-muted">—</span> : p.complete ? formatGBP(p.pay, { compact: true }) : <span className="font-normal text-muted">No rate</span>;
   const payByDriver = new Map<string, { pay: number; days: number }>();
   for (const d of summary.drivers) {
     if (!d.driverId) continue;
@@ -92,7 +106,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
     })
     .sort((a, b) => {
       if (sort === "stops") return (byDriver.get(b.id)?.stops ?? 0) - (byDriver.get(a.id)?.stops ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
-      if (sort === "earned") return (byDriver.get(b.id)?.earned ?? 0) - (byDriver.get(a.id)?.earned ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
+      if (sort === "earned") return (byDriver.get(b.id)?.pay ?? 0) - (byDriver.get(a.id)?.pay ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
       if (sort === "days") return (byDriver.get(b.id)?.days ?? 0) - (byDriver.get(a.id)?.days ?? 0) || a.display_name.localeCompare(b.display_name, "en-GB");
       return a.display_name.localeCompare(b.display_name, "en-GB");
     });
@@ -161,7 +175,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             <select id="driver-sort" name="sort" defaultValue={sort} className="h-10 rounded-lg border border-line-strong bg-surface px-2 text-sm">
               <option value="name">Name</option>
               <option value="stops">Stops this pay period</option>
-              <option value="earned">Earned this pay period</option>
+              <option value="earned">Pay this pay period</option>
               <option value="days">Days worked this pay period</option>
             </select>
             <button type="submit" className={buttonClass("secondary", "sm")}>Apply</button>
@@ -176,8 +190,8 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                   <th className="r">Days</th>
                   <th className="r">Stops</th>
                   <th className="r">Parcels</th>
-                  <th className="r">Earned on {formatUkDate(latestDay)}</th>
-                  <th className="r">Earned This Period</th>
+                  <th className="r">Pay on {formatUkDate(latestDay)}</th>
+                  <th className="r">Pay This Period</th>
                 </tr>
               </thead>
               <tbody>
@@ -197,8 +211,8 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                       <td className="r num">{figures?.days ?? 0}</td>
                       <td className="r num">{figures ? figures.stops.toLocaleString("en-GB") : <span className="text-muted">—</span>}</td>
                       <td className="r num">{figures ? figures.parcels.toLocaleString("en-GB") : <span className="text-muted">—</span>}</td>
-                      <td className="r num">{earnedOnDay.has(d.id) ? formatGBP(earnedOnDay.get(d.id)!) : <span className="text-muted">—</span>}</td>
-                      <td className="r num font-semibold">{figures ? formatGBP(figures.earned) : <span className="text-muted">—</span>}</td>
+                      <td className="r num">{dayCell(dayPay.get(d.id))}</td>
+                      <td className="r num font-semibold">{figures && figures.days > 0 ? (figures.payComplete ? formatGBP(figures.pay, { compact: true }) : <span className="font-normal text-muted">No rate</span>) : <span className="text-muted">—</span>}</td>
                     </tr>
                   );
                 })}
