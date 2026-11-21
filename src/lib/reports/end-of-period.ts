@@ -192,43 +192,61 @@ export async function buildProfitLossReport(db: AdminClient, input: { accountId:
   const report = await buildMonthlyReport(db, { accountId: input.accountId, month: input.month, franchiseId: input.franchiseId, period: input.period });
   const t = report.totals;
   const period = input.period;
-  const plus = (v: string, ok: boolean) => (ok ? v : `${v} +`);
+  // Money out is in brackets, and a loss is a bracketed figure, as on the dashboard and the period report.
+  const bracket = (pence: number) => (pence < 0 ? `(${money(-pence)})` : money(pence));
+  const unavailable = t.revenueStatus === "unavailable";
   const stopPay = t.incomeFromDpd - t.otherDpdPayments;
-  const incomeText = t.revenueStatus === "unavailable" ? "None" : money(t.revenueTotal);
-  const profitText = t.operatingProfit == null ? "Not available" : money(t.operatingProfit);
+  const incomeNum = unavailable ? 0 : t.revenueTotal;
+  const costsBefore = t.wages + t.fuel + t.otherExpenses;
+  const costsWith = costsBefore + report.vatOnCosts;
+  const profitBefore = incomeNum - costsBefore;
+  const profitWith = incomeNum - costsWith;
+  const incompleteDrivers = t.driversMissingRate;
+  const profitTone = (n: number) => (n < 0 ? BAD : GOOD);
 
   const kit = createReportKit({ title: `Profit and loss ${periodLabel(period)} - ${report.scopeLabel}`, author: report.accountName });
   kit.title({ account: report.accountName, heading: "Profit and Loss", scope: report.scopeLabel, line: `Period ${formatUkDate(period.start)} to ${formatUkDate(period.end)}`, generatedAt: report.generatedAt });
-  kit.heading("Profit and Loss", "Before VAT. Income is what DPD stated it paid; expenses are DPD's stated charges and any expenses you entered; wages come from driver pay rates.");
-  kit.line("Stop pay from DPD", money(stopPay), "from the daily payment reports");
-  if (t.otherDpdPayments > 0) kit.line("Other DPD payments", money(t.otherDpdPayments), (report.otherPayments ?? []).map((p) => p.label).filter((v, i, a) => a.indexOf(v) === i).join(", ").slice(0, 70));
-  kit.line("Total income", incomeText, "", true);
-  kit.line("less DPD charges and expenses", money(t.otherExpenses));
-  kit.line("less Fuel", money(t.fuel));
-  kit.line("Income less expenses, before wages", t.profitBeforeWages == null ? "Not available" : money(t.profitBeforeWages), "", true);
-  kit.line("less Driver pay", plus(money(t.wages), t.wagesComplete), t.wagesComplete ? "from the Driver Pay Report" : `${t.driversMissingRate} driver${t.driversMissingRate === 1 ? "" : "s"} not fully priced`);
-  kit.line("Profit", profitText, t.operatingProfit == null ? "driver pay incomplete" : "", true);
-  if (!t.wagesComplete) kit.paragraph(`Driver pay is incomplete (${t.driversMissingRate} driver${t.driversMissingRate === 1 ? "" : "s"} worked days that could not be priced), so profit is not stated. Income less expenses is shown instead. Set pay rates under Drivers to complete it.`, BAD);
+  kit.heading("Profit and Loss", "Income is what DPD stated it paid. Costs are the driver wages, fuel and other expenses stated on the documents, with the VAT on them as stated. Driver wages come from the pay rates set under Drivers. A driver with no day rate is counted at £0 and marked.");
+  kit.line("Stop pay from DPD", money(stopPay), "from the daily payment reports", false, { indent: true });
+  if (t.otherDpdPayments > 0) kit.line("Other DPD payments", money(t.otherDpdPayments), (report.otherPayments ?? []).map((p) => p.label).filter((v, i, a) => a.indexOf(v) === i).join(", "), false, { indent: true });
+  kit.line("Income", unavailable ? "None" : money(incomeNum), "", true, { color: GOOD });
+  kit.line("Driver wages", bracket(-t.wages), t.wagesComplete ? "" : `${incompleteDrivers} driver${incompleteDrivers === 1 ? " has" : "s have"} no day rate, counted at £0`, false, { indent: true, color: BAD });
+  kit.line("Fuel", bracket(-t.fuel), "", false, { indent: true, color: BAD });
+  kit.line("Other expenses", bracket(-t.otherExpenses), "", false, { indent: true, color: BAD });
+  kit.line("Costs before VAT", bracket(-costsBefore), "", true, { color: BAD });
+  kit.line("VAT on costs", bracket(-report.vatOnCosts), "as stated on the documents", false, { indent: true, color: BAD });
+  kit.line("Costs with VAT", bracket(-costsWith), "", true, { color: BAD });
+  kit.line("Profit / (Loss) before VAT", unavailable ? "None" : bracket(profitBefore), t.wagesComplete ? "headline figure" : "wages incomplete", true, { color: profitTone(profitBefore) });
+  kit.line("Profit / (Loss) with VAT", unavailable ? "None" : bracket(profitWith), "after VAT on costs", true, { color: profitTone(profitWith) });
+  if (!t.wagesComplete) kit.paragraph(`${incompleteDrivers} driver${incompleteDrivers === 1 ? " has" : "s have"} worked days with no day rate set. Their wages are counted at £0, so the profit above is before those wages. Set day rates under Drivers to complete it.`, MUTED);
 
   if (!input.franchiseId && report.franchises.length > 1) {
     kit.heading("By Franchise");
+    const franchiseRows: Row[] = report.franchises.map((f) => {
+      const costs = f.fuel + f.otherExpenses;
+      return [f.label + (f.wagesComplete ? "" : " *"), money(f.incomeFromDpd), bracket(-f.wages), bracket(-costs), bracket(f.incomeFromDpd - f.wages - costs)];
+    });
     kit.table(
-      [{ title: "Franchise", width: 151 }, { title: "Income", width: 90, align: "right" }, { title: "Expenses", width: 90, align: "right" }, { title: "Driver Pay", width: 90, align: "right" }, { title: "Profit", width: 90, align: "right" }],
-      report.franchises.map((f) => [f.label, money(f.incomeFromDpd), money(f.fuel + f.otherExpenses), plus(money(f.wages), f.wagesComplete), f.operatingProfit == null ? "n/a" : money(f.operatingProfit)]),
+      [{ title: "Franchise", width: 151 }, { title: "Income", width: 90, align: "right" }, { title: "Wages", width: 90, align: "right" }, { title: "Costs", width: 90, align: "right" }, { title: "Profit / (Loss)", width: 90, align: "right" }],
+      franchiseRows,
+      { footer: ["Total", money(incomeNum), bracket(-t.wages), bracket(-(t.fuel + t.otherExpenses)), bracket(profitBefore)] },
     );
+    if (!t.wagesComplete) kit.paragraph("* A franchise marked with an asterisk has drivers with no day rate. Their wages are counted at £0 until a day rate is set.", MUTED);
   }
-  kit.heading("Expense Breakdown");
-  if (report.categories.length === 0) kit.paragraph("No charges or expenses were recorded for this period.", MUTED);
-  else {
-    kit.table([{ title: "Category", width: 351 }, { title: "Total", width: 160, align: "right" }], report.categories.map((c) => [c.name, money(c.total)]), { footer: ["Total", money(t.fuel + t.otherExpenses)] });
-  }
+  kit.heading("Expense Breakdown", "Driver wages are a cost, so they are listed first. VAT is what each document states.");
+  const categoryRows: Row[] = [
+    ["Driver wages", money(t.wages), "-"],
+    ...report.categories.map((c): string[] => [c.name, money(c.total), c.vat ? money(c.vat) : "-"]),
+  ];
+  kit.table([{ title: "Category", width: 311 }, { title: "Amount", width: 100, align: "right" }, { title: "VAT Stated", width: 100, align: "right" }], categoryRows,
+    { footer: ["Total", money(costsBefore), money(report.vatOnCosts)] });
   const pdf = await kit.finish(`${report.scopeLabel} · Profit and Loss`);
   return {
     pdf, scopeLabel: report.scopeLabel,
     totals: {
-      scopeLabel: report.scopeLabel, summary: t.operatingProfit == null ? "Profit not available: driver pay incomplete" : `Profit ${formatGBP(t.operatingProfit)}`,
+      scopeLabel: report.scopeLabel, summary: `Profit / (loss) before VAT ${bracket(profitBefore)}`,
       revenue: t.revenueStatus === "unavailable" ? null : toDb(t.revenueTotal), revenueStatus: t.revenueStatus, driverCosts: toDb(t.driverCosts), fuel: toDb(t.fuel), otherExpenses: toDb(t.otherExpenses),
-      operatingProfit: t.operatingProfit == null ? null : toDb(t.operatingProfit), profitStatus: t.profitStatus, earningsMeaning: t.earningsMeaning, wagesComplete: t.wagesComplete,
+      operatingProfit: toDb(profitBefore), profitWithVat: toDb(profitWith), vatOnCosts: toDb(report.vatOnCosts), profitStatus: t.profitStatus, earningsMeaning: t.earningsMeaning, wagesComplete: t.wagesComplete,
     },
   };
 }

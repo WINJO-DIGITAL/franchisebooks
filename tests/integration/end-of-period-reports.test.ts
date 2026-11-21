@@ -39,12 +39,12 @@ describe("end-of-period reports", () => {
     expect(Buffer.from(await file.data!.arrayBuffer()).subarray(0, 4).toString()).toBe("%PDF");
   });
 
-  it("makes Profit and Loss, with profit not stated until every driver is priced", async () => {
+  it("makes Profit and Loss, with profit before VAT and drivers with no rate counted at £0", async () => {
     const made = await generateExtraReport(db, { accountId: t.accountId, kind: "profit_loss", franchiseId: t.franchiseId, period: PERIOD, trigger: "auto" });
     const row = await stored(made!.id);
     expect(row.kind).toBe("profit_loss");
     expect(row.totals.wagesComplete).toBe(true);
-    expect(row.totals.summary).toMatch(/^Profit /);
+    expect(row.totals.summary).toMatch(/^Profit \/ \(loss\) before VAT/);
     await dump("profit-loss", row.storage_path);
   });
 

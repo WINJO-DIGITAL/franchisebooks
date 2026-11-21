@@ -34,7 +34,7 @@ export interface ReportKit {
   heading(text: string, note?: string): void;
   paragraph(text: string, color?: string): void;
   /** A statement line: label, figure and an optional note. */
-  line(label: string, value: string, note?: string, bold?: boolean): void;
+  line(label: string, value: string, note?: string, bold?: boolean, options?: { indent?: boolean; color?: string }): void;
   table(columns: Column[], rows: Row[], options?: { footer?: string[]; fontSize?: number }): void;
   finish(footerLabel: string): Promise<Buffer>;
 }
@@ -88,13 +88,17 @@ export function createReportKit(info: { title: string; author: string }): Report
       doc.text(text, MARGIN, y, { width: CONTENT });
       y += height + 5;
     },
-    line(label, value, note, bold = false) {
-      ensure(18);
-      if (bold) doc.rect(MARGIN, y - 2, CONTENT, 17).fill(BAND);
-      doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(INK).text(label, MARGIN + 6, y, { width: 260, lineBreak: false });
-      doc.text(value, MARGIN + 266, y, { width: 100, align: "right", lineBreak: false });
-      if (note) doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(note, MARGIN + 380, y + 1, { width: CONTENT - 380, lineBreak: false });
-      y += 17;
+    line(label, value, note, bold = false, options = {}) {
+      const x = MARGIN + (options.indent ? 14 : 0);
+      const color = options.color ?? INK;
+      const noteHeight = note ? doc.font("Helvetica").fontSize(8.5).heightOfString(note, { width: CONTENT - 380 }) : 0;
+      const rowHeight = Math.max(17, noteHeight + 5);
+      ensure(rowHeight + 2);
+      if (bold) doc.rect(MARGIN, y - 2, CONTENT, rowHeight + 2).fill(BAND);
+      doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(color).text(label, x + 6, y, { width: 240 });
+      doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(color).text(value, MARGIN + 250, y, { width: 116, align: "right", lineBreak: false });
+      if (note) doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(note, MARGIN + 380, y + 1, { width: CONTENT - 380 });
+      y += rowHeight;
     },
     table(columns, rows, options = {}) {
       const size = options.fontSize ?? 8.5;

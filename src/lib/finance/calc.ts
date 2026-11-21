@@ -191,6 +191,8 @@ export interface CategoryTotal {
   name: string;
   kind: "fuel" | "vehicle" | "other";
   total: Pence;
+  /** VAT stated on this category's costs. Set on reports; absent on the raw totals. */
+  vat?: Pence;
   allocatedToDrivers: Pence;
   franchiseGeneral: Pence;
   unallocated: Pence;

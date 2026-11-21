@@ -188,7 +188,11 @@ export async function buildMonthlyReport(db: Db, input: { accountId: string; mon
     drivers,
     dailyPayments,
     otherPayments: data.otherPayments.map((o) => ({ label: o.label, amount: o.amount, ...(o.vat ? { vat: o.vat } : {}), invoiceNo: o.invoiceNo })),
-    categories: totals.categories,
+    categories: (() => {
+      // VAT stated per category, from the same costs as the totals.
+      const vatByName = new Map(summariseCosts(data.costs).byCategory.map((c) => [c.name, c.vat] as const));
+      return totals.categories.map((c) => ({ ...c, vat: vatByName.get(c.name) ?? 0 }));
+    })(),
     adjustments,
     unusual: relevant.filter((a) => !MISSING_TYPES.has(a.anomaly_type)).map(toAlert),
     missingData: relevant.filter((a) => MISSING_TYPES.has(a.anomaly_type) && a.status !== "resolved").map(toAlert),
