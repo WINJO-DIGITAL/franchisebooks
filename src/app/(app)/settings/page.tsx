@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TeamPanel } from "@/components/settings/team";
+import { TwoStepPanel } from "@/components/settings/two-step";
 import { loadTeam } from "@/lib/data/team";
 import { CloseAccountForm } from "@/components/settings/close-account";
 import { AddDpdLoginForm, RefreshDpdLoginButton, RemoveDpdLoginButton } from "@/components/settings/forms";
@@ -42,6 +43,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const scaleOptions = chosenScale ? (await listScales()).map((sc) => ({ key: sc.key, name: sc.name, effective: formatPortalDate(sc.effectiveDate) })) : null;
   const listedLogins = ctx.isOwner ? await listDpdLogins(createAdminClient(), accountId) : [];
   const team = ctx.isOwner ? await loadTeam(accountId) : [];
+  const { data: mfaFactors } = await supabase.auth.mfa.listFactors();
+  const verifiedFactorId = mfaFactors?.totp.find((f) => f.status === "verified")?.id ?? null;
   const { data: billing } = ctx.isOwner ? await supabase.from("user_billing").select("status, current_period_end, cancel_at_period_end, stripe_customer_id").eq("user_id", ctx.userId).maybeSingle() : { data: null };
   const plan = ctx.isOwner ? await currentPlan(supabase) : null;
   const maxOffered = Boolean(env.stripeSecretKey() && env.stripeMaxPriceId());
@@ -105,6 +108,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <DefinitionList items={[["Evening sync", s ? `${s.sync_time_local.slice(0, 5)} UK time` : "—"], ["Automatic monthly reports", s?.auto_monthly_reports ? "On" : "Off"]]} />
           )}
         </Panel>
+      </Section>
+
+      <Section id="security" title="Two-Step Sign-In" description="Protects your login: a code from an authenticator app on your phone as well as your password. It applies to your own login only.">
+        <Panel><TwoStepPanel factorId={verifiedFactorId} /></Panel>
       </Section>
 
       {ctx.isOwner ? (

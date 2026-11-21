@@ -120,3 +120,8 @@ See also: `DATABASE.md`, `FINANCE.md`, `DEPLOYMENT.md`, `DISCOVERY.md`.
 
 ## Team members
 - Owner only, in Settings: `inviteTeamMember`, `updateTeamMember` and `removeTeamMember` (src/lib/actions/team.ts). An invite emails a link to set a password (same route as driver invites), creates the `user_profiles` row and, for limited members, `user_franchise_access` rows, using the service role after checking the caller is the owner. Members share the owner's subscription. Removing someone deletes their login; if records they entered still carry their id (adjustments, cover) the login is blocked and their profile removed instead.
+
+## Two-step sign-in
+- Authenticator-app (TOTP) codes through Supabase MFA, for a user's own login: `startMfaEnrollment`, `confirmMfaEnrollment`, `turnOffMfa` and `verifyMfaCode` in src/lib/actions/mfa.ts; the Settings panel is src/components/settings/two-step.tsx and the code page is /login/verify. `signIn` sends a user who has a confirmed factor to /login/verify, and `updateSession` (src/lib/supabase/proxy.ts) stops any non-public page or API call from a session that has not used a code (pages redirect, APIs return 401). The secret is shown once, while setting up, and is held by Supabase.
+- Limit: this is enforced in the app. The database's row-level security does not check the code, so someone with a password-only session and direct database access is not stopped by it. Adding a restrictive policy on every table would close that; it has not been done.
+- It needs `[auth.mfa.totp]` enrolment and verification switched on: in supabase/config.toml for local and CI, and in the live project's Authentication settings.

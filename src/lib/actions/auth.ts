@@ -36,6 +36,9 @@ export async function signIn(_prev: ActionState, formData: FormData): Promise<Ac
     );
   }
   const next = parsed.data.next && parsed.data.next.startsWith("/") && !parsed.data.next.startsWith("//") ? parsed.data.next : "/";
+  // With two-step sign-in on, the password is only the first step: ask for the code before anything else.
+  const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (level && level.nextLevel === "aal2" && level.currentLevel !== "aal2") redirect(`/login/verify?next=${encodeURIComponent(next)}`);
   redirect(next);
 }
 

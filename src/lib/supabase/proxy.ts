@@ -45,6 +45,18 @@ export async function updateSession(request: NextRequest) {
     if (path !== "/") login.searchParams.set("next", path);
     return NextResponse.redirect(login);
   }
+  // Two-step sign-in: a session that has only used the password cannot open anything until the code has been entered.
+  if (data.user && !isPublic) {
+    const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (level && level.nextLevel === "aal2" && level.currentLevel !== "aal2") {
+      if (path.startsWith("/api/")) return NextResponse.json({ error: "Two-step sign-in is needed" }, { status: 401 });
+      const verify = request.nextUrl.clone();
+      verify.pathname = "/login/verify";
+      verify.search = "";
+      if (path !== "/") verify.searchParams.set("next", path);
+      return NextResponse.redirect(verify);
+    }
+  }
   if (data.user && (path === "/login" || path === "/signup")) {
     const home = request.nextUrl.clone();
     home.pathname = "/";

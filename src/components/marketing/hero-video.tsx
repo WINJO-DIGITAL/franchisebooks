@@ -24,7 +24,7 @@ export function HeroVideo() {
         <span className="size-2.5 rounded-full bg-line-strong" />
         <span className="size-2.5 rounded-full bg-line-strong" />
         <span className="size-2.5 rounded-full bg-line-strong" />
-        <span className="ml-3 text-xs text-muted">Franchise Books · example data</span>
+        <span className="ml-3 text-xs text-muted">Franchise Books · Example Data</span>
       </div>
       <video
         ref={ref}

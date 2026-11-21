@@ -12,6 +12,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - [ ] Remove the saved live `api.stripe.com` key from the assistant's environment (environment menu in the session title bar, Edit, Network secrets) (you).
 - [ ] To go live, add a live Stripe secret key on Vercel as `STRIPE_SECRET_KEY_LIVE` (sensitive, production), and `STRIPE_PORTAL_CONFIGURATION_ID_LIVE` = `bpc_1UdiQOLEEs7hsljuIpbZ8YsV` (the Franchise Books portal, not the account default), then say "go live" (you). The assistant will first set that live portal's plan change to charge straight away.
 - [ ] Delete the test customer "Franchise Books test run" (`cus_VfNfDF6wFI0aHV`) in the Stripe test dashboard (you).
+- [ ] Switch on two-step sign-in (authenticator app, "TOTP") on the live Supabase project: Authentication, Sign In / Providers, Multi-Factor, turn on enrolment and verification (you). Until then the Settings button says it is not switched on. Check your Supabase plan includes it.
 - [ ] In Settings, Edit franchise, choose each franchise's sliding scale; then open Reports, Sliding Scale Report for a closed period and say if any route looks wrong (you).
 
 ### Assistant to do
@@ -35,6 +36,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - End-to-end tests: 195 passing, 62 skipped by design (phone-only and desktop-only tests), against the local stack and a production build.
 
 ## Log of finished work (not a checklist)
+- Two-step sign-in: anyone can turn it on for their own login in Settings (authenticator app code after the password). A password-only session is stopped at the code page for every page and API call. This is enforced by the app; the database itself does not require the code, so it protects sign-in, not a direct database connection.
 - Team: the owner invites managers and viewers from Settings, chooses which franchises each can see, changes that later, or removes them. A removed person whose name is on records they entered keeps a blocked login (so the records stay linked) and cannot sign in or see anything.
 - Portal change warning: when several DPD reads fail on layout in a day (across accounts, or the same step repeatedly), one email goes to ALERT_EMAIL, at most every six hours. History reads queued before a downgrade are skipped.
 - Driver and vehicle dates: licence, right to work, DBS, MOT, service, road tax and insurance, with reminders on the Drivers page and a dashboard prompt for anything overdue or due within 30 days (all plans).
