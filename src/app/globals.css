@@ -146,8 +146,54 @@ input:-webkit-autofill:focus {
 .mk-rise {
   animation: mk-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+.mk-pop {
+  animation: pop 0.45s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+@keyframes mk-fill {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.mk-fill {
+  animation: mk-fill linear both;
+}
+@keyframes mk-blink {
+  0%, 80%, 100% { opacity: 0.25; }
+  40% { opacity: 1; }
+}
+.mk-dots { display: inline-flex; gap: 2px; margin-left: 1px; }
+.mk-dots i { width: 3px; height: 3px; border-radius: 9999px; background: currentColor; animation: mk-blink 1.2s infinite both; }
+.mk-dots i:nth-child(2) { animation-delay: 0.2s; }
+.mk-dots i:nth-child(3) { animation-delay: 0.4s; }
+
+/* Pricing slider: a thick track and a large thumb that is easy to drag with a thumb. */
+.mk-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.18);
+  accent-color: #f06000;
+}
+.mk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: #fcf6e8;
+  border: 6px solid #f06000;
+  cursor: grab;
+}
+.mk-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #fcf6e8;
+  border: 6px solid #f06000;
+  cursor: grab;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .mk-rise { animation: none; }
+  .mk-rise, .mk-pop, .mk-fill, .mk-dots i { animation: none; }
 }
 
 @keyframes grow {
