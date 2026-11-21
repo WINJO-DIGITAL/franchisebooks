@@ -35,6 +35,7 @@ income, expenses, driver pay and a report for each four-week period, with self-s
 - End-to-end tests: 195 passing, 62 skipped by design (phone-only and desktop-only tests), against the local stack and a production build.
 
 ## Log of finished work (not a checklist)
+- Team: the owner invites managers and viewers from Settings, chooses which franchises each can see, changes that later, or removes them. A removed person whose name is on records they entered keeps a blocked login (so the records stay linked) and cannot sign in or see anything.
 - Portal change warning: when several DPD reads fail on layout in a day (across accounts, or the same step repeatedly), one email goes to ALERT_EMAIL, at most every six hours. History reads queued before a downgrade are skipped.
 - Driver and vehicle dates: licence, right to work, DBS, MOT, service, road tax and insurance, with reminders on the Drivers page and a dashboard prompt for anything overdue or due within 30 days (all plans).
 - End-of-period reports: Driver Pay Report and Profit and Loss (Essential) and Sliding Scale Discrepancy (Max, PDF and CSV), made automatically the evening after each period closes and listed on the Reports page.

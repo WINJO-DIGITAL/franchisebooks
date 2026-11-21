@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { TeamPanel } from "@/components/settings/team";
+import { loadTeam } from "@/lib/data/team";
 import { CloseAccountForm } from "@/components/settings/close-account";
 import { AddDpdLoginForm, RefreshDpdLoginButton, RemoveDpdLoginButton } from "@/components/settings/forms";
 import { ManageBillingForm, UpgradeToMaxButton } from "@/components/billing/forms";
@@ -39,6 +41,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const chosenScale = scaleRows.error ? null : new Map((scaleRows.data ?? []).map((r) => [r.id, r.sliding_scale_key]));
   const scaleOptions = chosenScale ? (await listScales()).map((sc) => ({ key: sc.key, name: sc.name, effective: formatPortalDate(sc.effectiveDate) })) : null;
   const listedLogins = ctx.isOwner ? await listDpdLogins(createAdminClient(), accountId) : [];
+  const team = ctx.isOwner ? await loadTeam(accountId) : [];
   const { data: billing } = ctx.isOwner ? await supabase.from("user_billing").select("status, current_period_end, cancel_at_period_end, stripe_customer_id").eq("user_id", ctx.userId).maybeSingle() : { data: null };
   const plan = ctx.isOwner ? await currentPlan(supabase) : null;
   const maxOffered = Boolean(env.stripeSecretKey() && env.stripeMaxPriceId());
@@ -103,6 +106,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           )}
         </Panel>
       </Section>
+
+      {ctx.isOwner ? (
+        <Section id="team" title="Team" description="People who can sign in to this business. A manager can add and change data; a viewer can only look. Only you can change settings. Both are covered by your subscription, and you can limit them to some of your franchises.">
+          <TeamPanel members={team} franchises={optionFranchises} currentUserId={ctx.userId} />
+        </Section>
+      ) : null}
 
       {ctx.isOwner ? (
         <Section title="DPD Logins" description="Each DPD login the app reads, and the franchise numbers it sees. All of them are read every evening, one after another. Add one for each login you use.">
