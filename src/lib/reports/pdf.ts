@@ -139,14 +139,22 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
 
   // ── At a glance ───────────────────────────────────────────────────────────
   const t = report.totals;
-  const plus = (value: string, complete: boolean) => (complete ? value : `${value} +`);
+  // Money out is shown in brackets, and a loss is a bracketed figure, as on the dashboard.
+  const bracket = (pence: Pence) => (pence < 0 ? `(${money(-pence)})` : money(pence));
   const profitText = t.operatingProfit == null ? "Not available" : money(t.operatingProfit);
   const profitColor = t.operatingProfit == null ? MUTED : t.operatingProfit < 0 ? BAD : GOOD;
+  // Route income: income, the costs before and after VAT, and profit or loss before and after VAT. Wages are counted at £0 where
+  // a driver has no day rate, and that is said beside them.
+  const income = t.revenueTotal;
+  const costsBefore = t.wages + t.fuel + t.otherExpenses;
+  const costsWith = costsBefore + report.vatOnCosts;
+  const profitBefore = income - costsBefore;
+  const profitWith = income - costsWith;
   const cards: { label: string; value: string; sub: string; color: string }[] = routeIncome ? [
-    { label: "INCOME FROM DPD", value: t.revenueStatus === "unavailable" ? "None" : money(t.revenueTotal), sub: "payments to you", color: INK },
-    { label: "DRIVER WAGES", value: plus(money(t.wages), t.wagesComplete), sub: t.wagesComplete ? "day rate x days" : `${t.driversMissingRate} without a day rate`, color: INK },
-    { label: "EXPENSES", value: money(t.fuel + t.otherExpenses), sub: "DPD charges and fuel", color: INK },
-    { label: "PROFIT", value: profitText, sub: t.operatingProfit == null ? "wages incomplete" : t.marginPercent == null ? "" : `${t.marginPercent}% margin`, color: profitColor },
+    { label: "INCOME FROM DPD", value: money(income), sub: "payments to you", color: GOOD },
+    { label: "COSTS BEFORE VAT", value: bracket(-costsBefore), sub: "wages, fuel and other", color: BAD },
+    { label: "PROFIT / (LOSS)", value: bracket(profitBefore), sub: t.wagesComplete ? "before VAT" : "before VAT, wages incomplete", color: profitBefore < 0 ? BAD : GOOD },
+    { label: "PROFIT / (LOSS)", value: bracket(profitWith), sub: "with VAT on costs", color: profitWith < 0 ? BAD : GOOD },
   ] : [
     { label: "REVENUE", value: t.revenueStatus === "unavailable" ? "Not entered" : money(t.revenueTotal), sub: STATUS_TEXT[t.revenueStatus]!, color: INK },
     { label: "DRIVER COSTS", value: money(t.driverCosts), sub: "pay after adjustments", color: INK },
@@ -168,36 +176,44 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
 
   // The working behind the cards, as a simple statement that reads top to bottom.
   const stopPay = t.incomeFromDpd - t.otherDpdPayments;
-  const statement: [string, string, string, boolean][] = routeIncome ? [
-    ["Stop pay from DPD", money(stopPay), "from the daily payment reports", false],
-    ...(t.otherDpdPayments > 0 ? [["Other DPD payments", money(t.otherDpdPayments), otherPaymentsNote(report.otherPayments), false] as [string, string, string, boolean]] : []),
-    ["Total income", t.revenueStatus === "unavailable" ? "None" : money(t.revenueTotal), STATUS_TEXT[t.revenueStatus]!, true],
-    ["less Driver wages", plus(money(t.wages), t.wagesComplete), t.wagesComplete ? "" : `${t.driversMissingRate} driver${t.driversMissingRate === 1 ? " has" : "s have"} no day rate`, false],
-    ["less DPD charges and other expenses", money(t.otherExpenses), "", false],
-    ["less Fuel", money(t.fuel), "", false],
-    ["Operating profit", profitText, t.operatingProfit == null ? "wages incomplete" : STATUS_TEXT[t.profitStatus]!, true],
-    ["Income less expenses, before wages", t.profitBeforeWages == null ? "Not available" : money(t.profitBeforeWages), "", false],
+  type StatementLine = { label: string; value: string; note?: string; bold?: boolean; band?: boolean; indent?: boolean; color?: string };
+  const incomplete = t.driversMissingRate;
+  const statementRows: StatementLine[] = routeIncome ? [
+    { label: "Stop pay from DPD", value: money(stopPay), note: "from the daily payment reports", indent: true },
+    ...(t.otherDpdPayments > 0 ? [{ label: "Other DPD payments", value: money(t.otherDpdPayments), note: otherPaymentsNote(report.otherPayments), indent: true }] : []),
+    { label: "Income", value: money(income), bold: true, color: GOOD },
+    { label: "Driver wages", value: bracket(-t.wages), note: t.wagesComplete ? undefined : `${incomplete} driver${incomplete === 1 ? " has" : "s have"} no day rate, counted at £0`, indent: true, color: BAD },
+    { label: "Fuel", value: bracket(-t.fuel), indent: true, color: BAD },
+    { label: "Other expenses", value: bracket(-t.otherExpenses), indent: true, color: BAD },
+    { label: "Costs before VAT", value: bracket(-costsBefore), bold: true, color: BAD },
+    { label: "VAT on costs", value: bracket(-report.vatOnCosts), note: "as stated on the documents", indent: true, color: BAD },
+    { label: "Costs with VAT", value: bracket(-costsWith), bold: true, color: BAD },
+    { label: "Profit / (Loss) before VAT", value: bracket(profitBefore), bold: true, band: true, color: profitBefore < 0 ? BAD : GOOD },
+    { label: "Profit / (Loss) with VAT", value: bracket(profitWith), bold: true, color: profitWith < 0 ? BAD : GOOD },
   ] : [
-    ["Revenue", t.revenueStatus === "unavailable" ? "Not entered" : money(t.revenueTotal), STATUS_TEXT[t.revenueStatus]!, true],
-    ["less Driver costs (pay after adjustments)", money(t.driverCosts), "", false],
-    ["      original DPD earnings", money(t.driverOriginalEarnings), "from DPD documents", false],
-    ["      manual adjustments", money(t.driverAdjustmentsNet, { signed: true }), "entered by hand", false],
-    ["less Fuel", money(t.fuel), "", false],
-    ["less Other expenses", money(t.otherExpenses), "", false],
-    ["Operating profit", profitText, t.operatingProfit == null ? "revenue not entered" : STATUS_TEXT[t.profitStatus]!, true],
+    { label: "Revenue", value: t.revenueStatus === "unavailable" ? "Not entered" : money(t.revenueTotal), note: STATUS_TEXT[t.revenueStatus]!, bold: true },
+    { label: "less Driver costs (pay after adjustments)", value: money(t.driverCosts), indent: true },
+    { label: "original DPD earnings", value: money(t.driverOriginalEarnings), note: "from DPD documents", indent: true },
+    { label: "manual adjustments", value: money(t.driverAdjustmentsNet, { signed: true }), note: "entered by hand", indent: true },
+    { label: "less Fuel", value: money(t.fuel), indent: true },
+    { label: "less Other expenses", value: money(t.otherExpenses), indent: true },
+    { label: "Operating profit", value: profitText, note: t.operatingProfit == null ? "revenue not entered" : STATUS_TEXT[t.profitStatus]!, bold: true, band: true },
   ];
-  for (const [label, value, note, bold] of statement) {
-    ensure(18);
-    if (bold) doc.rect(MARGIN, y - 2, CONTENT, 17).fill(BAND);
-    doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(INK).text(label, MARGIN + 6, y, { width: 260, lineBreak: false });
-    doc.text(value, MARGIN + 266, y, { width: 100, align: "right", lineBreak: false });
-    if (note) doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(note, MARGIN + 380, y + 1, { width: CONTENT - 380, lineBreak: false });
-    y += 17;
+  for (const row of statementRows) {
+    const x = MARGIN + (row.indent ? 14 : 0);
+    const noteH = row.note ? doc.font("Helvetica").fontSize(8.5).heightOfString(row.note, { width: CONTENT - 380 }) : 0;
+    const rowH = Math.max(17, noteH + 5);
+    ensure(rowH + 2);
+    if (row.band) doc.rect(MARGIN, y - 2, CONTENT, rowH + 2).fill(BAND);
+    doc.font(row.bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(INK).text(row.label, x + 6, y, { width: 240 });
+    doc.font(row.bold ? "Helvetica-Bold" : "Helvetica").fontSize(10).fillColor(row.color ?? INK).text(row.value, MARGIN + 250, y, { width: 116, align: "right", lineBreak: false });
+    if (row.note) doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(row.note, MARGIN + 380, y + 1, { width: CONTENT - 380 });
+    y += rowH;
   }
   y += 4;
   if (routeIncome) {
     if (!t.wagesComplete) {
-      paragraph(`Wages are incomplete: ${t.driversMissingRate} driver${t.driversMissingRate === 1 ? "" : "s"} worked days with no day rate set, so operating profit is not stated. Income less expenses is shown instead. Set day rates under Drivers to complete it.`, MUTED);
+      paragraph(`Wages are incomplete: ${t.driversMissingRate} driver${t.driversMissingRate === 1 ? "" : "s"} worked days with no day rate set. Their wages are counted at £0, so the profit shown is before those wages are added. Set day rates under Drivers to complete it.`, MUTED);
     }
   } else if (t.revenueStatus === "unavailable") {
     paragraph("No revenue has been entered for this period, so profit cannot be reported. Driver earnings are a cost and are never treated as revenue.", MUTED);
@@ -209,9 +225,14 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
   if (!report.franchiseId && report.franchises.length > 1 && routeIncome) {
     heading("By franchise");
     table(
-      [{ title: "Franchise", width: 151 }, { title: "Income", width: 90, align: "right" }, { title: "Wages", width: 90, align: "right" }, { title: "Expenses", width: 90, align: "right" }, { title: "Profit", width: 90, align: "right" }],
-      report.franchises.map((f) => [f.label, money(f.incomeFromDpd), plus(money(f.wages), f.wagesComplete), money(f.fuel + f.otherExpenses), f.operatingProfit == null ? "n/a" : money(f.operatingProfit)]),
+      [{ title: "Franchise", width: 151 }, { title: "Income", width: 90, align: "right" }, { title: "Wages", width: 90, align: "right" }, { title: "Costs", width: 90, align: "right" }, { title: "Profit / (Loss)", width: 90, align: "right" }],
+      report.franchises.map((f) => {
+        const profit = f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses;
+        return [f.label + (f.wagesComplete ? "" : " *"), money(f.incomeFromDpd), bracket(-f.wages), bracket(-(f.fuel + f.otherExpenses)), bracket(profit)];
+      }),
+      { footer: ["Total", money(t.revenueTotal), bracket(-t.wages), bracket(-(t.fuel + t.otherExpenses)), bracket(profitBefore)] },
     );
+    if (!t.wagesComplete) paragraph("* A franchise marked with an asterisk has drivers with no day rate. Their wages are counted at £0 until a day rate is set.", MUTED);
   } else if (!report.franchiseId && report.franchises.length > 1) {
     heading("By franchise");
     table(
@@ -241,19 +262,21 @@ export async function renderMonthlyReportPdf(report: MonthlyReport): Promise<Buf
     const worked = report.drivers.filter((d) => d.daysWorked > 0);
     const incomeSum = worked.reduce((a, d) => a + d.originalEarnings, 0);
     const wageSum = worked.reduce((a, d) => a + (d.wage ?? 0), 0);
+    const driverProfit = (d: MonthlyReport["drivers"][number]) => d.originalEarnings - (d.wage ?? 0);
     table(
       [
-        { title: "Driver", width: 108 }, { title: "Route", width: 52 }, { title: "Days", width: 28, align: "right" }, { title: "Stops", width: 40, align: "right" }, { title: "Parcels", width: 44, align: "right" },
-        { title: "Income", width: 68, align: "right" }, { title: "Per Stop", width: 46, align: "right" }, { title: "Wage", width: 68, align: "right" }, { title: "Vs Usual", width: 49, align: "right" },
+        { title: "Driver", width: 88 }, { title: "Route", width: 44 }, { title: "Days", width: 26, align: "right" }, { title: "Stops", width: 38, align: "right" }, { title: "Parcels", width: 46, align: "right" },
+        { title: "Income", width: 64, align: "right" }, { title: "Per Stop", width: 40, align: "right" }, { title: "Wage", width: 64, align: "right" }, { title: "Profit / (Loss)", width: 64, align: "right" }, { title: "Vs Usual", width: 37, align: "right" },
       ],
       withGroups(worked, (d) => [
         `${d.name}${d.registered ? "" : " (not registered)"}`, routesText(d),
         String(d.daysWorked), d.stopsIncomplete ? `${d.stops}*` : d.stops.toLocaleString("en-GB"), d.parcelsIncomplete ? `${d.parcels}*` : d.parcels.toLocaleString("en-GB"),
-        money(d.originalEarnings), d.stopsIncomplete ? "-" : money(d.earningsPerStop), d.wageComplete && d.wage != null ? money(d.wage) : "no rate", changeText(d.comparison.earningsPerDayChange),
+        money(d.originalEarnings), d.stopsIncomplete ? "-" : money(d.earningsPerStop), d.wageComplete && d.wage != null ? money(d.wage) : "no rate",
+        bracket(driverProfit(d)), changeText(d.comparison.earningsPerDayChange),
       ]),
-      { fontSize: 8, footer: ["Total", "", "", worked.reduce((a, d) => a + d.stops, 0).toLocaleString("en-GB"), worked.reduce((a, d) => a + d.parcels, 0).toLocaleString("en-GB"), money(incomeSum), "", plus(money(wageSum), worked.every((d) => d.wageComplete)), ""] },
+      { fontSize: 8, footer: ["Total", "", "", worked.reduce((a, d) => a + d.stops, 0).toLocaleString("en-GB"), worked.reduce((a, d) => a + d.parcels, 0).toLocaleString("en-GB"), money(incomeSum), "", money(wageSum), bracket(incomeSum - wageSum), ""] },
     );
-    paragraph("“Vs usual” compares average daily income with the driver's own average over the previous three periods. * = some reports did not include this count.", MUTED);
+    paragraph("“Vs usual” compares average daily income with the driver's own average over the previous three periods. * = some reports did not include this count. Profit / (Loss) is income less wage for each driver. Costs such as fuel are not shared out between drivers.", MUTED);
   } else {
     const sum = (pick: (d: MonthlyReport["drivers"][number]) => number) => report.drivers.reduce((a, d) => a + pick(d), 0);
     table(

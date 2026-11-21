@@ -8,6 +8,7 @@ import { fetchAll } from "@/lib/data/fetch-all";
 import { loadPeriodData, type AdjustmentDetail } from "@/lib/data/period";
 import { addDays, addMonths, monthRange, type ISODate, type YearMonth } from "@/lib/dates";
 import type { DpdPeriod } from "@/lib/finance/periods";
+import { summariseCosts } from "@/lib/finance/cost-summary";
 import type { Pence } from "@/lib/money";
 import {
   combineFranchises, comparePerformance, summarisePeriod,
@@ -74,7 +75,9 @@ export interface MonthlyReport {
   scopeLabel: string;
   generatedAt: string;
   totals: FranchiseSummary;
-  franchises: (FranchiseSummary & { label: string })[];
+  franchises: (FranchiseSummary & { label: string; vatOnCosts: Pence })[];
+  /** VAT on fuel and other costs, as the expense documents state it. Wages carry no VAT. */
+  vatOnCosts: Pence;
   drivers: ReportDriver[];
   /** Every driver-day in the period, for the day-by-day section. Optional so older reports still render. */
   dailyPayments?: ReportDailyPayment[];
@@ -180,7 +183,8 @@ export async function buildMonthlyReport(db: Db, input: { accountId: string; mon
     scopeLabel: franchiseId ? (label.get(franchiseId) ?? "Franchise") : "All franchises (consolidated)",
     generatedAt: new Date().toISOString(),
     totals,
-    franchises: scoped.filter((f) => f.franchiseId).map((f) => ({ ...f, label: label.get(f.franchiseId!) ?? "" })),
+    franchises: scoped.filter((f) => f.franchiseId).map((f) => ({ ...f, label: label.get(f.franchiseId!) ?? "", vatOnCosts: summariseCosts(data.costs.filter((c) => c.franchiseId === f.franchiseId)).vat })),
+    vatOnCosts: summariseCosts(data.costs).vat,
     drivers,
     dailyPayments,
     otherPayments: data.otherPayments.map((o) => ({ label: o.label, amount: o.amount, ...(o.vat ? { vat: o.vat } : {}), invoiceNo: o.invoiceNo })),
