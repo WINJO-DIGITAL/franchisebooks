@@ -114,3 +114,6 @@ through exactly the same function, `importDocument`:
   financially relevant table; the log itself is append-only.
 
 See also: `DATABASE.md`, `FINANCE.md`, `DEPLOYMENT.md`, `DISCOVERY.md`.
+
+## Portal change warning
+- A DPD read that fails because a page does not look as the portal map expects is logged with `kind: layout` and the failing `step`. At the end of each scheduler tick `checkPortalDrift` (src/lib/jobs/portal-drift.ts) counts those in the last 24 hours. Three or more failed reads, across more than one account or at the same step, raise one email to `ALERT_EMAIL` (at most every six hours) saying the shared portal map may need updating. The rule is the pure `assessPortalDrift` in src/lib/dpd/drift.ts.

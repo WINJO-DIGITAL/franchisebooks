@@ -7,6 +7,7 @@
 import "server-only";
 import { accountPlan } from "@/lib/billing/plan";
 import { queueHistoryReads } from "@/lib/history/backfill";
+import { checkPortalDrift } from "./portal-drift";
 import { runAnomalyScan } from "@/lib/anomalies/run";
 import { addDays, isISODate, isYearMonth, londonMinutesOfDay, londonToday, monthOf, monthRange } from "@/lib/dates";
 import { lastCompletedPeriod, type DpdPeriod } from "@/lib/finance/periods";
@@ -159,7 +160,8 @@ export async function runJob(db: AdminClient, job: Job, ctx: RunContext): Promis
         account_id: job.account_id, integration: job.job_type.startsWith("dpd") ? "dpd" : job.job_type === "dropbox_sync" ? "dropbox" : "system",
         import_job_id: job.id, franchise_id: job.franchise_id, level: willRetry ? "warning" : "error", event: willRetry ? "job_retry" : "job_failed",
         message: willRetry ? `${plain} It will be tried again automatically.` : plain,
-        detail: { error: describeError(error, portal ? { step: portal.step } : {}) } as unknown as JsonObject,
+        // The failure type and step sit at the top of the detail so the portal-change check can count them.
+        detail: { kind: portal?.kind ?? null, step: portal?.step ?? null, error: describeError(error, portal ? { step: portal.step } : {}) } as unknown as JsonObject,
       });
       if (!willRetry) await reportError(error, { jobId: job.id, type: job.job_type });
     }
@@ -283,6 +285,8 @@ export async function runSchedulerTick(db: AdminClient, now: Date = new Date()):
       }
     }
   }
+  // A run of layout failures across accounts means DPD changed its pages: tell whoever runs the service (once per six hours).
+  await checkPortalDrift(db, now);
   return result;
 }
 

@@ -231,8 +231,24 @@ describe("Max plan history reads (period drop-down)", () => {
     return after!;
   }
 
+  /** Sets the plan on the test account's owner: history reads are a Max feature. */
+  const setPlan = (plan: "max" | "standard") => sql(
+    "insert into public.user_billing (user_id, plan, status) values ($1, $2, 'active') on conflict (user_id) do update set plan = excluded.plan, status = 'active'",
+    [t.ownerId, plan],
+  );
+
+  it("does not run a history read for an account that is on Essential", async () => {
+    await setupPeriods();
+    await setPlan("standard");
+    const after = await runPeriodSync("2020-03-02", { history: true });
+    expect(after.status).toBe("blocked");
+    expect(after.result).toMatchObject({ skippedBecause: "essential_plan" });
+    expect(portal!.writeHits()).toBe(0);
+  }, 180_000);
+
   it("records a period DPD does not list as not listed, finished and not retried", async () => {
     await setupPeriods();
+    await setPlan("max");
     const after = await runPeriodSync("2020-01-06", { history: true });
     expect(after.status).toBe("succeeded");
     expect(after.result).toMatchObject({ periodListed: false, history: true });
