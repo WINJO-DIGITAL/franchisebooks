@@ -158,7 +158,7 @@ export default async function DashboardPage() {
                 <Stat
                   label="Wages"
                   value={m.wagesComplete ? formatGBP(m.wages) : `${formatGBP(m.wages)}+`}
-                  sub={m.wagesComplete ? "Day rate × days worked" : <Link href="/drivers" className="text-accent underline">Set day rates for {m.driversMissingRate} {m.driversMissingRate === 1 ? "driver" : "drivers"}</Link>}
+                  sub={m.wagesComplete ? "Day rate × days worked" : undefined}
                 />
                 <Stat
                   label="Expenses"
