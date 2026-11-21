@@ -394,7 +394,7 @@ export default async function DashboardPage() {
                     <td className="r num hidden sm:table-cell" colSpan={3} />
                     <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-good">{formatGBP(totalIncomeAll, { signed: true })}</td>
                     <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-bad">−{formatGBP(totalWageAll)}</td>
-                    <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base ${totalIncomeAll - totalWageAll < 0 ? "text-bad" : "text-good"}`}>{formatGBP(totalIncomeAll - totalWageAll)}</td>
+                    <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base font-bold ${totalIncomeAll - totalWageAll < 0 ? "bg-bad-soft text-bad" : "bg-good-soft text-good"}`}>{formatGBP(totalIncomeAll - totalWageAll)}</td>
                   </tr>
                 </tfoot>
               ) : null}
