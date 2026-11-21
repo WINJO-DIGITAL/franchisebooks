@@ -36,8 +36,19 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
       const id = driverIdentity(d.driverId, d.name);
       franchisesFor.set(id, (franchisesFor.get(id) ?? new Set()).add(franchise));
     }
-    const rows = mergeDriverRows(perFranchise.map((x) => x.d)).map((d) => ({ ...d, franchise: [...(franchisesFor.get(driverIdentity(d.driverId, d.name)) ?? [])].filter(Boolean).join(", ") }));
-    const peopleWorking = rows.filter((d) => d.daysWorked > 0).length;
+    const routesFor = new Map<string, Set<string>>();
+    for (const e of data.earnings.filter((e) => e.date >= start && e.date <= end && e.route)) {
+      const id = driverIdentity(e.driverId, e.sourceDriverName);
+      routesFor.set(id, (routesFor.get(id) ?? new Set()).add(e.route!));
+    }
+    const rows = mergeDriverRows(perFranchise.map((x) => x.d)).map((d) => {
+      const id = driverIdentity(d.driverId, d.name);
+      return {
+        ...d,
+        franchise: [...(franchisesFor.get(id) ?? new Set())].filter(Boolean).join(", "),
+        routes: [...(routesFor.get(id) ?? new Set())].sort((a, b) => a.localeCompare(b, "en-GB", { numeric: true })).join(" / "),
+      };
+    });
     return (
       <>
         <PageHeader
@@ -50,10 +61,9 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
           <Panel>
             {routeIncome ? (
               <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-                <Stat size="lg" label="Income" value={formatGBP(t.incomeFromDpd)} sub={t.otherDpdPayments > 0 ? `Includes ${formatGBP(t.otherDpdPayments)} of other DPD payments` : "From DPD payments"} />
-                <Stat label="Wages" value={t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`} sub={t.wagesComplete ? "Day rate × days worked" : `${t.driversMissingRate} ${t.driversMissingRate === 1 ? "driver has" : "drivers have"} no day rate`} />
-                <Stat label="Drivers working" value={String(peopleWorking)} />
-                <Stat label="Stops" value={t.stops.toLocaleString("en-GB")} sub={`${t.parcels.toLocaleString("en-GB")} parcels`} />
+                <Stat size="lg" label="Income" value={formatGBP(t.incomeFromDpd)} />
+                <Stat label="Stops" value={t.stops.toLocaleString("en-GB")} />
+                <Stat label="Parcels" value={t.parcels.toLocaleString("en-GB")} />
               </div>
             ) : (
             <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
@@ -70,34 +80,24 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
             <table className="ledger">
               <thead>
                 <tr>
-                  <th>Driver</th>{showFranchise ? <th className="hidden sm:table-cell">Franchise</th> : null}<th className="r hidden sm:table-cell">Days</th><th className="r hidden sm:table-cell">Stops</th>
-                  <th className="r">Income</th><th className="r hidden sm:table-cell">Income / Stop</th><th className="r">Wage</th>
+                  <th>Driver</th><th>Route</th><th className="r">Days</th><th className="r">Stops</th>
                 </tr>
               </thead>
               <tbody>
                 {[...rows].filter((d) => d.daysWorked > 0).sort((a, b) => b.originalEarnings - a.originalEarnings).map((d) => (
                   <tr key={d.key}>
-                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise ? <span className="block text-xs font-normal text-muted sm:hidden">{d.franchise}</span> : null}</td>
-                    {showFranchise ? <td className="hidden sm:table-cell">{d.franchise}</td> : null}
-                    <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
-                    <td className="r num hidden sm:table-cell">{d.stops.toLocaleString("en-GB")}</td>
-                    <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
-                    <td className="r num hidden sm:table-cell">{formatGBP(d.earningsPerStop)}</td>
-                    <td className="r num">{formatGBP(d.wage ?? 0)}</td>
+                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise && d.franchise ? <span className="block text-xs font-normal text-muted">{d.franchise}</span> : null}</td>
+                    <td className="num">{d.routes || "—"}</td>
+                    <td className="r num">{d.daysWorked}</td>
+                    <td className="r num">{d.stops.toLocaleString("en-GB")}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                {/* Invoice lines the daily Payments do not contain, so the total matches what DPD paid. Dated at the period start. */}
-                {data.otherPayments.map((o) => (
-                  <tr key={o.id}>
-                    <td>{o.label} <span className="text-xs font-normal text-muted">{o.vat ? `${formatGBP(o.amount)} + ${formatGBP(o.vat)} VAT = ${formatGBP(o.amount + o.vat)} · ` : ""}{o.invoiceNo.includes(" + ") ? "invoices" : "invoice"} {o.invoiceNo}</span></td>{showFranchise ? <td className="hidden sm:table-cell">{franchiseName.get(o.franchiseId) ?? ""}</td> : null}<td className="hidden sm:table-cell" /><td className="hidden sm:table-cell" />
-                    <td className="r num">{formatGBP(o.amount)}</td><td className="hidden sm:table-cell" /><td />
-                  </tr>
-                ))}
                 <tr>
-                  <td>Total</td>{showFranchise ? <td className="hidden sm:table-cell" /> : null}<td className="hidden sm:table-cell" /><td className="r num hidden sm:table-cell">{t.stops.toLocaleString("en-GB")}</td>
-                  <td className="r num">{formatGBP(t.incomeFromDpd)}</td><td className="hidden sm:table-cell" /><td className="r num">{formatGBP(t.wages)}</td>
+                  <td>Total</td><td />
+                  <td className="r num">{rows.reduce((n, d) => n + d.daysWorked, 0)}</td>
+                  <td className="r num">{t.stops.toLocaleString("en-GB")}</td>
                 </tr>
               </tfoot>
             </table>
@@ -157,11 +157,21 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
   const totalOriginal = sumPence(days.map((d) => d.originalEarnings));
   const totalAdjust = sumPence(days.map((d) => d.adjustmentsNet));
   const routeIncome = data.earningsMeaning === "route_income";
-  const routesByKey = new Map<string, Set<string>>();
-  for (const e of data.earnings) {
-    const key = `${e.franchiseId}|${e.driverId ?? `unregistered:${e.driverKey}`}`;
-    if (e.route) routesByKey.set(key, (routesByKey.get(key) ?? new Set()).add(e.route));
-  }
+  // One row per person for the day, even when they drove for more than one franchise.
+  const dayPeople = (() => {
+    const people = new Map<string, { driverId: string | null; name: string; stops: number | null; income: number; routes: Set<string> }>();
+    for (const d of days.filter((x) => x.hasReport)) {
+      const id = driverIdentity(d.driverId, d.name);
+      const p = people.get(id) ?? { driverId: d.driverId, name: d.name, stops: 0, income: 0, routes: new Set<string>() };
+      p.stops = p.stops == null || d.stops == null ? null : p.stops + d.stops;
+      p.income += d.originalEarnings;
+      people.set(id, p);
+    }
+    for (const e of data.earnings) {
+      if (e.route) people.get(driverIdentity(e.driverId, e.sourceDriverName))?.routes.add(e.route);
+    }
+    return [...people.values()].sort((a, b) => b.income - a.income);
+  })();
 
   return (
     <>
@@ -178,8 +188,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
         <Panel>
           {routeIncome ? (
             <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-              <Stat size="lg" label="Income" value={formatGBP(totalOriginal)} sub="From DPD payments" />
-              <Stat label="Drivers working" value={String(days.filter((d) => d.hasReport).length)} />
+              <Stat size="lg" label="Income" value={formatGBP(totalOriginal)} />
               <Stat label="Stops" value={days.reduce((n, d) => n + (d.stops ?? 0), 0).toLocaleString("en-GB")} />
               <Stat label="Parcels" value={days.reduce((n, d) => n + (d.parcels ?? 0), 0).toLocaleString("en-GB")} />
             </div>
@@ -203,30 +212,24 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
           <table className="ledger">
             <thead>
               <tr>
-                <th>Driver</th>{showFranchise ? <th className="hidden sm:table-cell">Franchise</th> : null}<th>Route</th><th className="r hidden sm:table-cell">Stops</th><th className="r hidden sm:table-cell">Parcels</th><th className="r">Income</th><th className="hidden sm:table-cell">Source</th>
+                <th>Driver</th><th>Route</th><th className="r">Stops</th><th className="r">Income</th>
               </tr>
             </thead>
             <tbody>
-              {days.filter((d) => d.hasReport).map((d) => {
-                const key = `${d.franchiseId}|${d.key}`;
-                const source = fileByKey.get(key);
-                return (
-                  <tr key={`${d.franchiseId}-${d.key}`}>
-                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise ? <span className="block text-xs font-normal text-muted sm:hidden">{franchiseName.get(d.franchiseId) ?? ""}</span> : null}</td>
-                    {showFranchise ? <td className="hidden sm:table-cell">{franchiseName.get(d.franchiseId) ?? ""}</td> : null}
-                    <td className="num">{[...(routesByKey.get(key) ?? [])].join(" / ") || "—"}</td>
-                    <td className="r num hidden sm:table-cell">{d.stops ?? "—"}</td>
-                    <td className="r num hidden sm:table-cell">{d.parcels ?? "—"}</td>
-                    <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
-                    <td className="text-sm hidden sm:table-cell">{source ? <a href={`/api/files/${source.importedFileId}`} className="text-accent hover:underline">{SOURCE_LABEL[source.source] ?? "Document"}</a> : <span className="text-muted">—</span>}</td>
-                  </tr>
-                );
-              })}
+              {dayPeople.map((p) => (
+                <tr key={driverIdentity(p.driverId, p.name)}>
+                  <td className="font-medium">{p.driverId ? <Link href={`/drivers/${p.driverId}`} className="hover:underline">{p.name}</Link> : <>{p.name} <Badge tone="warn">Not registered</Badge></>}</td>
+                  <td className="num">{[...p.routes].sort((x, y) => x.localeCompare(y, "en-GB", { numeric: true })).join(" / ") || "—"}</td>
+                  <td className="r num">{p.stops ?? "—"}</td>
+                  <td className="r num font-semibold">{formatGBP(p.income)}</td>
+                </tr>
+              ))}
             </tbody>
             <tfoot>
               <tr>
-                <td>Total</td>{showFranchise ? <td className="hidden sm:table-cell" /> : null}<td /><td className="r num hidden sm:table-cell">{days.reduce((n, d) => n + (d.stops ?? 0), 0)}</td><td className="r num hidden sm:table-cell">{days.reduce((n, d) => n + (d.parcels ?? 0), 0)}</td>
-                <td className="r num">{formatGBP(totalOriginal)}</td><td className="hidden sm:table-cell" />
+                <td>Total</td><td />
+                <td className="r num">{days.reduce((n, d) => n + (d.stops ?? 0), 0)}</td>
+                <td className="r num">{formatGBP(totalOriginal)}</td>
               </tr>
             </tfoot>
           </table>
