@@ -95,8 +95,8 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
             ];
             const base = wages + summary.beforeVat;
             const share = (amount: number) => (base > 0 ? Math.max(2, (amount / base) * 100) : 0);
-            const Line = ({ r }: { r: (typeof rows)[number] }) => (
-              <tr>
+            const renderLine = (r: (typeof rows)[number]) => (
+              <tr key={r.key}>
                 <td className="font-medium">
                   {r.name}
                   <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden>
@@ -128,7 +128,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                 <TableWrap>
                   <table className="ledger" data-testid="category-subtotals">
                     <thead><tr><th>Category</th><th className="r">Items</th><th className="r">Amount</th></tr></thead>
-                    <tbody>{top.map((r) => <Line key={r.key} r={r} />)}</tbody>
+                    <tbody>{top.map((r) => renderLine(r))}</tbody>
                   </table>
                 </TableWrap>
                 {rest.length > 0 ? (
@@ -137,7 +137,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
                     <div className="mt-3">
                       <TableWrap>
                         <table className="ledger">
-                          <tbody>{rest.map((r) => <Line key={r.key} r={r} />)}</tbody>
+                          <tbody>{rest.map((r) => renderLine(r))}</tbody>
                         </table>
                       </TableWrap>
                     </div>
