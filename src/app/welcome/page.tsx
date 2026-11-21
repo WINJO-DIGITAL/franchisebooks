@@ -5,7 +5,8 @@ import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { Band, BandHeading, Leader } from "@/components/marketing/primitives";
-import { CheckPreview, DriverPayPreview, FranchisesPreview, OverviewPreview, ReportPreview } from "@/components/marketing/previews";
+import { CheckPreview, DriverPayPreview, FranchisesPreview, ReportPreview } from "@/components/marketing/previews";
+import { HeroVideo } from "@/components/marketing/hero-video";
 import { SiteFooter, SiteHeader } from "@/components/marketing/site-chrome";
 
 const TITLE = "Franchise Books by Winjo Digital: know what your DPD franchise earns and what each driver is owed";
@@ -116,7 +117,7 @@ export default function WelcomePage() {
               </ul>
             </div>
             <div className="min-w-0">
-              <OverviewPreview />
+              <HeroVideo />
             </div>
           </div>
         </section>

@@ -290,3 +290,8 @@ which is where password-reset links appear.
 - [ ] DPD permission confirmed; discovery run and portal map reviewed
 - [ ] Daily backups on
 - [ ] `npm run smoke` passes
+
+
+## Homepage hero video
+- `public/hero-demo.webm`, `public/hero-demo.mp4` and `public/hero-demo-poster.jpg` are a recording of the app on the synthetic demo account, made by `scripts/record-hero-demo.cjs`. Re-record and re-encode after any visible change to the app's main screens.
+- Files ending in `.mp4` or `.webm` are excluded from the sign-in check in `src/proxy.ts`; keep them that way or the video cannot load.
