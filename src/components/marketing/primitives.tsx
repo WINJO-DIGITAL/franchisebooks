@@ -70,7 +70,7 @@ export function Band({ id, folio, label, tone = "paper", children }: { id: strin
 export function BandHeading({ id, children, intro }: { id: string; children: ReactNode; intro?: ReactNode }) {
   return (
     <div className="max-w-3xl">
-      <h2 id={`${id}-title`} className="text-balance text-[1.875rem] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-4xl">{children}</h2>
+      <h2 id={`${id}-title`} className="text-balance font-display text-[2rem] font-semibold leading-[1.1] tracking-[-0.015em] sm:text-[2.6rem]">{children}</h2>
       {intro ? <p className="mt-4 max-w-2xl text-pretty text-[1.0625rem] leading-relaxed text-ink-soft sm:text-lg">{intro}</p> : null}
     </div>
   );

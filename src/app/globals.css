@@ -29,6 +29,7 @@
   --color-info-soft: #e8eff9;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Source Serif 4 Variable", "Source Serif 4", Georgia, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
 
   --radius-card: 10px;
@@ -135,6 +136,18 @@ input:-webkit-autofill:focus {
   background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgb(214 197 169 / 0.34) 31px, rgb(214 197 169 / 0.34) 32px);
   mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.55) 45%, transparent 100%);
+}
+
+/* Sales page: a short rise as the hero card arrives. Off for visitors who ask for reduced motion. */
+@keyframes mk-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.mk-rise {
+  animation: mk-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-rise { animation: none; }
 }
 
 @keyframes grow {

@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Check, Lock, Plus, ShieldCheck } from "lucide-react";
+import { ArrowDown, ArrowRight, Check, Plus, ShieldCheck } from "lucide-react";
+import "@fontsource-variable/source-serif-4";
 import { buttonClass } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { PLAN_PRICE_GBP } from "@/lib/billing/status";
 import { Band, BandHeading, Leader } from "@/components/marketing/primitives";
 import { CheckPreview, DriverPayPreview, FranchisesPreview, ReportPreview } from "@/components/marketing/previews";
 import { HeroVideo } from "@/components/marketing/hero-video";
+import { HeroPayday } from "@/components/marketing/hero-payday";
 import { SiteFooter, SiteHeader } from "@/components/marketing/site-chrome";
 
 const TITLE = "Franchise Books by Winjo Digital: know what your DPD franchise earns and what each driver is owed";
@@ -91,33 +93,33 @@ export default function WelcomePage() {
       <main>
         {/* 1. What it does */}
         <section aria-labelledby="hero-title" className="relative overflow-hidden">
-          <div aria-hidden className="mk-ruled pointer-events-none absolute inset-x-0 top-0 h-[34rem]" />
-          <div className="relative mx-auto grid max-w-6xl gap-12 px-4 pb-12 pt-8 sm:px-6 sm:pb-24 sm:pt-16 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-center lg:gap-14">
+          <div aria-hidden className="mk-ruled pointer-events-none absolute inset-x-0 top-0 h-[38rem]" />
+          <div className="relative mx-auto grid max-w-6xl gap-10 px-4 pb-14 pt-9 sm:px-6 sm:pb-24 sm:pt-16 lg:grid-cols-[minmax(0,11fr)_minmax(0,12fr)] lg:items-center lg:gap-16 lg:pt-20">
             <div>
-              <p className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.14em] text-ink-soft">
-                <span aria-hidden className="h-px w-8 bg-accent" /> For DPD Franchise Owners
-              </p>
-              <h1 id="hero-title" className="mt-5 text-balance text-[2.125rem] font-semibold leading-[1.08] tracking-[-0.025em] sm:text-5xl lg:text-[2.75rem] xl:text-[3.25rem]">
-                Know What Your Franchise Earns, and What Each Driver Is Owed.
+              <p className="text-sm font-semibold text-accent">For DPD Franchise Owners</p>
+              <h1 id="hero-title" className="mt-3 text-balance font-display text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] sm:text-6xl lg:text-[3.6rem] xl:text-[4.1rem]">
+                Payday, Worked Out Before You Wake Up.
               </h1>
-              <p className="mt-5 max-w-lg text-pretty text-lg leading-relaxed text-ink-soft">
-                Connect your DPD login once. Every night Franchise Books reads your payments and charges and works out each driver&rsquo;s pay, so payday takes minutes, not an evening.
+              <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-ink-soft sm:text-xl sm:leading-relaxed">
+                Every night Franchise Books reads your DPD payments and charges, works out what each driver is owed, and checks it all against DPD&rsquo;s invoice. You open it, pay your drivers, and get your evening back.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link href="/signup" className={`${buttonClass("primary", "lg")} w-full shadow-sm sm:w-auto`}>
+              <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+                <Link href="/signup" className={`${buttonClass("primary", "lg")} h-13 w-full px-7 text-base shadow-[0_10px_24px_-12px_rgb(184_71_0/0.7)] sm:w-auto`}>
                   Get Started for £{PRICE} a Month <ArrowRight className="size-4" aria-hidden />
                 </Link>
-                <Link href="#how" className={`${buttonClass("secondary", "lg")} w-full sm:w-auto`}>See How It Works</Link>
+                <Link href="#how" className="inline-flex items-center justify-center gap-1.5 text-[0.9375rem] font-semibold text-ink underline decoration-line-strong decoration-2 underline-offset-[6px] transition-colors hover:decoration-accent sm:justify-start">
+                  See How It Works <ArrowDown className="size-4" aria-hidden />
+                </Link>
               </div>
-              <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-soft" aria-label="Why it is safe to try">
-                <li className="inline-flex items-center gap-1.5"><ShieldCheck className="size-4 text-good" aria-hidden /> Read-only access</li>
-                <li className="inline-flex items-center gap-1.5"><Lock className="size-4 text-good" aria-hidden /> Encrypted login</li>
-                <li className="inline-flex items-center gap-1.5"><Check className="size-4 text-good" aria-hidden /> No set-up fee</li>
-                <li className="inline-flex items-center gap-1.5"><Check className="size-4 text-good" aria-hidden /> Cancel any time</li>
-              </ul>
+              <p className="mt-6 flex items-start gap-2 text-sm text-muted">
+                <ShieldCheck className="mt-px size-4 shrink-0 text-good" aria-hidden />
+                Read-only DPD access. No set-up fee. Cancel any time.
+              </p>
             </div>
-            <div className="min-w-0">
-              <HeroVideo />
+
+            <div className="relative min-w-0">
+              <div aria-hidden className="absolute -inset-x-6 -bottom-6 top-10 hidden -rotate-2 rounded-2xl border border-line-strong/70 bg-sunken/80 lg:block" />
+              <HeroPayday className="relative mx-auto max-w-md lg:ml-auto lg:mr-4" />
             </div>
           </div>
         </section>
@@ -164,7 +166,10 @@ export default function WelcomePage() {
           <BandHeading id="inside" intro="These illustrations are simplified from the real screens and use example figures. They are not customer data.">
             See What You Get Before You Sign Up.
           </BandHeading>
-          <div className="mt-12">
+          <div className="mx-auto mt-10 max-w-4xl">
+            <HeroVideo />
+          </div>
+          <div className="mt-14 sm:mt-16">
             <ProductRow kicker="Driver Pay" title="Each Driver's Pay, Worked Out From the Rate You Set" preview={<DriverPayPreview />}>
               <p>Pay each driver per day worked or per stop, and see their total before you transfer a penny.</p>
               <FactList items={[
@@ -281,7 +286,7 @@ export default function WelcomePage() {
         <section aria-labelledby="cta-title" className="bg-ink text-paper">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-16">
             <div>
-              <h2 id="cta-title" className="max-w-2xl text-balance text-[1.875rem] font-semibold leading-[1.12] tracking-[-0.02em] sm:text-4xl">Spend Payday on the Business, Not the Spreadsheet.</h2>
+              <h2 id="cta-title" className="max-w-2xl text-balance font-display text-[2rem] font-semibold leading-[1.1] tracking-[-0.015em] sm:text-[2.6rem]">Spend Payday on the Business, Not the Spreadsheet.</h2>
               <p className="mt-4 max-w-xl text-lg text-paper/75">Connect DPD once, and your figures are ready every night.</p>
             </div>
             <div className="lg:text-right">
