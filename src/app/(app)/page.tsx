@@ -112,7 +112,7 @@ export default async function DashboardPage() {
       {/* Today */}
       <Section
         title={dayIsToday ? "Today" : `Latest report: ${formatUkDayMonth(latestDay)}`}
-        description={dayIsToday ? undefined : reportDates.length === 0 ? "No DPD reports have been imported yet." : "Today's DPD report has not arrived yet, so these are the most recent figures."}
+        description={dayIsToday || reportDates.length > 0 ? undefined : "No DPD reports have been imported yet."}
       >
         <Panel>
           {routeIncome ? (
