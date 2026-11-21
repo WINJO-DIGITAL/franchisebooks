@@ -19,10 +19,12 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const period = periodContaining(ctx.today);
   const { start } = period;
 
-  const [drivers, assignments, data, unregisteredRows] = await Promise.all([
+  const [drivers, assignments, data, workedRows, unregisteredRows] = await Promise.all([
     fetchAll(() => ctx.supabase.from("drivers").select("id, display_name, is_active, start_date, leaving_date, dpd_driver_ref").order("display_name").order("id")),
     fetchAll(() => ctx.supabase.from("driver_assignments").select("id, driver_id, franchise_id, route, vehicle_registration, start_date, end_date").order("start_date", { ascending: false }).order("id")),
     loadPeriodData(ctx.supabase, { accountId: ctx.accountId, from: start, to: ctx.today, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds }),
+    // Every driver who has ever had a day read from DPD, in any period. An inactive driver with none is left off the list.
+    fetchAll(() => ctx.supabase.from("daily_earnings").select("driver_id").eq("account_id", ctx.accountId).eq("is_current", true).not("driver_id", "is", null).order("id")),
     fetchAll(() => {
       let q = ctx.supabase.from("daily_earnings").select("id, franchise_id, driver_key, source_driver_name, report_date").is("driver_id", null).eq("is_current", true).order("report_date", { ascending: false }).order("id");
       if (ctx.franchiseId) q = q.eq("franchise_id", ctx.franchiseId);
@@ -55,11 +57,15 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   }
   const current = (driverId: string) => assignments.filter((a) => a.driver_id === driverId && a.start_date <= ctx.today && (!a.end_date || a.end_date >= ctx.today));
 
+  const everWorked = new Set(workedRows.map((r) => r.driver_id as string));
+  // An inactive driver who has never done a day is not listed, so the list shows only people who have worked.
+  const listable = (d: { id: string; is_active: boolean }) => d.is_active || everWorked.has(d.id);
   const showInactive = show === "all";
   const search = (searchText ?? "").trim().toLowerCase();
   const sort = sortParam === "income" || sortParam === "days" ? sortParam : "name";
   const visible = drivers
     .filter((d) => {
+      if (!listable(d)) return false;
       if (!showInactive && !d.is_active) return false;
       if (search && !d.display_name.toLowerCase().includes(search)) return false;
       if (!ctx.franchiseId) return true;
@@ -71,7 +77,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
       return a.display_name.localeCompare(b.display_name, "en-GB");
     });
   const workedThisPeriod = visible.filter((d) => (byDriver.get(d.id)?.days ?? 0) > 0).length;
-  const inactiveCount = drivers.filter((d) => !d.is_active).length;
+  const inactiveCount = drivers.filter((d) => !d.is_active && everWorked.has(d.id)).length;
 
   const unregistered = new Map<string, { franchiseId: string; driverKey: string; name: string; days: number; latest: string }>();
   for (const row of unregisteredRows) {
