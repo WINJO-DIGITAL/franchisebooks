@@ -9,7 +9,7 @@ import { addDays, formatUkDate, formatUkDateLong, isISODate } from "@/lib/dates"
 import { periodContaining, periodFromParam, periodLabel } from "@/lib/finance/periods";
 import { PeriodNav } from "@/components/ui/period-nav";
 import { DayPicker } from "@/components/ui/day-picker";
-import { buildDriverDays, summarisePeriod } from "@/lib/finance/calc";
+import { buildDriverDays, driverIdentity, mergeDriverRows, summarisePeriod } from "@/lib/finance/calc";
 import { SOURCE_LABEL } from "@/lib/labels";
 import { formatGBP, sumPence } from "@/lib/money";
 
@@ -29,7 +29,15 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
     const summary = summarisePeriod(data);
     const t = summary.combined;
     const routeIncome = t.earningsMeaning === "route_income";
-    const rows = summary.franchises.filter((f) => f.franchiseId).flatMap((f) => f.drivers.map((d) => ({ ...d, franchise: franchiseName.get(f.franchiseId!) ?? "" })));
+    // One row per person, even when they work for more than one franchise. The franchises they work for are listed together.
+    const perFranchise = summary.franchises.filter((f) => f.franchiseId).flatMap((f) => f.drivers.map((d) => ({ d, franchise: franchiseName.get(f.franchiseId!) ?? "" })));
+    const franchisesFor = new Map<string, Set<string>>();
+    for (const { d, franchise } of perFranchise) {
+      const id = driverIdentity(d.driverId, d.name);
+      franchisesFor.set(id, (franchisesFor.get(id) ?? new Set()).add(franchise));
+    }
+    const rows = mergeDriverRows(perFranchise.map((x) => x.d)).map((d) => ({ ...d, franchise: [...(franchisesFor.get(driverIdentity(d.driverId, d.name)) ?? [])].filter(Boolean).join(", ") }));
+    const peopleWorking = rows.filter((d) => d.daysWorked > 0).length;
     return (
       <>
         <PageHeader
@@ -44,7 +52,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
               <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
                 <Stat size="lg" label="Income" value={formatGBP(t.incomeFromDpd)} sub={t.otherDpdPayments > 0 ? `Includes ${formatGBP(t.otherDpdPayments)} of other DPD payments` : "From DPD payments"} />
                 <Stat label="Wages" value={t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`} sub={t.wagesComplete ? "Day rate × days worked" : `${t.driversMissingRate} ${t.driversMissingRate === 1 ? "driver has" : "drivers have"} no day rate`} />
-                <Stat label="Drivers working" value={String(t.driverCount)} />
+                <Stat label="Drivers working" value={String(peopleWorking)} />
                 <Stat label="Stops" value={t.stops.toLocaleString("en-GB")} sub={`${t.parcels.toLocaleString("en-GB")} parcels`} />
               </div>
             ) : (
@@ -68,14 +76,14 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
               </thead>
               <tbody>
                 {[...rows].filter((d) => d.daysWorked > 0).sort((a, b) => b.originalEarnings - a.originalEarnings).map((d) => (
-                  <tr key={`${d.franchiseId}-${d.key}`}>
+                  <tr key={d.key}>
                     <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise ? <span className="block text-xs font-normal text-muted sm:hidden">{d.franchise}</span> : null}</td>
                     {showFranchise ? <td className="hidden sm:table-cell">{d.franchise}</td> : null}
                     <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
                     <td className="r num hidden sm:table-cell">{d.stops.toLocaleString("en-GB")}</td>
                     <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
                     <td className="r num hidden sm:table-cell">{formatGBP(d.earningsPerStop)}</td>
-                    <td className="r num">{d.wageComplete && d.wage != null ? formatGBP(d.wage) : <span className="text-muted">No rate</span>}</td>
+                    <td className="r num">{formatGBP(d.wage ?? 0)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -89,7 +97,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                 ))}
                 <tr>
                   <td>Total</td>{showFranchise ? <td className="hidden sm:table-cell" /> : null}<td className="hidden sm:table-cell" /><td className="r num hidden sm:table-cell">{t.stops.toLocaleString("en-GB")}</td>
-                  <td className="r num">{formatGBP(t.incomeFromDpd)}</td><td className="hidden sm:table-cell" /><td className="r num">{t.wagesComplete ? formatGBP(t.wages) : `${formatGBP(t.wages)}+`}</td>
+                  <td className="r num">{formatGBP(t.incomeFromDpd)}</td><td className="hidden sm:table-cell" /><td className="r num">{formatGBP(t.wages)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -105,7 +113,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
               </thead>
               <tbody>
                 {rows.map((d) => (
-                  <tr key={`${d.franchiseId}-${d.key}`}>
+                  <tr key={d.key}>
                     <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}</td>
                     {showFranchise ? <td>{d.franchise}</td> : null}
                     <td className="r num">{d.daysWorked}</td>
