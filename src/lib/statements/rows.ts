@@ -2,7 +2,7 @@ import { getContext } from "@/lib/context";
 import { type DpdPeriod } from "@/lib/finance/periods";
 import { planDriverStatements } from "@/lib/statements/generate";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fromDb, sumPence, type Pence } from "@/lib/money";
+import { fromDb } from "@/lib/money";
 
 export interface StatementRow {
   driverId: string;
@@ -37,37 +37,4 @@ export async function loadStatementRows(ctx: Awaited<ReturnType<typeof getContex
     }
   }
   return { rows, manyFranchises: targets.length > 1 };
-}
-
-export interface WagesLine {
-  driverId: string;
-  dr: string | null;
-  name: string;
-  franchises: number;
-  /** Amount to pay, all franchises added together. An incomplete statement counts as £0 here, so the total is always a figure. */
-  total: Pence;
-  /** False when any of this driver's statements is incomplete, so the amount is not final. */
-  complete: boolean;
-}
-
-/**
- * One line per driver for the period: the same person's statements for each FD number added together, so it is
- * paid once. The DR number tells people apart who share a name.
- */
-export function wagesToPay(rows: StatementRow[], dr: Map<string, string | null>): { lines: WagesLine[]; total: Pence; complete: boolean } {
-  const byDriver = new Map<string, StatementRow[]>();
-  for (const r of rows) byDriver.set(r.driverId, [...(byDriver.get(r.driverId) ?? []), r]);
-  const lines: WagesLine[] = [...byDriver.entries()].map(([driverId, rs]) => {
-    return {
-      driverId,
-      dr: dr.get(driverId) ?? null,
-      name: rs[0]!.name,
-      franchises: rs.length,
-      total: sumPence(rs.map((r) => r.total ?? 0)),
-      complete: rs.every((r) => r.total != null),
-    };
-  }).sort((a, b) => a.name.localeCompare(b.name, "en-GB"));
-  const complete = lines.every((l) => l.complete);
-  const total = sumPence(lines.map((l) => l.total));
-  return { lines, total, complete };
 }

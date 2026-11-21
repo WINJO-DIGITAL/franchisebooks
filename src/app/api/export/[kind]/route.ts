@@ -5,7 +5,8 @@ import { periodFromParam } from "@/lib/finance/periods";
 import { summarisePeriod } from "@/lib/finance/calc";
 import { adjustmentLabel, SOURCE_LABEL } from "@/lib/labels";
 import { csvMoney, toCsv } from "@/lib/reports/csv";
-import { loadStatementRows, wagesToPay } from "@/lib/statements/rows";
+import { loadDriverPayLines, wagesLinesFrom } from "@/lib/reports/end-of-period";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -38,14 +39,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       c.allocation.scope === "driver" ? (names.get(c.allocation.driverId) ?? "Driver") : c.allocation.scope === "franchise" ? "Business cost" : "Unallocated", SOURCE_LABEL[c.source] ?? c.source, csvMoney(c.amount),
     ]);
   } else if (kind === "wages") {
-    // Wages to pay: the same figures as the Reports page, one line per driver across all their FD numbers.
+    // Wages to Pay: the same calculation as the Driver Pay Report, one line per driver across all their FD numbers.
     if (!ctx.canWrite) return new NextResponse("Forbidden", { status: 403 });
-    const { rows: statementRows } = await loadStatementRows(ctx, period);
-    const { data: driverRefs } = await ctx.supabase.from("drivers").select("id, dpd_driver_ref").eq("account_id", ctx.accountId);
-    const wages = wagesToPay(statementRows, new Map((driverRefs ?? []).map((d) => [d.id, d.dpd_driver_ref])));
+    const { lines, dr, owed, complete } = await loadDriverPayLines(createAdminClient(), { accountId: ctx.accountId, franchiseId: ctx.franchiseId, period });
+    const wages = wagesLinesFrom(lines, dr);
     header = ["DR Number", "Driver", "Franchises", "Amount to pay (GBP)", "Complete"];
-    rows = wages.lines.map((l) => [l.dr ?? "", l.name, l.franchises, csvMoney(l.total), l.complete ? "Yes" : "No"]);
-    rows.push(["", "Total", "", csvMoney(wages.total), wages.complete ? "Yes" : "No"]);
+    rows = wages.map((l) => [l.dr ?? "", l.name, l.franchises, csvMoney(l.total), l.complete ? "Yes" : "No"]);
+    rows.push(["", "Total", "", csvMoney(owed), complete ? "Yes" : "No"]);
   } else {
     return new NextResponse("Not found", { status: 404 });
   }

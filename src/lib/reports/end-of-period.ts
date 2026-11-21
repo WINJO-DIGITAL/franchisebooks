@@ -60,6 +60,8 @@ export interface DriverPayLine {
   driverId: string;
   name: string;
   franchiseLabel: string;
+  /** How many FD numbers this driver worked under in the period. */
+  franchiseCount: number;
   rateText: string;
   statement: DriverStatement;
   base: Pence;
@@ -67,13 +69,15 @@ export interface DriverPayLine {
   runDays: number;
 }
 
-export async function buildDriverPayReport(db: AdminClient, input: { accountId: string; franchiseId: string | null; period: DpdPeriod }): Promise<BuiltReport> {
+/** Every driver's pay for the period, one line per person across all their FD numbers, as the Driver Pay Report states it. */
+export async function loadDriverPayLines(db: AdminClient, input: { accountId: string; franchiseId: string | null; period: DpdPeriod }): Promise<{ lines: DriverPayLine[]; complete: boolean; owed: Pence; dr: Map<string, string | null> }> {
   const { accountId, franchiseId, period } = input;
   const scope = await loadScope(db, accountId, franchiseId);
   const data = await loadPeriodData(db, { accountId, from: period.start, to: period.end, franchiseId });
   // The franchisee is not paid a day rate, so is not on the pay report. Read on its own so a missing column cannot stop the report.
-  const flags = await db.from("drivers").select("id, is_franchisee").eq("account_id", accountId);
+  const flags = await db.from("drivers").select("id, is_franchisee, dpd_driver_ref").eq("account_id", accountId);
   const franchisee = new Set(flags.error ? [] : (flags.data ?? []).filter((d) => d.is_franchisee).map((d) => d.id));
+  const dr = new Map((flags.error ? [] : (flags.data ?? [])).map((d) => [d.id, d.dpd_driver_ref ?? null] as const));
   const dayRates = data.dayRates ?? [];
 
   const byDriver = new Map<string, { franchiseId: string; earnings: typeof data.earnings }>();
@@ -89,7 +93,7 @@ export async function buildDriverPayReport(db: AdminClient, input: { accountId: 
     const rate = last ? rateOn(dayRates, driverId, last) : null;
     const rateText = !rate ? "No rate set" : (rate.basis ?? "day") === "stop" ? `${formatGBP(rate.dayRate)} a stop` : `${formatGBP(rate.dayRate)} a day`;
     return {
-      driverId, name: data.driverNames.get(driverId) ?? "Unknown driver", franchiseLabel: scope.labels.get(fid) ?? "", rateText, statement,
+      driverId, name: data.driverNames.get(driverId) ?? "Unknown driver", franchiseLabel: scope.labels.get(fid) ?? "", franchiseCount: new Set(earnings.map((e) => e.franchiseId)).size, rateText, statement,
       base: statement.days.reduce((a, d) => a + (d.breakdown?.base ?? 0), 0),
       extra: statement.days.reduce((a, d) => a + (d.breakdown?.extra ?? 0), 0),
       runDays: statement.days.filter((d) => d.breakdown?.runRate).length,
@@ -98,6 +102,35 @@ export async function buildDriverPayReport(db: AdminClient, input: { accountId: 
 
   const complete = lines.every((l) => l.statement.unpricedDates.length === 0);
   const owed = lines.reduce((a, l) => a + l.statement.total, 0);
+  return { lines, complete, owed, dr };
+}
+
+/** One line per driver for Wages to Pay: the consolidated pay, with an incomplete driver's amount marked. */
+export interface WagesLine {
+  driverId: string;
+  dr: string | null;
+  name: string;
+  franchises: number;
+  /** Amount owed. Days that could not be priced are not counted, so this is never guessed. */
+  total: Pence;
+  complete: boolean;
+}
+
+export function wagesLinesFrom(lines: DriverPayLine[], dr: Map<string, string | null>): WagesLine[] {
+  return lines.map((l) => ({
+    driverId: l.driverId,
+    dr: dr.get(l.driverId) ?? null,
+    name: l.name,
+    franchises: l.franchiseCount,
+    total: l.statement.total,
+    complete: l.statement.unpricedDates.length === 0,
+  }));
+}
+
+export async function buildDriverPayReport(db: AdminClient, input: { accountId: string; franchiseId: string | null; period: DpdPeriod }): Promise<BuiltReport> {
+  const { accountId, franchiseId, period } = input;
+  const scope = await loadScope(db, accountId, franchiseId);
+  const { lines, complete, owed } = await loadDriverPayLines(db, { accountId, franchiseId, period });
   const plus = (v: string, ok: boolean) => (ok ? v : `${v} +`);
 
   const generatedAt = new Date().toISOString();

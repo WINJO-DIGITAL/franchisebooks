@@ -9,16 +9,13 @@ import { franchiseLabel, getContext } from "@/lib/context";
 import { addMonths, formatMonth, formatUkDateTime, isISODate, monthOf } from "@/lib/dates";
 import { lastCompletedPeriod, periodContaining, periodLabel, previousPeriod, recentPeriods, type DpdPeriod } from "@/lib/finance/periods";
 import { REPORT_KIND_LABEL } from "@/lib/reports/end-of-period";
-import { loadStatementRows, wagesToPay } from "@/lib/statements/rows";
+import { loadDriverPayLines, wagesLinesFrom } from "@/lib/reports/end-of-period";
+import { loadStatementRows } from "@/lib/statements/rows";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { formatGBP, fromDb } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Reports" };
 
-/** The DR number (DPD driver reference) for each driver on the account. */
-async function loadDrRefs(ctx: Awaited<ReturnType<typeof getContext>>): Promise<Map<string, string | null>> {
-  const { data } = await ctx.supabase.from("drivers").select("id, dpd_driver_ref").eq("account_id", ctx.accountId);
-  return new Map((data ?? []).map((d) => [d.id, d.dpd_driver_ref]));
-}
 
 interface Totals {
   scopeLabel?: string;
@@ -60,7 +57,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const statementPeriods = [closed, previousPeriod(closed), previousPeriod(previousPeriod(closed)), previousPeriod(previousPeriod(previousPeriod(closed)))];
   const statementPeriod = isISODate(params.statements) && params.statements <= closed.start ? periodContaining(params.statements) : closed;
   const statements = ctx.canWrite ? await loadStatementRows(ctx, statementPeriod) : null;
-  const wages = statements ? wagesToPay(statements.rows, await loadDrRefs(ctx)) : null;
+  // Wages to Pay uses the same per-driver calculation as the Driver Pay Report, so the two always agree.
+  const payLines = ctx.canWrite ? await loadDriverPayLines(createAdminClient(), { accountId: ctx.accountId, franchiseId: ctx.franchiseId, period: statementPeriod }) : null;
+  const wages = payLines ? { lines: wagesLinesFrom(payLines.lines, payLines.dr), total: payLines.owed, complete: payLines.complete } : null;
 
   return (
     <>
