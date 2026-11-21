@@ -230,12 +230,12 @@ export default async function DashboardPage() {
                   ))}
                 </ul>
                 <div className="border-t-2 border-line-strong bg-sunken/50 px-4 py-3.5">
-                  <p className="font-semibold">Total</p>
-                  <div className="mt-2 grid grid-cols-4 gap-2 text-sm">
-                    <div><p className="num font-medium text-good">{formatGBP(franchiseTotals.income, { signed: true })}</p></div>
-                    <div><p className="num font-medium text-bad">−{formatGBP(franchiseTotals.wages)}</p></div>
-                    <div><p className="num font-medium text-bad">−{formatGBP(franchiseTotals.costs)}</p></div>
-                    <div><p className={`num font-semibold ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit)}</p></div>
+                  <p className="text-sm font-semibold">Total, {franchiseRows.length} franchises</p>
+                  <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                    <div><p className="text-xs text-muted">Income</p><p className="num font-semibold text-good">{formatGBP(franchiseTotals.income, { signed: true })}</p></div>
+                    <div><p className="text-xs text-muted">Wages</p><p className="num font-semibold text-bad">−{formatGBP(franchiseTotals.wages)}</p></div>
+                    <div><p className="text-xs text-muted">Costs</p><p className="num font-semibold text-bad">−{formatGBP(franchiseTotals.costs)}</p></div>
+                    <div><p className="text-xs text-muted">Profit</p><p className={`num font-semibold ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit)}</p></div>
                   </div>
                 </div>
               </Panel>
