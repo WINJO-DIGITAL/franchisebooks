@@ -13,7 +13,7 @@ import { addDays, formatUkDate, formatUkDateLong } from "@/lib/dates";
 import { DPD_PERIOD_DAYS, periodContaining, periodLabel } from "@/lib/finance/periods";
 import { buildDriverDays, totalAdjustments } from "@/lib/finance/calc";
 import { dayRateFromRow, readDayRateRows } from "@/lib/data/day-rates";
-import { wageForDriver } from "@/lib/finance/wages";
+import { dayInARowByDate, priceDay, rateOn, wageForDriver } from "@/lib/finance/wages";
 import { adjustmentLabel } from "@/lib/labels";
 import { formatGBP, fromDb, percentChange, perUnit, sumPence } from "@/lib/money";
 import type { Tone } from "@/components/ui/bits";
@@ -69,6 +69,12 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const monthWage = wageForDriver(id, worked.map((d) => d.date), dayRates, new Map(worked.map((d) => [d.date, d.stops ?? null])), priorDays.map((d) => d.date));
   const currentRate = dayRates.find((r) => r.effectiveFrom <= ctx.today) ?? null;
 
+  // The driver's pay for their latest worked day in this pay period: the day rate, plus any per-stop extra.
+  const latestWorked = [...worked].sort((a, b) => a.date.localeCompare(b.date)).at(-1) ?? null;
+  const inARow = dayInARowByDate(worked.map((d) => d.date), priorDays.map((d) => d.date));
+  const latestRate = latestWorked ? rateOn(dayRates, id, latestWorked.date) : null;
+  const latestPay = latestWorked && latestRate ? priceDay(latestWorked.date, latestRate, latestWorked.stops ?? null, inARow.get(latestWorked.date) ?? 1) : null;
+
   // Stop consistency: each day against the driver's own previous working days.
   const conflictDates = new Set(
     (conflicts.data ?? []).map((c) => (c.payload as { incoming?: { driver_id?: string; report_date?: string } } | null)?.incoming).filter((i) => i?.driver_id === id).map((i) => i!.report_date),
@@ -102,6 +108,23 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
           </>
         ) : null}
       />
+
+      {latestWorked ? (
+        <Section title={`Pay on ${formatUkDateLong(latestWorked.date)}`} description="What this driver is paid for their last day worked in this pay period: the day rate, plus any extra for stops over the threshold. DPD earnings for the same day are shown alongside.">
+          <Panel>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
+              <Stat size="lg" label="Driver pay" value={latestPay ? formatGBP(latestPay.pay) : "No rate"} sub={latestPay ? undefined : "No rate in force, or no stop count for this day"} />
+              <Stat label="DPD earnings" value={formatGBP(latestWorked.originalEarnings)} sub="For the same day" />
+              <Stat label="Stops" value={latestWorked.stops == null ? "—" : latestWorked.stops.toLocaleString("en-GB")} />
+              <Stat label="Extra for stops" value={latestPay && latestPay.extra > 0 ? formatGBP(latestPay.extra, { signed: true }) : "None"} sub={latestPay && latestPay.extraStops > 0 ? `${latestPay.extraStops} stops over the threshold` : undefined} />
+            </div>
+          </Panel>
+        </Section>
+      ) : (
+        <Section title="Pay on the Last Day Worked">
+          <EmptyState title="No Days Worked This Pay Period">Pay for the last day worked appears here once a DPD report naming this driver has been imported.</EmptyState>
+        </Section>
+      )}
 
       <Section title={periodLabel(period)} description="Pay period to date">
         <Panel>
