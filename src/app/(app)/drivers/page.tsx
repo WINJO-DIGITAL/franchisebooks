@@ -55,11 +55,11 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const summary = summarisePeriod(data).combined;
   const routeIncome = summary.earningsMeaning === "route_income";
   // Per driver this pay period: income (DPD payments), wage (day rate × days) and days worked, across all franchises.
-  const byDriver = new Map<string, { income: number; wage: number; wageComplete: boolean; days: number }>();
+  const byDriver = new Map<string, { income: number; wage: number; wageComplete: boolean; days: number; stops: number }>();
   for (const d of summary.drivers) {
     if (!d.driverId) continue;
-    const e = byDriver.get(d.driverId) ?? { income: 0, wage: 0, wageComplete: true, days: 0 };
-    byDriver.set(d.driverId, { income: e.income + d.originalEarnings, wage: e.wage + (d.wage ?? 0), wageComplete: e.wageComplete && d.wageComplete, days: e.days + d.daysWorked });
+    const e = byDriver.get(d.driverId) ?? { income: 0, wage: 0, wageComplete: true, days: 0, stops: 0 };
+    byDriver.set(d.driverId, { income: e.income + d.originalEarnings, wage: e.wage + (d.wage ?? 0), wageComplete: e.wageComplete && d.wageComplete, days: e.days + d.daysWorked, stops: e.stops + d.stops });
   }
   const currentRate = (driverId: string) => {
     let best: { from: string; rate: number } | null = null;
@@ -170,6 +170,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                   <th className="hidden sm:table-cell">Franchise</th>
                   <th className="hidden sm:table-cell">Route</th>
                   <th className="r">Days</th>
+                  <th className="r hidden sm:table-cell">Stops</th>
                   <th className="r">Income</th>
                   <th className="r hidden sm:table-cell">Day Rate</th>
                   <th className="r">Wage</th>
@@ -191,6 +192,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                       <td className="hidden sm:table-cell">{now.length ? now.map((a) => franchiseName.get(a.franchise_id) ?? "—").join(", ") : <span className="text-muted">Not assigned</span>}</td>
                       <td className="num hidden sm:table-cell">{now.map((a) => a.route).filter(Boolean).join(" / ") || <span className="text-muted">—</span>}</td>
                       <td className="r num">{figures?.days ?? 0}</td>
+                      <td className="r num hidden sm:table-cell">{figures ? figures.stops.toLocaleString("en-GB") : <span className="text-muted">—</span>}</td>
                       <td className="r num font-medium">{figures ? formatGBP(figures.income) : <span className="text-muted">—</span>}</td>
                       <td className="r num hidden sm:table-cell">{rate == null ? <span className="text-muted">Not set</span> : formatGBP(rate)}</td>
                       <td className="r num">

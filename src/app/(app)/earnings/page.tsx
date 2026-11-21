@@ -75,32 +75,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
             )}
           </Panel>
         </Section>
-        {rows.length === 0 && (!routeIncome || data.otherPayments.length === 0) ? <EmptyState title="No Earnings for This Pay Period" /> : routeIncome ? (
-          <TableWrap>
-            <table className="ledger">
-              <thead>
-                <tr>
-                  <th>Driver</th><th>Route</th><th className="r">Stops</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...rows].filter((d) => d.daysWorked > 0).sort((a, b) => b.originalEarnings - a.originalEarnings).map((d) => (
-                  <tr key={d.key}>
-                    <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise && d.franchise ? <span className="block text-xs font-normal text-muted">{d.franchise}</span> : null}</td>
-                    <td className="num">{d.routes || "—"}</td>
-                    <td className="r num">{d.stops.toLocaleString("en-GB")}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td>Total</td><td />
-                  <td className="r num">{t.stops.toLocaleString("en-GB")}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </TableWrap>
-        ) : (
+        {rows.length === 0 && (!routeIncome || data.otherPayments.length === 0) ? <EmptyState title="No Earnings for This Pay Period" /> : routeIncome ? null : (
           <TableWrap>
             <table className="ledger">
               <thead>
