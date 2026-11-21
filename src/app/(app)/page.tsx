@@ -157,7 +157,7 @@ export default async function DashboardPage() {
                 <Stat label="Income" size="lg" value={m.revenueStatus === "unavailable" ? "—" : formatGBP(m.revenueTotal)} sub={m.otherDpdPayments > 0 ? `DPD payments + ${formatGBP(m.otherDpdPayments)} invoice extras` : "From DPD payments"} />
                 <Stat
                   label="Wages"
-                  value={m.wagesComplete ? formatGBP(m.wages) : `${formatGBP(m.wages)}+`}
+                  value={m.wagesComplete ? formatGBP(m.wages) : "—"}
                   sub={m.wagesComplete ? "Day rate × days worked" : undefined}
                 />
                 <Stat
