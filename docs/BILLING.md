@@ -98,3 +98,10 @@ Service emails (a failed nightly read, a failed payment, a closure request) are 
 * A subscription that is `past_due` keeps access while Stripe retries the card; `canceled` and `unpaid` do not.
 * If a customer's DPD login is refused, or DPD asks for a verification code, the connecting screen says so and offers *Try again*. The sync never tries to get round a verification step.
 * Only the current four-week period is read on first connect. Earlier periods are not back-filled automatically.
+
+## Plan changes
+- Max features are checked against the account's plan each time they are used (`currentPlan` for pages, `accountPlan` for the worker). Nothing is switched on or copied when an account upgrades, and nothing has to be removed by hand when it downgrades: the next page view or job sees the new plan.
+- Upgrades and downgrades reach the app through the Stripe webhook (`customer.subscription.updated` and `.deleted`), which updates `user_billing.plan`.
+- On Max only: history reads (queued each night and when a new franchise appears), Insights pages, the Sliding Scale Report, the Sliding Scale Discrepancy report and its automatic generation.
+- A history read queued while the account was on Max is not run after a downgrade; it is recorded as blocked, so it is not counted as read and the history is filled in again if the account upgrades later.
+- Reports and history already stored stay in the account. Only access to Max features stops.

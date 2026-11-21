@@ -32,6 +32,11 @@ export interface RunContext {
 async function execute(db: AdminClient, job: Job, ctx: RunContext): Promise<JobOutcome> {
   switch (job.job_type as JobType) {
     case "dpd_sync": {
+      // A history read queued while the account was on Max does not run after it has moved to Essential. "blocked" is not
+      // counted as read, so the history is filled in again if the account upgrades later.
+      if ((job.payload as { history?: unknown } | null)?.history === true && (await accountPlan(db, job.account_id)) !== "max") {
+        return { status: "blocked", message: "Not run: the history read is part of the Max plan, and this account is on Essential.", result: { skippedBecause: "essential_plan" } };
+      }
       if (!ctx.portalPool) throw new PortalError("config", "runner", "DPD sync can only run on the background worker.");
       const { runDpdSyncJob } = await import("@/lib/dpd/sync");
       return runDpdSyncJob(db, job, ctx.portalPool);
@@ -96,7 +101,6 @@ async function execute(db: AdminClient, job: Job, ctx: RunContext): Promise<JobO
       const extras: string[] = [];
       if (period) {
         const { generateExtraReport } = await import("@/lib/reports/generate");
-        const { accountPlan } = await import("@/lib/billing/plan");
         const isMax = (await accountPlan(db, job.account_id)) === "max";
         const franchiseIds = (franchises ?? []).map((f) => f.id);
         const plan: { kind: "driver_pay" | "profit_loss" | "discrepancy"; scopes: (string | null)[] }[] = [
