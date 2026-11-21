@@ -80,7 +80,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
             <table className="ledger">
               <thead>
                 <tr>
-                  <th>Driver</th><th>Route</th><th className="r">Stops</th>
+                  <th>Driver</th><th>Route</th><th className="r">Stops</th><th className="r">Income</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,6 +89,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                     <td className="font-medium">{d.driverId ? <Link href={`/drivers/${d.driverId}`} className="hover:underline">{d.name}</Link> : <>{d.name} <Badge tone="warn">Not registered</Badge></>}{showFranchise && d.franchise ? <span className="block text-xs font-normal text-muted">{d.franchise}</span> : null}</td>
                     <td className="num">{d.routes || "—"}</td>
                     <td className="r num">{d.stops.toLocaleString("en-GB")}</td>
+                    <td className="r num font-semibold">{formatGBP(d.originalEarnings)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -96,6 +97,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                 <tr>
                   <td>Total</td><td />
                   <td className="r num">{t.stops.toLocaleString("en-GB")}</td>
+                  <td className="r num">{formatGBP(rows.reduce((n, d) => n + (d.daysWorked > 0 ? d.originalEarnings : 0), 0))}</td>
                 </tr>
               </tfoot>
             </table>
