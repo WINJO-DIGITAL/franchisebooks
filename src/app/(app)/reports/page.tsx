@@ -9,11 +9,16 @@ import { franchiseLabel, getContext } from "@/lib/context";
 import { addMonths, formatMonth, formatUkDateTime, isISODate, monthOf } from "@/lib/dates";
 import { lastCompletedPeriod, periodContaining, periodLabel, previousPeriod, recentPeriods, type DpdPeriod } from "@/lib/finance/periods";
 import { REPORT_KIND_LABEL } from "@/lib/reports/end-of-period";
-import { planDriverStatements } from "@/lib/statements/generate";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { loadStatementRows, wagesToPay } from "@/lib/statements/rows";
 import { formatGBP, fromDb } from "@/lib/money";
 
 export const metadata: Metadata = { title: "Reports" };
+
+/** The DR number (DPD driver reference) for each driver on the account. */
+async function loadDrRefs(ctx: Awaited<ReturnType<typeof getContext>>): Promise<Map<string, string | null>> {
+  const { data } = await ctx.supabase.from("drivers").select("id, dpd_driver_ref").eq("account_id", ctx.accountId);
+  return new Map((data ?? []).map((d) => [d.id, d.dpd_driver_ref]));
+}
 
 interface Totals {
   scopeLabel?: string;
@@ -55,6 +60,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const statementPeriods = [closed, previousPeriod(closed), previousPeriod(previousPeriod(closed)), previousPeriod(previousPeriod(previousPeriod(closed)))];
   const statementPeriod = isISODate(params.statements) && params.statements <= closed.start ? periodContaining(params.statements) : closed;
   const statements = ctx.canWrite ? await loadStatementRows(ctx, statementPeriod) : null;
+  const wages = statements ? wagesToPay(statements.rows, await loadDrRefs(ctx)) : null;
 
   return (
     <>
@@ -80,6 +86,37 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <p className="mt-3 text-sm text-muted">The Driver Pay Report, Profit and Loss{showScaleReport ? " and Sliding Scale Discrepancy" : ""} are for a DPD four-week period, and are also made automatically the evening after each period closes. Reports use the figures held at the moment you press the button. Generating again later creates a new copy; earlier copies are kept.</p>
         </Panel>
       </Section>
+
+      {wages && wages.lines.length > 0 ? (
+        <Section title="Wages to Pay" description="What you pay each driver for this pay period, with every franchise added together so each person is paid once. Per-franchise statements are below.">
+          <TableWrap>
+            <table className="ledger" data-testid="wages-to-pay">
+              <thead><tr><th>Driver</th><th>DR Number</th><th className="r hidden sm:table-cell">Franchises</th><th className="r">Amount to Pay</th></tr></thead>
+              <tbody>
+                {wages.lines.map((l) => (
+                  <tr key={l.driverId}>
+                    <td className="font-medium">{l.name}</td>
+                    <td className="num">{l.dr ?? "—"}</td>
+                    <td className="r num hidden sm:table-cell">{l.franchises}</td>
+                    <td className="r num font-semibold">{l.total == null ? <span className="font-normal text-muted">Incomplete</span> : formatGBP(l.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-line-strong font-semibold">
+                  <td>Total, {wages.lines.length} {wages.lines.length === 1 ? "driver" : "drivers"}</td><td />
+                  <td className="hidden sm:table-cell" />
+                  <td className="r num">{wages.complete ? formatGBP(wages.total) : <span className="font-normal text-muted">Incomplete</span>}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </TableWrap>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <a className={buttonClass("secondary", "sm")} href={`/api/export/wages?period=${statementPeriod.start}`}>Download Spreadsheet</a>
+            {!wages.complete ? <span className="text-sm text-muted">Some drivers have an incomplete statement, so the total is not final until those are fixed.</span> : null}
+          </div>
+        </Section>
+      ) : null}
 
       {statements ? (
         <Section title="Driver Statements" description="A one-page statement for each driver, for each DPD pay period, made automatically when the period closes. Drivers can download their own from their page.">
@@ -175,37 +212,4 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   );
 }
 
-interface StatementRow {
-  driverId: string;
-  franchiseId: string;
-  name: string;
-  id: string | null;
-  number: string | null;
-  title: string | null;
-  total: number | null;
-  emailedAt: string | null;
-  reason: string | null;
-}
 
-/** Each driver who worked in the period, with their stored statement or why there is none. */
-async function loadStatementRows(ctx: Awaited<ReturnType<typeof getContext>>, period: DpdPeriod): Promise<{ rows: StatementRow[]; manyFranchises: boolean }> {
-  const targets = ctx.franchiseId ? ctx.franchises.filter((f) => f.id === ctx.franchiseId) : ctx.franchises.filter((f) => f.isActive);
-  const { data: stored } = await ctx.supabase.from("driver_statements").select("id, driver_id, franchise_id, statement_no, title, totals, emailed_at").eq("period_start", period.start);
-  const admin = createAdminClient();
-  const rows: StatementRow[] = [];
-  for (const f of targets) {
-    const plans = await planDriverStatements(admin, { accountId: ctx.accountId, franchiseId: f.id, period });
-    for (const plan of plans) {
-      const file = (stored ?? []).find((s) => s.franchise_id === f.id && s.driver_id === plan.driver.id);
-      const payable = (file?.totals as { totalPayable?: number } | null)?.totalPayable;
-      rows.push({
-        driverId: plan.driver.id, franchiseId: f.id, name: plan.driver.name,
-        id: file?.id ?? null, number: file?.statement_no ?? null, title: file?.title ?? null,
-        total: payable != null ? fromDb(payable) : plan.build.ok ? plan.build.content.totalPayable : null,
-        emailedAt: file?.emailed_at ?? null,
-        reason: plan.build.ok ? null : plan.build.reason,
-      });
-    }
-  }
-  return { rows, manyFranchises: targets.length > 1 };
-}

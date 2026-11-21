@@ -5,6 +5,7 @@ import { periodFromParam } from "@/lib/finance/periods";
 import { summarisePeriod } from "@/lib/finance/calc";
 import { adjustmentLabel, SOURCE_LABEL } from "@/lib/labels";
 import { csvMoney, toCsv } from "@/lib/reports/csv";
+import { loadStatementRows, wagesToPay } from "@/lib/statements/rows";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       c.date, c.franchiseId ? (franchises.get(c.franchiseId) ?? "") : "", c.kind === "fuel" ? "Fuel" : "Expense", c.categoryName, c.description ?? "", c.supplier ?? "", c.vehicleRegistration ?? "", c.reference ?? "",
       c.allocation.scope === "driver" ? (names.get(c.allocation.driverId) ?? "Driver") : c.allocation.scope === "franchise" ? "Business cost" : "Unallocated", SOURCE_LABEL[c.source] ?? c.source, csvMoney(c.amount),
     ]);
+  } else if (kind === "wages") {
+    // Wages to pay: the same figures as the Reports page, one line per driver across all their FD numbers.
+    if (!ctx.canWrite) return new NextResponse("Forbidden", { status: 403 });
+    const { rows: statementRows } = await loadStatementRows(ctx, period);
+    const { data: driverRefs } = await ctx.supabase.from("drivers").select("id, dpd_driver_ref").eq("account_id", ctx.accountId);
+    const wages = wagesToPay(statementRows, new Map((driverRefs ?? []).map((d) => [d.id, d.dpd_driver_ref])));
+    header = ["DR Number", "Driver", "Franchises", "Amount to pay (GBP)"];
+    rows = wages.lines.map((l) => [l.dr ?? "", l.name, l.franchises, l.total == null ? "Incomplete" : csvMoney(l.total)]);
+    rows.push(["", "Total", "", wages.complete ? csvMoney(wages.total) : "Incomplete"]);
   } else {
     return new NextResponse("Not found", { status: 404 });
   }
