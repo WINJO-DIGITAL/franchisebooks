@@ -166,7 +166,7 @@ export default async function DashboardPage() {
                 );
                 return (
                   <dl className="divide-y divide-line">
-                    {m.revenueStatus === "unavailable" ? null : row("Income", formatGBP(income), "text-good", "")}
+                    {m.revenueStatus === "unavailable" ? null : row("Income", formatGBP(income, { signed: true }), "text-good", "")}
                     <div className="flex items-baseline justify-between gap-4 py-2.5">
                       <dt className="text-ink-soft">
                         Wages
@@ -228,7 +228,7 @@ export default async function DashboardPage() {
                     <li key={`m-${f.franchiseId}`} className="px-4 py-3.5">
                       <p className="font-medium">{franchiseName.get(f.franchiseId!) ?? "Franchise"}</p>
                       <div className="mt-2 grid grid-cols-4 gap-2 text-sm">
-                        <div><p className="text-xs text-muted">Income</p><p className="num font-medium text-good">{formatGBP(f.incomeFromDpd)}</p></div>
+                        <div><p className="text-xs text-muted">Income</p><p className="num font-medium text-good">{formatGBP(f.incomeFromDpd, { signed: true })}</p></div>
                         <div><p className="text-xs text-muted">Wages</p><p className="num font-medium text-bad">−{formatGBP(f.wages)}</p></div>
                         <div><p className="text-xs text-muted">Costs</p><p className="num font-medium text-bad">−{formatGBP(f.fuel + f.otherExpenses)}</p></div>
                         <div><p className="text-xs text-muted">Profit</p><p className={`num font-semibold ${f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses < 0 ? "text-bad" : "text-good"}`}>{formatGBP(f.incomeFromDpd - f.wages - f.fuel - f.otherExpenses)}</p></div>
@@ -239,7 +239,7 @@ export default async function DashboardPage() {
                 <div className="border-t-2 border-line-strong bg-sunken/50 px-4 py-3.5">
                   <p className="font-semibold">Total</p>
                   <div className="mt-2 grid grid-cols-4 gap-2 text-sm">
-                    <div><p className="num font-medium text-good">{formatGBP(franchiseTotals.income)}</p></div>
+                    <div><p className="num font-medium text-good">{formatGBP(franchiseTotals.income, { signed: true })}</p></div>
                     <div><p className="num font-medium text-bad">−{formatGBP(franchiseTotals.wages)}</p></div>
                     <div><p className="num font-medium text-bad">−{formatGBP(franchiseTotals.costs)}</p></div>
                     <div><p className={`num font-semibold ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit)}</p></div>
@@ -264,7 +264,7 @@ export default async function DashboardPage() {
                         return (
                           <tr key={f.franchiseId}>
                             <td className="font-medium">{franchiseName.get(f.franchiseId!) ?? "Franchise"}</td>
-                            <td className="r num text-good">{formatGBP(f.incomeFromDpd)}</td>
+                            <td className="r num text-good">{formatGBP(f.incomeFromDpd, { signed: true })}</td>
                             <td className="r num text-bad">−{formatGBP(f.wages)}</td>
                             <td className="r num text-bad">−{formatGBP(f.fuel + f.otherExpenses)}</td>
                             <td className={`r num font-semibold ${profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(profit)}</td>
@@ -275,7 +275,7 @@ export default async function DashboardPage() {
                     <tfoot>
                       <tr className="border-t-2 border-line-strong font-semibold">
                         <td>Total</td>
-                        <td className="r num text-good">{formatGBP(franchiseTotals.income)}</td>
+                        <td className="r num text-good">{formatGBP(franchiseTotals.income, { signed: true })}</td>
                         <td className="r num text-bad">−{formatGBP(franchiseTotals.wages)}</td>
                         <td className="r num text-bad">−{formatGBP(franchiseTotals.costs)}</td>
                         <td className={`r num ${franchiseTotals.profit < 0 ? "text-bad" : "text-good"}`}>{formatGBP(franchiseTotals.profit)}</td>
@@ -362,7 +362,7 @@ export default async function DashboardPage() {
                     <td className="r num hidden sm:table-cell">{d.daysWorked}</td>
                     <td className="r num hidden sm:table-cell">{d.avgStopsPerDayX10 == null ? "—" : (d.avgStopsPerDayX10 / 10).toFixed(1)}</td>
                     <td className="r num hidden sm:table-cell">{formatGBP(d.earningsPerStop)}</td>
-                    <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base ${routeIncome ? "text-good" : ""}`}>{formatGBP(d.originalEarnings)}</td>
+                    <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base ${routeIncome ? "text-good" : ""}`}>{formatGBP(d.originalEarnings, { signed: true })}</td>
                     {routeIncome ? null : <td className="r num">{d.adjustmentsNet === 0 ? "—" : formatGBP(d.adjustmentsNet, { signed: true })}</td>}
                     <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight font-semibold sm:text-base ${routeIncome ? "text-bad" : ""}`}>
                       {routeIncome ? (d.wageComplete && d.wage != null ? `−${formatGBP(d.wage)}` : <span className="font-normal text-muted">No rate</span>) : formatGBP(d.finalEarnings)}
@@ -380,7 +380,7 @@ export default async function DashboardPage() {
                   <tr className="border-t-2 border-line-strong font-semibold">
                     <td>Total, {rankedDrivers.length} {rankedDrivers.length === 1 ? "driver" : "drivers"}</td>
                     <td className="r num hidden sm:table-cell" colSpan={3} />
-                    <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-good">{formatGBP(totalIncomeAll)}</td>
+                    <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-good">{formatGBP(totalIncomeAll, { signed: true })}</td>
                     <td className="r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base text-bad">−{formatGBP(totalWageAll)}{m.wagesComplete ? "" : "+"}</td>
                     <td className={`r num whitespace-nowrap text-[0.8125rem] tracking-tight sm:text-base ${everyWageKnown ? ((totalIncomeAll - totalWageAll) < 0 ? "text-bad" : "text-good") : ""}`}>{everyWageKnown ? formatGBP(totalIncomeAll - totalWageAll) : <span className="font-normal text-muted">—</span>}</td>
                   </tr>
