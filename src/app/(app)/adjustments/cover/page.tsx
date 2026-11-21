@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CoverWizard } from "@/components/adjustments/wizards";
+import { UpgradeToMax } from "@/components/insights/shell";
 import { EmptyState, PageHeader } from "@/components/ui/bits";
 import { LinkButton } from "@/components/ui/button";
+import { currentPlan } from "@/lib/billing/plan";
 import { getContext } from "@/lib/context";
 import { loadWizardOptions } from "@/lib/data/wizard";
 
@@ -13,6 +15,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ o
   const params = await searchParams;
   const ctx = await getContext();
   if (!ctx.canWrite) redirect("/adjustments");
+  if ((await currentPlan(ctx.supabase)) !== "max") {
+    return (
+      <div className="max-w-2xl">
+        <p className="mb-3 text-sm"><Link href="/adjustments" className="text-accent hover:underline">← Adjustments</Link></p>
+        <PageHeader title="Record Driver Cover" description="Record that one driver covered another's work, and how pay should be handled." />
+        <UpgradeToMax isOwner={ctx.isOwner} feature="Driver Cover" />
+      </div>
+    );
+  }
   const options = await loadWizardOptions(ctx);
   return (
     <div className="max-w-2xl">

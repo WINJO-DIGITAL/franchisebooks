@@ -5,6 +5,7 @@ import { Badge, EmptyState, PageHeader, Panel, Section, Stat, TableWrap } from "
 import { buttonClass, LinkButton } from "@/components/ui/button";
 import { ReasonDialog } from "@/components/ui/reason-dialog";
 import { cancelCover, reverseAdjustment } from "@/lib/actions/adjustments";
+import { currentPlan } from "@/lib/billing/plan";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadAdjustments, loadCovers, loadDriverNames } from "@/lib/data/period";
 import { formatUkDate, formatUkDateTime } from "@/lib/dates";
@@ -24,7 +25,9 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
   const period = periodFromParam(params.period, ctx.today);
   const { start, end } = period;
   const filter = { accountId: ctx.accountId, from: start, to: end, franchiseId: ctx.franchiseId, hiddenFranchiseIds: ctx.hiddenFranchiseIds };
-  const [adjustments, covers, names] = await Promise.all([loadAdjustments(ctx.supabase, filter), loadCovers(ctx.supabase, filter), loadDriverNames(ctx.supabase, ctx.accountId)]);
+  const plan = await currentPlan(ctx.supabase);
+  const maxPlan = plan === "max";
+  const [adjustments, covers, names] = await Promise.all([loadAdjustments(ctx.supabase, filter), maxPlan ? loadCovers(ctx.supabase, filter) : Promise.resolve([]), loadDriverNames(ctx.supabase, ctx.accountId)]);
   const totals = totalAdjustments(adjustments);
   const reversed = new Set(adjustments.filter((a) => a.reversesId).map((a) => a.reversesId as string));
   const franchiseName = new Map(ctx.franchises.map((f) => [f.id, franchiseLabel(f)]));
@@ -36,7 +39,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
       <PageHeader
         title="Adjustments"
         description="Manual changes to driver pay. The original DPD figures are never altered: every adjustment is a separate, permanent entry."
-        actions={ctx.canWrite ? (<><LinkButton href="/adjustments/new">Add Pay Adjustment</LinkButton><LinkButton href="/adjustments/cover" variant="secondary">Record Driver Cover</LinkButton></>) : null}
+        actions={ctx.canWrite ? (<><LinkButton href="/adjustments/new">Add Pay Adjustment</LinkButton>{maxPlan ? <LinkButton href="/adjustments/cover" variant="secondary">Record Driver Cover</LinkButton> : null}</>) : null}
       />
       <PeriodNav period={period} today={ctx.today} hrefFor={(p) => `/adjustments?period=${p}`} exportHref={`/api/export/adjustments?period=${period.start}`} />
 
@@ -95,6 +98,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
         )}
       </Section>
 
+      {maxPlan ? (
       <Section title="Driver Cover" description="Who covered whose work, and the pay allocation you agreed.">
         {covers.length === 0 ? <EmptyState title={`No cover recorded in ${periodLabel(period)}`} /> : (
           <TableWrap>
@@ -129,6 +133,7 @@ export default async function AdjustmentsPage({ searchParams }: { searchParams: 
           </TableWrap>
         )}
       </Section>
+      ) : null}
     </>
   );
 }

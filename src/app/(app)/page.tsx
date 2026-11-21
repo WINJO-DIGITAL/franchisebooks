@@ -6,6 +6,7 @@ import { DailyColumns, type DailyPoint } from "@/components/daily-columns";
 import { SyncButtons } from "@/components/sync-buttons";
 import { Badge, Notice, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
 import { LinkButton } from "@/components/ui/button";
+import { currentPlan } from "@/lib/billing/plan";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadPeriodData } from "@/lib/data/period";
 import { loadSyncOverview } from "@/lib/data/status";
@@ -22,6 +23,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function DashboardPage() {
   const ctx = await getContext();
   const { supabase, accountId, franchiseId, today } = ctx;
+  const maxPlan = (await currentPlan(supabase)) === "max";
   const period = periodContaining(today);
   const monthStart = period.start;
   const trendStart = addDays(today, -13);
@@ -91,7 +93,7 @@ export default async function DashboardPage() {
       <PageHeader
         title="Dashboard"
         description={`${formatUkDateLong(today)} · ${ctx.franchise ? franchiseLabel(ctx.franchise) : "All franchises"}`}
-        actions={ctx.canWrite ? <AddMenu /> : null}
+        actions={ctx.canWrite ? <AddMenu showCover={maxPlan} /> : null}
         inline
       />
 

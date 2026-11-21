@@ -6,12 +6,11 @@ import { buttonClass } from "@/components/ui/button";
  * One "Add" control instead of three header buttons: entering data is occasional, reading the figures is daily.
  * A plain <details> element, so it needs no script and works the same on a phone.
  */
-export function AddMenu() {
+export function AddMenu({ showCover = false }: { showCover?: boolean }) {
   const items = [
     { href: "/expenses?add=1", label: "Expense", hint: "Fuel, repairs, anything you paid" },
     { href: "/adjustments/new", label: "Pay Adjustment", hint: "Add to or deduct from a driver's pay" },
-    { href: "/adjustments/cover", label: "Driver Cover", hint: "Record who covered a route" },
-  ];
+  ].concat(showCover ? [{ href: "/adjustments/cover", label: "Driver Cover", hint: "Record who covered a route" }] : []);
   return (
     <details className="group relative">
       <summary className={`${buttonClass("primary")} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}>

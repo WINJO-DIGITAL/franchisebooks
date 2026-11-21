@@ -52,6 +52,9 @@ async function main() {
   const { data: accountId, error } = await user.rpc("bootstrap_account", { p_business_name: "Demo Couriers (synthetic)", p_full_name: "Demo Owner" });
   if (error) throw new Error(error.message);
   const account = accountId as string;
+  // The demo owner is on the Max plan, so the Max-only pages (driver cover included) are part of the demo.
+  const { error: billingError } = await admin.from("user_billing").upsert({ user_id: login.data.user.id, plan: "max", status: "active" }, { onConflict: "user_id" });
+  if (billingError) throw new Error(`Could not give the demo owner the Max plan: ${billingError.message}`);
 
   const { data: franchise } = await user.from("franchises").insert({ account_id: account, fd_number: "FD-DEMO-1", name: "Synthetic North" }).select("id").single();
   const franchiseId = franchise!.id;

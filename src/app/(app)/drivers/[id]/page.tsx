@@ -6,6 +6,7 @@ import { AddAssignmentForm, EditDriverForm, EndAssignmentForm, SetDayRateForm } 
 import { Badge, EmptyState, PageHeader, Panel, Section, Stat, TableWrap } from "@/components/ui/bits";
 import { LinkButton } from "@/components/ui/button";
 import { baselineOf, classifyStops, resolveAnomalyConfig, STOP_CONSISTENCY_LABEL, type StopConsistency } from "@/lib/anomalies/detect";
+import { currentPlan } from "@/lib/billing/plan";
 import { franchiseLabel, getContext } from "@/lib/context";
 import { loadAdjustments, loadCosts, loadEarnings } from "@/lib/data/period";
 import { addDays, formatUkDate, formatUkDateLong } from "@/lib/dates";
@@ -25,6 +26,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const ctx = await getContext();
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
+  const maxPlan = (await currentPlan(ctx.supabase)) === "max";
 
   const { data: driver } = await ctx.supabase.from("drivers").select("id, display_name, dpd_driver_ref, phone, email, start_date, leaving_date, is_active, notes, vat_number, self_billing_agreement").eq("id", id).maybeSingle();
   if (!driver) notFound();
@@ -96,7 +98,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
         actions={ctx.canWrite ? (
           <>
             <LinkButton href={`/adjustments/new?driver=${id}`}>Add Pay Adjustment</LinkButton>
-            <LinkButton href={`/adjustments/cover?original=${id}`} variant="secondary">Record Driver Cover</LinkButton>
+            {maxPlan ? <LinkButton href={`/adjustments/cover?original=${id}`} variant="secondary">Record Driver Cover</LinkButton> : null}
           </>
         ) : null}
       />

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { currentPlan } from "@/lib/billing/plan";
 import { getContext } from "@/lib/context";
 import { formatUkDate } from "@/lib/dates";
 import { ADJUSTMENT_TYPES } from "@/lib/labels";
@@ -72,6 +73,7 @@ const coverSchema = z.object({
 export async function recordCover(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const ctx = await getContext();
   if (!ctx.canWrite) return fail("You do not have permission to record driver cover.");
+  if ((await currentPlan(ctx.supabase)) !== "max") return fail("Driver cover is part of the Max plan.");
   const parsed = parseForm(coverSchema, formData);
   if ("error" in parsed) return parsed.error;
   const d = parsed.data;
@@ -104,6 +106,7 @@ export async function recordCover(_prev: ActionState, formData: FormData): Promi
 export async function cancelCover(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const ctx = await getContext();
   if (!ctx.canWrite) return fail("You do not have permission to change driver cover.");
+  if ((await currentPlan(ctx.supabase)) !== "max") return fail("Driver cover is part of the Max plan.");
   const parsed = parseForm(z.object({ id: uuid, reason: z.string().min(3, "Say briefly why it is being cancelled.").max(500) }), formData);
   if ("error" in parsed) return parsed.error;
   const { error } = await ctx.supabase.rpc("cancel_driver_cover", { p_cover_id: parsed.data.id, p_reason: parsed.data.reason });
