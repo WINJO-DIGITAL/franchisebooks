@@ -104,4 +104,5 @@ Service emails (a failed nightly read, a failed payment, a closure request) are 
 - Upgrades and downgrades reach the app through the Stripe webhook (`customer.subscription.updated` and `.deleted`), which updates `user_billing.plan`.
 - On Max only: history reads (queued each night and when a new franchise appears), Insights pages, the Sliding Scale Report, the Sliding Scale Discrepancy report and its automatic generation.
 - A history read queued while the account was on Max is not run after a downgrade; it is recorded as blocked, so it is not counted as read and the history is filled in again if the account upgrades later.
+- Upgrades are charged the difference straight away (the customer portal's plan change uses "always invoice", not "create prorations"). The test-mode portal is set this way; the live portal must be set the same way before going live.
 - Reports and history already stored stay in the account. Only access to Max features stops.
