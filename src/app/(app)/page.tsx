@@ -167,29 +167,30 @@ export default async function DashboardPage() {
                 const profitBefore = income - costsBefore;
                 const profitWith = income - costsWith;
                 const bracket = (pence: number) => (pence < 0 ? `(${formatGBP(-pence)})` : formatGBP(pence));
-                const line = (label: string, value: string, opts: { strong?: boolean; indent?: boolean; tone?: string } = {}) => (
+                // Income is green and money out is red, as everywhere else on the site.
+                const line = (label: string, value: string, opts: { strong?: boolean; indent?: boolean; tone?: "good" | "bad" } = {}) => (
                   <div className="flex items-baseline justify-between gap-4 py-2">
-                    <dt className={`${opts.indent ? "pl-4" : ""} ${opts.strong ? "font-semibold text-ink" : "text-ink-soft"}`}>{label}</dt>
-                    <dd className={`num ${opts.strong ? "font-semibold text-ink" : "text-ink"} ${opts.tone ?? ""}`}>{value}</dd>
+                    <dt className={`${opts.indent ? "pl-4 text-ink-soft" : ""} ${opts.strong ? "font-semibold" : ""}`}>{label}</dt>
+                    <dd className={`num font-semibold ${opts.tone === "good" ? "text-good" : opts.tone === "bad" ? "text-bad" : "text-ink"}`}>{value}</dd>
                   </div>
                 );
                 return (
                   <div>
                     <dl className="divide-y divide-line text-[0.9375rem]">
-                      {line("Income", unavailable ? "—" : bracket(income), { strong: true })}
-                      {line("Driver wages", unavailable ? "—" : bracket(-wages), { indent: true })}
-                      {line("Fuel", unavailable ? "—" : bracket(-fuel), { indent: true })}
-                      {line("Other expenses", unavailable ? "—" : bracket(-other), { indent: true })}
-                      {line("Costs before VAT", unavailable ? "—" : bracket(-costsBefore), { strong: true })}
-                      {line("VAT on costs", unavailable ? "—" : bracket(-vatOnCosts), { indent: true })}
-                      {line("Costs with VAT", unavailable ? "—" : bracket(-costsWith), { strong: true })}
+                      {line("Income", unavailable ? "—" : bracket(income), { strong: true, tone: "good" })}
+                      {line("Driver wages", unavailable ? "—" : bracket(-wages), { indent: true, tone: "bad" })}
+                      {line("Fuel", unavailable ? "—" : bracket(-fuel), { indent: true, tone: "bad" })}
+                      {line("Other expenses", unavailable ? "—" : bracket(-other), { indent: true, tone: "bad" })}
+                      {line("Costs before VAT", unavailable ? "—" : bracket(-costsBefore), { strong: true, tone: "bad" })}
+                      {line("VAT on costs", unavailable ? "—" : bracket(-vatOnCosts), { indent: true, tone: "bad" })}
+                      {line("Costs with VAT", unavailable ? "—" : bracket(-costsWith), { strong: true, tone: "bad" })}
                     </dl>
                     <div className={`mt-4 flex items-center justify-between gap-4 rounded-lg px-4 py-4 ${!unavailable && profitBefore < 0 ? "bg-bad-soft" : "bg-good-soft"}`}>
                       <dt className="font-semibold text-ink">Profit / (Loss) before VAT</dt>
                       <dd className={`num text-3xl font-bold tracking-tight ${!unavailable && profitBefore < 0 ? "text-bad" : "text-good"}`}>{unavailable ? "—" : bracket(profitBefore)}</dd>
                     </div>
                     <dl className="mt-2 divide-y divide-line text-[0.9375rem]">
-                      {line("Profit / (Loss) with VAT", unavailable ? "—" : bracket(profitWith), { strong: true, tone: !unavailable && profitWith < 0 ? "text-bad" : "text-good" })}
+                      {line("Profit / (Loss) with VAT", unavailable ? "—" : bracket(profitWith), { strong: true, tone: !unavailable && profitWith < 0 ? "bad" : "good" })}
                     </dl>
                   </div>
                 );
