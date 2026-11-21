@@ -70,6 +70,9 @@ jobs:
           } > .env.local
       - name: Install the browser (the DPD portal tests drive a headless Chromium)
         run: npx playwright install --with-deps chromium
+      # Reading DPD invoices shells out to these two tools. The runner image no longer ships them, so install them here.
+      - name: Install the packages that read DPD invoices
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr poppler-utils
       - name: Database tests
         run: npm run test:db
       - name: Integration tests
