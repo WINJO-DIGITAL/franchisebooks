@@ -106,7 +106,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       <Section title={periodLabel(period)} description="Pay period to date">
         <Panel>
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-            <Stat size="lg" label="Pay after adjustments" value={formatGBP(monthOriginal + monthAdjust.net)} sub={`${formatGBP(monthOriginal)} DPD earnings`} />
+            <Stat size="lg" label="DPD earnings" value={formatGBP(monthOriginal)} sub="What DPD paid for this driver's routes" />
             <Stat label="Adjustments" value={monthAdjust.net === 0 ? "None" : formatGBP(monthAdjust.net, { signed: true })} sub={monthAdjust.net === 0 ? undefined : `+${formatGBP(monthAdjust.additionalPayments)} / −${formatGBP(monthAdjust.deductions)}`} />
             <Stat label="Average per working day" value={formatGBP(avgDay)} sub={change == null ? "No earlier history to compare" : `${change > 0 ? "+" : ""}${change}% vs their previous 3 pay periods`} />
             <Stat label="Fuel & expenses" value={formatGBP(sumPence(monthCosts.map((c) => c.amount)))} sub="Attributed to this driver" />
