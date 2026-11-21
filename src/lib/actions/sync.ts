@@ -199,7 +199,7 @@ export async function generateReport(_prev: ActionState, formData: FormData): Pr
       const made = await generateExtraReport(createAdminClient(), { accountId: ctx.accountId, kind: type, franchiseId: parsed.data.franchiseId, period, trigger: "manual", userId: ctx.userId });
       if (!made) return fail(type === "discrepancy" ? "Choose this franchise's sliding scale in Settings first, so there is a scale to check against." : "This report is not available yet. Try again shortly.");
       revalidatePath("/reports");
-      return ok(`${REPORT_KIND_LABEL[type]} generated for ${periodLabel(period)}.`, { id: made.id });
+      return ok(`${REPORT_KIND_LABEL[type]} generated for ${periodLabel(period)}.`, { id: made.id, type });
     } catch (error) {
       return unexpectedFailure(error, "The report could not be generated.");
     }
@@ -209,7 +209,7 @@ export async function generateReport(_prev: ActionState, formData: FormData): Pr
       accountId: ctx.accountId, month, period, franchiseId: parsed.data.franchiseId, trigger: "manual", userId: ctx.userId,
     });
     revalidatePath("/reports");
-    return ok(`Report generated for ${period ? periodLabel(period) : formatMonth(month)}.`, { id: report.id });
+    return ok(`Report generated for ${period ? periodLabel(period) : formatMonth(month)}.`, { id: report.id, type: "period" });
   } catch (error) {
     return unexpectedFailure(error, "The report could not be generated.");
   }
