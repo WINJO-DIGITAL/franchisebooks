@@ -1,0 +1,62 @@
+name: Database backup
+
+# A full copy of the live database every day, encrypted, kept in GitHub's artifact storage for 14 days. The free Supabase plan
+# keeps no backups of its own. The copy holds customer data and login secrets, so it is always encrypted before it is stored.
+# To restore, see docs/BACKUP.md.
+on:
+  schedule:
+    - cron: "15 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: database-backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Copy and encrypt the database
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check the secrets are set
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "SUPABASE_DB_URL and BACKUP_PASSPHRASE must both be set as repository secrets." >&2
+            exit 1
+          fi
+
+      # pg_dump must be the same major version as the database (17), so it runs from the matching Postgres image.
+      - name: Dump the database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p backup
+          docker run --rm -e PGURL="$SUPABASE_DB_URL" postgres:17 \
+            sh -c 'pg_dump --format=custom --no-owner --no-privileges --schema=public --schema=auth --schema=app_private --dbname="$PGURL"' \
+            > backup/database.dump
+          test -s backup/database.dump || { echo "The dump is empty." >&2; exit 1; }
+          ls -l backup/database.dump
+
+      - name: Encrypt the dump
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:BACKUP_PASSPHRASE \
+            -in backup/database.dump -out backup/database.dump.enc
+          rm backup/database.dump
+          sha256sum backup/database.dump.enc > backup/database.dump.enc.sha256
+          ls -l backup
+
+      - name: Keep the encrypted copy for 14 days
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-backup-${{ github.run_id }}-${{ github.run_attempt }}
+          path: backup/
+          retention-days: 14
+          if-no-files-found: error
