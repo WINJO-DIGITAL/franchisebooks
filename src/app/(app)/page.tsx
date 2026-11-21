@@ -127,17 +127,17 @@ export default async function DashboardPage() {
         <Panel>
           {routeIncome ? (
             <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-              <Stat size="lg" label="Income" value={formatGBP(daySummary.incomeFromDpd)} sub="From DPD payments" />
+              <Stat size="lg" tone="good" label="Income" value={formatGBP(daySummary.incomeFromDpd, { signed: true })} sub="From DPD payments" />
               <Stat label="Drivers working" value={String(daySummary.driverCount)} />
               <Stat label="Stops" value={daySummary.stops.toLocaleString("en-GB")} />
               <Stat label="Parcels" value={daySummary.parcels.toLocaleString("en-GB")} />
             </div>
           ) : (
           <div className="grid grid-cols-2 gap-x-6 gap-y-6 lg:grid-cols-4">
-            <Stat size="lg" label="Earned by drivers" value={formatGBP(daySummary.driverOriginalEarnings)} sub="From DPD reports" />
-            <Stat label="Driver pay" value={formatGBP(daySummary.driverCosts)} sub={daySummary.driverAdjustmentsNet === 0 ? "No adjustments" : `Includes ${formatGBP(daySummary.driverAdjustmentsNet, { signed: true })} adjustments`} />
-            <Stat label="Fuel" value={formatGBP(daySummary.fuel)} />
-            <Stat label="Other expenses" value={formatGBP(daySummary.otherExpenses)} />
+            <Stat size="lg" tone="good" label="Earned by drivers" value={formatGBP(daySummary.driverOriginalEarnings, { signed: true })} sub="From DPD reports" />
+            <Stat tone="bad" label="Driver pay" value={formatGBP(daySummary.driverCosts)} sub={daySummary.driverAdjustmentsNet === 0 ? "No adjustments" : `Includes ${formatGBP(daySummary.driverAdjustmentsNet, { signed: true })} adjustments`} />
+            <Stat tone="bad" label="Fuel" value={formatGBP(daySummary.fuel)} />
+            <Stat tone="bad" label="Other expenses" value={formatGBP(daySummary.otherExpenses)} />
           </div>
           )}
           {routeIncome ? null : (
@@ -190,9 +190,9 @@ export default async function DashboardPage() {
               status={<Badge tone={FIGURE_STATUS[m.revenueStatus]!.tone}>{FIGURE_STATUS[m.revenueStatus]!.label}</Badge>}
               sub={m.revenueStatus === "unavailable" ? <Link href="/settings#revenue" className="text-accent underline">Add revenue</Link> : undefined}
             />
-            <Stat label="Driver pay" value={formatGBP(m.driverCosts)} sub={`${formatGBP(m.driverOriginalEarnings)} DPD ${m.driverAdjustmentsNet < 0 ? "−" : "+"} ${formatGBP(Math.abs(m.driverAdjustmentsNet))} adj.`} />
-            <Stat label="Fuel" value={formatGBP(m.fuel)} />
-            <Stat label="Other expenses" value={formatGBP(m.otherExpenses)} sub={m.unallocatedCosts > 0 ? <Link href="/expenses?show=unallocated" className="text-accent underline">{formatGBP(m.unallocatedCosts)} unallocated</Link> : undefined} />
+            <Stat tone="bad" label="Driver pay" value={formatGBP(m.driverCosts)} sub={`${formatGBP(m.driverOriginalEarnings)} DPD ${m.driverAdjustmentsNet < 0 ? "−" : "+"} ${formatGBP(Math.abs(m.driverAdjustmentsNet))} adj.`} />
+            <Stat tone="bad" label="Fuel" value={formatGBP(m.fuel)} />
+            <Stat tone="bad" label="Other expenses" value={formatGBP(m.otherExpenses)} sub={m.unallocatedCosts > 0 ? <Link href="/expenses?show=unallocated" className="text-accent underline">{formatGBP(m.unallocatedCosts)} unallocated</Link> : undefined} />
             <Stat
               label="Operating profit"
               value={m.operatingProfit == null ? "—" : formatGBP(m.operatingProfit)}
